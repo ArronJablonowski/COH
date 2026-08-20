@@ -61,7 +61,7 @@ export COH_CI_DOWNLOAD_DIR="${COH_TOOLCHAIN_ROOT}/downloads"
 export COH_GO_BIN="${COH_GO_ROOT}/bin/go"
 export COH_CI_ARTIFACT_DIR="${COH_CI_ARTIFACT_DIR:-${COH_TOOLCHAIN_ROOT}/ci-artifacts/${COH_CI_LANE}}"
 export TMPDIR="${GOTMPDIR}"
-export GOTOOLCHAIN=local GOENV=off GOTELEMETRY=off GOFLAGS=-mod=readonly
+export GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=readonly
 export PATH="${COH_GO_ROOT}/bin:/usr/bin:/bin"
 export GOPROXY=off GOSUMDB=off
 export GOPRIVATE='' GONOPROXY='' GONOSUMDB=''
@@ -77,6 +77,7 @@ export TMPDIR="${GOTMPDIR}"
 if [[ ! -x "${COH_GO_BIN}" ]]; then
   fail_ci_env "Pinned Go executable is unavailable: ${COH_GO_BIN}"
 fi
+coh_ensure_go_telemetry_off "${coh_ci_mutable_root}" "${XDG_CONFIG_HOME}" || fail_ci_env "Go telemetry must be safely configured off"
 actual_version="$("${COH_GO_BIN}" env GOVERSION)"
 if [[ "${actual_version}" != "go${COH_CI_GO_VERSION}" ]]; then
   fail_ci_env "CI lane ${COH_CI_LANE} requires go${COH_CI_GO_VERSION}; found ${actual_version}"

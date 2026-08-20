@@ -57,14 +57,15 @@ export GOCACHE="${COH_TOOLCHAIN_ROOT}/cache/go${COH_GO_VERSION}/build"
 export GOMODCACHE="${COH_TOOLCHAIN_ROOT}/cache/go${COH_GO_VERSION}/modules"
 export GOPATH="${COH_TOOLCHAIN_ROOT}/gopath/go${COH_GO_VERSION}"
 export GOTMPDIR="${COH_TOOLCHAIN_ROOT}/tmp/go${COH_GO_VERSION}"
+export XDG_CONFIG_HOME="${COH_TOOLCHAIN_ROOT}/ci-xdg/config"
+export XDG_CACHE_HOME="${COH_TOOLCHAIN_ROOT}/ci-xdg/cache"
 export TMPDIR="${GOTMPDIR}"
 export GOTOOLCHAIN="local"
 export GOENV="off"
-export GOTELEMETRY="off"
 export GOFLAGS="-mod=readonly"
 export PATH="${COH_GO_ROOT}/bin:/usr/bin:/bin"
 
-for coh_go_variable in GOCACHE GOMODCACHE GOPATH GOTMPDIR; do
+for coh_go_variable in GOCACHE GOMODCACHE GOPATH GOTMPDIR XDG_CONFIG_HOME XDG_CACHE_HOME; do
   coh_go_value=${!coh_go_variable}
   coh_go_resolved="$(coh_prepare_contained_directory "${COH_TOOLCHAIN_ROOT}" "${coh_go_value}")" || {
     echo "${coh_go_variable} must resolve under the trusted toolchain root" >&2
@@ -80,17 +81,15 @@ if [[ ! -x "${COH_GO_ROOT}/bin/go" ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
+if ! coh_ensure_go_telemetry_off "${coh_go_trusted_root}" "${XDG_CONFIG_HOME}"; then
+  echo "Go telemetry must be safely configured off before Go work" >&2
+  return 1 2>/dev/null || exit 1
+fi
+
 actual_version="$(${COH_GO_ROOT}/bin/go version)"
 if [[ "${actual_version}" != go\ version\ go${COH_GO_VERSION}\ * ]]; then
   echo "Expected Go ${COH_GO_VERSION}; found ${actual_version}" >&2
   return 1 2>/dev/null || exit 1
 fi
 
-telemetry_mode="$(${COH_GO_ROOT}/bin/go telemetry)"
-if [[ "${telemetry_mode}" != "off" ]]; then
-  echo "Go telemetry must be off to prevent writes to the internal system drive" >&2
-  echo "Run: ${COH_GO_ROOT}/bin/go telemetry off" >&2
-  return 1 2>/dev/null || exit 1
-fi
-
-unset actual_version telemetry_mode coh_go_value coh_go_resolved coh_go_variable coh_go_trusted_root coh_go_volume coh_go_default_toolchain_root coh_go_lib_root
+unset actual_version coh_go_value coh_go_resolved coh_go_variable coh_go_trusted_root coh_go_volume coh_go_default_toolchain_root coh_go_lib_root

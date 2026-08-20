@@ -41,6 +41,95 @@ coh_prepare_contained_directory() {
   printf '%s\n' "${candidate_real}"
 }
 
+coh_path_has_no_symlink_components() {
+  local path=$1 current='' component
+  [[ "${path}" == /* ]] || return 1
+  IFS='/' read -r -a coh_path_components <<< "${path}"
+  for component in "${coh_path_components[@]}"; do
+    [[ -n "${component}" ]] || continue
+    current="${current}/${component}"
+    [[ ! -L "${current}" ]] || return 1
+  done
+  unset coh_path_components
+}
+
+coh_file_identity() {
+  local path=$1
+  if [[ "$(/usr/bin/uname -s)" == "Darwin" ]]; then
+    /usr/bin/stat -f '%d:%i:%Lp:%l:%z:%u' "${path}"
+  else
+    /usr/bin/stat -c '%d:%i:%a:%h:%s:%u' "${path}"
+  fi
+}
+
+coh_directory_is_private() {
+  local path=$1 identity mode links owner
+  [[ -d "${path}" && ! -L "${path}" ]] || return 1
+  identity="$(coh_file_identity "${path}")" || return 1
+  IFS=: read -r _ _ mode links _ owner <<< "${identity}"
+  [[ "${owner}" == "$(/usr/bin/id -u)" && "${links}" -ge 1 ]] || return 1
+  (( (8#${mode} & 8#022) == 0 ))
+}
+
+coh_read_stable_telemetry_mode() {
+  local directory=$1 allow_date=${2:-false}
+  local before after content mode links size owner
+  coh_path_has_no_symlink_components "${directory}" || return 1
+  coh_directory_is_private "${directory}" || return 1
+  (
+    builtin cd -P -- "${directory}" || exit 1
+    [[ -f mode && ! -L mode ]] || exit 1
+    before="$(coh_file_identity mode)" || exit 1
+    IFS=: read -r _ _ mode links size owner <<< "${before}"
+    [[ "${owner}" == "$(/usr/bin/id -u)" && "${links}" == 1 ]] || exit 1
+    (( (8#${mode} & 8#022) == 0 )) || exit 1
+    content="$(/bin/cat mode)" || exit 1
+    after="$(coh_file_identity mode)" || exit 1
+    [[ "${before}" == "${after}" && "${size}" -le 14 ]] || exit 1
+    if [[ "${allow_date}" == true ]]; then
+      [[ "${content}" =~ ^off([[:space:]][0-9]{4}-[0-9]{2}-[0-9]{2})?$ ]]
+    else
+      [[ "${content}" == off && "${mode}" == 600 && "${size}" == 3 ]]
+    fi
+  )
+}
+
+# Publish exact XDG telemetry-off bytes without replacing an existing pathname.
+coh_prepare_go_telemetry_mode() {
+  local trusted_root=$1 config_root=$2
+  local config_real telemetry_directory
+  config_real="$(coh_prepare_contained_directory "${trusted_root}" "${config_root}")" || return 1
+  telemetry_directory="$(coh_prepare_contained_directory "${config_real}" "${config_real}/go/telemetry")" || return 1
+  coh_path_has_no_symlink_components "${telemetry_directory}" || return 1
+  coh_directory_is_private "${telemetry_directory}" || return 1
+  if ! coh_read_stable_telemetry_mode "${telemetry_directory}" false; then
+    (
+      local temporary
+      builtin cd -P -- "${telemetry_directory}" || exit 1
+      temporary="$(/usr/bin/mktemp .mode.XXXXXX)" || exit 1
+      trap '/bin/rm -f -- "${temporary}"' EXIT
+      /bin/chmod 0600 "${temporary}" || exit 1
+      printf off > "${temporary}" || exit 1
+      /bin/ln "${temporary}" mode 2>/dev/null || true
+    ) || return 1
+  fi
+  coh_path_has_no_symlink_components "${telemetry_directory}" || return 1
+  coh_read_stable_telemetry_mode "${telemetry_directory}" false || return 1
+  printf '%s\n' "${telemetry_directory}/mode"
+}
+
+coh_ensure_go_telemetry_off() {
+  local trusted_root=$1 config_root=$2 native_directory
+  if [[ "$(/usr/bin/uname -s)" == "Darwin" ]]; then
+    # A scrubbed child with no HOME gives Go no user config directory to mutate.
+    [[ -n "${HOME:-}" ]] || return 0
+    native_directory="${HOME}/Library/Application Support/go/telemetry"
+    coh_read_stable_telemetry_mode "${native_directory}" true
+    return
+  fi
+  coh_prepare_go_telemetry_mode "${trusted_root}" "${config_root}" >/dev/null
+}
+
 # Arguments are pre-collected facts so the decision table can be tested
 # without fabricating or modifying host mount state.
 coh_validate_mount_facts() {

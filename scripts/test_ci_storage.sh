@@ -47,6 +47,26 @@ done
 resolved="$(coh_prepare_contained_directory "${trusted}" "${trusted}/safe path/cache")" || exit 22
 [[ "${resolved}" == "${trusted}/safe path/cache" ]] || { echo "path-with-spaces resolution drifted" >&2; exit 22; }
 
+telemetry_trusted="${temporary}/telemetry-trusted"
+telemetry_outside="${temporary}/telemetry-outside"
+/bin/mkdir -p "${telemetry_trusted}/config/go/telemetry" "${telemetry_outside}"
+printf 'outside-sentinel' > "${telemetry_outside}/mode"
+/bin/ln -s "${telemetry_outside}/mode" "${telemetry_trusted}/config/go/telemetry/mode"
+expect_denied coh_prepare_go_telemetry_mode "${telemetry_trusted}" "${telemetry_trusted}/config" || exit 22
+[[ "$(/bin/cat "${telemetry_outside}/mode")" == outside-sentinel ]] || exit 22
+/bin/rm "${telemetry_trusted}/config/go/telemetry/mode"
+/bin/rm -rf "${telemetry_trusted}/config/go"
+/bin/ln -s "${telemetry_outside}" "${telemetry_trusted}/config/go"
+expect_denied coh_prepare_go_telemetry_mode "${telemetry_trusted}" "${telemetry_trusted}/config" || exit 22
+/bin/rm "${telemetry_trusted}/config/go"
+telemetry_mode="$(coh_prepare_go_telemetry_mode "${telemetry_trusted}" "${telemetry_trusted}/config")" || exit 22
+[[ "${telemetry_mode}" == "${telemetry_trusted}/config/go/telemetry/mode" && -f "${telemetry_mode}" && ! -L "${telemetry_mode}" ]] || exit 22
+[[ "$(/bin/cat "${telemetry_mode}")" == off ]] || exit 22
+[[ "$(coh_prepare_go_telemetry_mode "${telemetry_trusted}" "${telemetry_trusted}/config")" == "${telemetry_mode}" ]] || exit 22
+/bin/chmod 0666 "${telemetry_mode}"
+expect_denied coh_prepare_go_telemetry_mode "${telemetry_trusted}" "${telemetry_trusted}/config" || exit 22
+/bin/chmod 0600 "${telemetry_mode}"
+
 hosted_go_root="${temporary}/go-hosted"
 /bin/mkdir -p "${hosted_go_root}"
 set +e

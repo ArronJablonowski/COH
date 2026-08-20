@@ -181,9 +181,17 @@ the local toolchain. Repository scripts source
 [`go_ssd_env.sh`](../../scripts/lib/go_ssd_env.sh), which keeps `GOCACHE`,
 `GOMODCACHE`, `GOPATH`, and `GOTMPDIR` beneath
 `/Volumes/Untitled/Codex/toolchains` by default and sets `GOTOOLCHAIN=local`.
-It sets `GOENV=off` and `GOTELEMETRY=off` before the first Go invocation, so Go
-does not update its non-relocatable macOS telemetry/config directories. The
-script fails if telemetry is not off. This prevents implicit toolchain downloads
+It sets `GOENV=off` and relocates `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` beneath
+the approved toolchain root. On XDG platforms, it publishes exact `off` mode
+bytes with a same-directory, no-replace hard-link commit and accepts an existing
+mode only after stable identity, ownership, permission, and content checks. Go
+never overwrites that pathname. Go ignores XDG configuration relocation on
+macOS. Native macOS runs with `HOME` set stable-read the existing mode before
+the first Go invocation and fail unless it is already `off`; scrubbed children
+without `HOME` proceed because Go cannot address a user configuration directory.
+Neither case persists telemetry settings. This prevents telemetry collection or
+uploads without writing outside
+approved mutable storage, and prevents implicit toolchain downloads
 and mutable Go data on the internal drive. Operators can override
 `COH_TOOLCHAIN_ROOT` and `COH_GO_ROOT` explicitly.
 
