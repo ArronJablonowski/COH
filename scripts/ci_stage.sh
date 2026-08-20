@@ -30,13 +30,17 @@ run_logged() {
   if (( status != 0 )); then
     log_digest="$("${COH_QUALITYGATE_BIN:?COH_QUALITYGATE_BIN is required}" -mode digest -input "${artifact_dir}/${name}.log")"
     printf 'stage=%s status=%s bytes=%s sha256=%s\n' "${name}" "${status}" "${byte_count}" "${log_digest}" >&2
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+      printf '::error file=scripts/ci_stage.sh,title=COH quality stage denied::stage=%s status=%s bytes=%s sha256=%s\n' \
+        "${name}" "${status}" "${byte_count}" "${log_digest}" >&2
+    fi
     return "${status}"
   fi
 }
 
 case "${stage}" in
   format)
-    run_logged format preserve /bin/bash -c 'files=$("$COH_GO_ROOT/bin/gofmt" -l cmd internal); test -z "$files" || { printf "%s\n" "$files"; exit 2; }'
+    run_logged format preserve /bin/bash -c 'set -euo pipefail; files=$("$COH_GO_ROOT/bin/gofmt" -l cmd internal); test -z "$files" || { printf "%s\n" "$files"; exit 2; }'
     ;;
   file-size)
     run_logged file-size preserve "${COH_QUALITYGATE_BIN:?COH_QUALITYGATE_BIN is required}" \
