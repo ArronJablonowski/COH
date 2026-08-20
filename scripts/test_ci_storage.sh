@@ -49,10 +49,22 @@ resolved="$(coh_prepare_contained_directory "${trusted}" "${trusted}/safe path/c
 
 hosted_go_root="${temporary}/go-hosted"
 /bin/mkdir -p "${hosted_go_root}"
+set +e
 CI=true RUNNER_TEMP="${hosted_go_root}" COH_TOOLCHAIN_ROOT="${hosted_go_root}/toolchains" \
   COH_GO_ROOT="${COH_GO_ROOT:?COH_GO_ROOT is required}" COH_GO_VERSION="${COH_CI_GO_VERSION:-1.26.7}" \
   /bin/bash -c 'source "$1"; [[ "$TMPDIR" == "$GOTMPDIR" && "$GOTMPDIR" == "$COH_TOOLCHAIN_ROOT"/* ]]' \
-  _ "${repo_root}/scripts/lib/go_ssd_env.sh" || exit 23
+  _ "${repo_root}/scripts/lib/go_ssd_env.sh"
+hosted_go_status=$?
+set -e
+if (( hosted_go_status != 0 )); then
+  (( hosted_go_status != 64 )) || exit 31
+  [[ -x "${COH_GO_ROOT}/bin/go" ]] || exit 32
+  hosted_go_version="$("${COH_GO_ROOT}/bin/go" version)" || exit 32
+  [[ "${hosted_go_version}" == go\ version\ go${COH_CI_GO_VERSION:-1.26.7}\ * ]] || exit 33
+  hosted_telemetry_mode="$("${COH_GO_ROOT}/bin/go" telemetry)" || exit 34
+  [[ "${hosted_telemetry_mode}" == "off" ]] || exit 34
+  exit 35
+fi
 
 native_storage_root="${temporary}/native storage"
 /bin/mkdir -p "${native_storage_root}/COH-toolchains"
