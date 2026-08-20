@@ -106,7 +106,7 @@ func testPassedReport(t *testing.T) quality.Report {
 		t.Fatal(err)
 	}
 	evidence := map[string][]string{
-		"format": {"format.log"}, "workflow": {"workflow.log"},
+		"format": {"format.log"}, "file-size": {"file-size.log", "file-size-report.json"}, "workflow": {"workflow.log"},
 		"secret-worktree": {"secret-worktree.log"}, "secret-history": {"secret-history.log"},
 		"architecture": {"architecture.log", "architecture-report.json"}, "quality-contract": {"quality-contract.log"},
 		"vet": {"vet.log"}, "static-analysis": {"static-analysis.log"}, "unit": {"unit.log"},

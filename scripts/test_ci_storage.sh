@@ -47,4 +47,47 @@ done
 resolved="$(coh_prepare_contained_directory "${trusted}" "${trusted}/safe path/cache")"
 [[ "${resolved}" == "${trusted}/safe path/cache" ]] || { echo "path-with-spaces resolution drifted" >&2; exit 2; }
 
+hosted_go_root="${temporary}/go-hosted"
+/bin/mkdir -p "${hosted_go_root}"
+CI=true RUNNER_TEMP="${hosted_go_root}" COH_TOOLCHAIN_ROOT="${hosted_go_root}/toolchains" \
+  COH_GO_ROOT="${COH_GO_ROOT:?COH_GO_ROOT is required}" COH_GO_VERSION="${COH_CI_GO_VERSION:-1.26.7}" \
+  /bin/bash -c 'source "$1"; [[ "$TMPDIR" == "$GOTMPDIR" && "$GOTMPDIR" == "$COH_TOOLCHAIN_ROOT"/* ]]' \
+  _ "${repo_root}/scripts/lib/go_ssd_env.sh"
+
+native_storage_root="${temporary}/native storage"
+/bin/mkdir -p "${native_storage_root}/COH-toolchains"
+COH_NATIVE_STORAGE_ROOT="${native_storage_root}" \
+  COH_TOOLCHAIN_ROOT="${native_storage_root}/COH-toolchains" \
+  COH_GO_ROOT="${COH_GO_ROOT:?COH_GO_ROOT is required}" COH_GO_VERSION="${COH_CI_GO_VERSION:-1.26.7}" \
+  /bin/bash -c 'source "$1"; [[ "$TMPDIR" == "$GOTMPDIR" && "$GOTMPDIR" == "$COH_TOOLCHAIN_ROOT"/* ]]' \
+  _ "${repo_root}/scripts/lib/go_ssd_env.sh"
+
+missing_native_root="${temporary}/missing-native-root"
+if COH_NATIVE_STORAGE_ROOT="${missing_native_root}" \
+  COH_TOOLCHAIN_ROOT="${missing_native_root}/COH-toolchains" \
+  COH_GO_ROOT="${COH_GO_ROOT}" COH_GO_VERSION="${COH_CI_GO_VERSION:-1.26.7}" \
+  /bin/bash -c 'source "$1"' _ "${repo_root}/scripts/lib/go_ssd_env.sh" >/dev/null 2>&1; then
+  echo "Go environment accepted a missing native storage root" >&2
+  exit 2
+fi
+[[ ! -e "${missing_native_root}" ]] || {
+  echo "Rejected native storage root was created" >&2
+  exit 2
+}
+
+attack_runner="${temporary}/attack-runner"
+attack_outside="${temporary}/attack-outside"
+/bin/mkdir -p "${attack_runner}/toolchains" "${attack_outside}"
+/bin/ln -s "${attack_outside}" "${attack_runner}/toolchains/cache"
+if CI=true RUNNER_TEMP="${attack_runner}" COH_TOOLCHAIN_ROOT="${attack_runner}/toolchains" \
+  COH_GO_ROOT="${COH_GO_ROOT}" COH_GO_VERSION="${COH_CI_GO_VERSION:-1.26.7}" \
+  /bin/bash -c 'source "$1"' _ "${repo_root}/scripts/lib/go_ssd_env.sh" >/dev/null 2>&1; then
+  echo "Go SSD environment accepted a symlinked mutable descendant" >&2
+  exit 2
+fi
+[[ ! -e "${attack_outside}/go${COH_CI_GO_VERSION:-1.26.7}" ]] || {
+  echo "Go SSD environment wrote through a rejected symlink" >&2
+  exit 2
+}
+
 echo "CI storage contract tests: passed"

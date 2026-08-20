@@ -29,7 +29,7 @@ func main() {
 func run(arguments []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("qualitygate", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	mode := flags.String("mode", "run", "operation: run, sbom, provenance, digest, or tool verification")
+	mode := flags.String("mode", "run", "operation: run, file-size, sbom, provenance, digest, or tool verification")
 	root := flags.String("root", ".", "repository root")
 	policyPath := flags.String("policy", defaultPolicy, "quality policy path")
 	toolLockPath := flags.String("tool-lock", defaultToolLock, "tool lock path")
@@ -62,6 +62,8 @@ func run(arguments []string, stdout, stderr io.Writer) int {
 	defer cancel()
 
 	switch *mode {
+	case "file-size":
+		return runFileSizeMode(ctx, rootPath, *artifactDirectory, *input, *output, stdout, stderr)
 	case "extract-vulndb", "generate-vulndb-manifest", "verify-vulndb", "verify-govuln-sarif":
 		lock, lockErr := readVulnDBLock(rootPath, *vulnLockPath)
 		if lockErr != nil {
@@ -248,7 +250,7 @@ func run(arguments []string, stdout, stderr io.Writer) int {
 
 func supportedMode(mode string) bool {
 	switch mode {
-	case "run", "sbom", "provenance", "digest", "verify-tools", "verify-tool-sources", "verify-fuzz-manifest", "verify-fuzz-execution", "verify-publication",
+	case "run", "file-size", "sbom", "provenance", "digest", "verify-tools", "verify-tool-sources", "verify-fuzz-manifest", "verify-fuzz-execution", "verify-publication",
 		"extract-vulndb", "generate-vulndb-manifest", "verify-vulndb", "verify-govuln-sarif":
 		return true
 	default:

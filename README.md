@@ -19,7 +19,9 @@ The implementation backlog and acceptance gates live in the [COH Linear project]
 - [Architecture decision records](docs/adr/)
 - [Security governance](docs/security/)
 - [CI quality contract](docs/design/ci-quality-contract.md)
+- [File-size policy contract](contracts/file-size/v1/README.md)
 - [CYB-33 quality-gate evidence](docs/evidence/CYB-33-quality-gate-report.md)
+- [CYB-38 file-size policy evidence](docs/evidence/CYB-38-file-size-policy-report.md)
 
 ## Safety contract
 
@@ -34,6 +36,8 @@ The implementation backlog and acceptance gates live in the [COH Linear project]
 
 - Handwritten production files fail above 800 physical lines and warn above 500.
 - Operational, build, and migration scripts normally remain at or below 300 lines.
+- Governed exceptions are exact-path, content-digest-bound, owner-justified,
+  issue-tracked, expiry-bounded, and capped by an approved physical-line maximum.
 - Commands stay thin; domain, policy, workflow, provider, connector, persistence, and transport responsibilities remain separate.
 - Native and optional container deployments must pass the same API, workflow, policy, and artifact conformance suites.
 

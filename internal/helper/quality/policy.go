@@ -16,7 +16,8 @@ var requiredLanes = []Lane{
 }
 
 var requiredStageSpecs = []StageSpec{
-	{ID: "format", TimeoutSeconds: 60}, {ID: "workflow", TimeoutSeconds: 120},
+	{ID: "format", TimeoutSeconds: 60}, {ID: "file-size", TimeoutSeconds: 120},
+	{ID: "workflow", TimeoutSeconds: 120},
 	{ID: "secret-worktree", TimeoutSeconds: 120}, {ID: "secret-history", TimeoutSeconds: 120},
 	{ID: "architecture", TimeoutSeconds: 120}, {ID: "quality-contract", TimeoutSeconds: 180},
 	{ID: "vet", TimeoutSeconds: 120},
@@ -48,8 +49,8 @@ func ValidatePolicy(policy Policy) error {
 	if policy.SchemaVersion != PolicySchema {
 		return qualityError(CodeInvalidInput, "schema_version", "unsupported policy schema", nil)
 	}
-	if policy.PolicyVersion != "1.0.0" {
-		return qualityError(CodeInvalidInput, "policy_version", "reader supports 1.0.0", nil)
+	if policy.PolicyVersion != "1.1.0" {
+		return qualityError(CodeInvalidInput, "policy_version", "reader supports 1.1.0", nil)
 	}
 	if !slices.Equal(policy.Lanes, requiredLanes) {
 		return qualityError(CodeDenied, "lanes", "baseline and qualification lanes are locked", nil)

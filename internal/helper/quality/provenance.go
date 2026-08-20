@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/ArronJablonowski/COH/internal/helper/filesize"
 )
 
 const provenanceSchema = "coh.ci-provenance/v1"
@@ -18,6 +20,7 @@ var provenanceMaterials = []string{
 	".github/workflows/quality.yml",
 	"ci/dependencies.allow",
 	"ci/fuzz-targets.txt",
+	"ci/file-size-policy.json",
 	"ci/gitleaks.ignore",
 	"ci/gitleaks.toml",
 	"ci/govulndb.lock.json",
@@ -25,10 +28,12 @@ var provenanceMaterials = []string{
 	"ci/licenses.allow",
 	"ci/quality-policy.json",
 	"ci/tools.lock.json",
+	"contracts/file-size/v1/file-size-policy.schema.json",
 	"scripts/bootstrap_ci_tools.sh",
 	"scripts/check_dependencies.sh",
 	"scripts/check_dependency_allowlist.sh",
 	"scripts/check_fuzz_seeds.sh",
+	"scripts/check_file_sizes.sh",
 	"scripts/check_go_architecture.sh",
 	"scripts/check_licenses.sh",
 	"scripts/check_secrets.sh",
@@ -152,7 +157,10 @@ func VerifyProvenance(root, artifactDirectory, path string) error {
 
 // VerifyEvidenceBundle checks the final report against the already verified
 // provenance statement and rejects missing, duplicate, or uncovered evidence.
-func VerifyEvidenceBundle(root, artifactDirectory, reportPath string, report Report) error {
+func VerifyEvidenceBundle(ctx context.Context, root, artifactDirectory, reportPath string, report Report) error {
+	if err := ctx.Err(); err != nil {
+		return contextQualityError(err, "evidence")
+	}
 	if filepath.Base(reportPath) != "quality-report.json" {
 		return qualityError(CodeDenied, "evidence", "unexpected report name", nil)
 	}
@@ -162,6 +170,12 @@ func VerifyEvidenceBundle(root, artifactDirectory, reportPath string, report Rep
 	}
 	if !reportsEqual(diskReport, report) {
 		return qualityError(CodeDenied, "evidence", "on-disk report differs from evaluated verdict", nil)
+	}
+	if err := verifyQualitySourceBinding(ctx, root, report); err != nil {
+		return err
+	}
+	if err := verifyFileSizeEvidenceBinding(ctx, root, artifactDirectory, report); err != nil {
+		return err
 	}
 	provenancePath := filepath.Join(artifactDirectory, "ci-provenance.json")
 	if err := VerifyProvenance(root, artifactDirectory, provenancePath); err != nil {
@@ -185,7 +199,7 @@ func VerifyEvidenceBundle(root, artifactDirectory, reportPath string, report Rep
 			}
 			seen[name] = struct{}{}
 			allExpected = append(allExpected, name)
-			if _, err := digestArtifact(artifactDirectory, name); err != nil {
+			if err := verifyStageArtifact(artifactDirectory, stage.ID, name); err != nil {
 				return err
 			}
 			if name != "provenance.log" && name != "ci-provenance.json" {
@@ -208,6 +222,53 @@ func VerifyEvidenceBundle(root, artifactDirectory, reportPath string, report Rep
 	}
 	if !slices.Equal(actual, allExpected) {
 		return qualityError(CodeDenied, "evidence", "artifact directory contains missing or unexpected files", nil)
+	}
+	return nil
+}
+
+func verifyQualitySourceBinding(ctx context.Context, root string, report Report) error {
+	snapshot, err := SnapshotWorkspace(ctx, root)
+	if err != nil {
+		return err
+	}
+	if snapshot.Digest != report.Provenance.SourceDigest || snapshot.FileCount != report.Provenance.SourceFiles ||
+		snapshot.VCSRevision != report.Provenance.VCSRevision || snapshot.VCSModified != report.Provenance.VCSModified {
+		return qualityError(CodeDenied, "evidence.source", "final source differs from the evaluated quality snapshot", nil)
+	}
+	return nil
+}
+
+func verifyFileSizeEvidenceBinding(ctx context.Context, root, artifactDirectory string, outer Report) error {
+	nested, err := filesize.ReadAndVerifyReport(filepath.Join(artifactDirectory, "file-size-report.json"))
+	if err != nil {
+		return qualityError(CodeDenied, "evidence.file-size", "cannot verify nested file-size report", err)
+	}
+	snapshot, err := (filesize.OSSource{}).Snapshot(ctx, root)
+	if err != nil {
+		return qualityError(CodeDenied, "evidence.file-size", "cannot reproduce file-size source snapshot", err)
+	}
+	policyData, err := readBoundedRegular(filepath.Join(root, "ci", "file-size-policy.json"), filesize.MaximumPolicySize)
+	if err != nil {
+		return qualityError(CodeDenied, "evidence.file-size", "cannot read file-size policy", err)
+	}
+	policy, err := filesize.DecodePolicy(policyData)
+	if err != nil {
+		return qualityError(CodeDenied, "evidence.file-size", "cannot decode file-size policy", err)
+	}
+	policyDigest, err := filesize.PolicyDigest(policy)
+	if err != nil {
+		return qualityError(CodeDenied, "evidence.file-size", "cannot bind file-size policy", err)
+	}
+	exceptionsDigest, err := filesize.ExceptionsDigest(policy)
+	if err != nil {
+		return qualityError(CodeDenied, "evidence.file-size", "cannot bind file-size exceptions", err)
+	}
+	if nested.SourceDigest != snapshot.Digest || nested.SourceFileCount != snapshot.FileCount ||
+		nested.VCSRevision != snapshot.VCSRevision || nested.VCSModified != snapshot.VCSModified ||
+		nested.PolicyDigest != policyDigest || nested.ExceptionsDigest != exceptionsDigest ||
+		nested.SourceFileCount != outer.Provenance.SourceFiles ||
+		nested.VCSRevision != outer.Provenance.VCSRevision || nested.VCSModified != outer.Provenance.VCSModified {
+		return qualityError(CodeDenied, "evidence.file-size", "nested file-size provenance differs from the final source and quality verdict", nil)
 	}
 	return nil
 }

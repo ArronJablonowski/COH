@@ -1,6 +1,6 @@
 {
   "schema_version": "coh.ci-quality/v1",
-  "policy_version": "1.0.0",
+  "policy_version": "1.1.0",
   "lanes": [
     {
       "id": "baseline",
@@ -15,6 +15,7 @@
   ],
   "stages": [
     {"id": "format", "timeout_seconds": 60},
+    {"id": "file-size", "timeout_seconds": 120},
     {"id": "workflow", "timeout_seconds": 120},
     {"id": "secret-worktree", "timeout_seconds": 120},
     {"id": "secret-history", "timeout_seconds": 120},

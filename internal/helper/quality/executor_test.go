@@ -168,3 +168,29 @@ func TestStageEnvironmentRejectsMutableCacheSymlinkEscapes(t *testing.T) {
 		})
 	}
 }
+
+func TestStageEnvironmentBindsExplicitNativeStorageRoot(t *testing.T) {
+	root, artifacts := executorWorkspace(t)
+	storageRoot := filepath.Dir(os.Getenv("COH_TOOLCHAIN_ROOT"))
+	t.Setenv("COH_NATIVE_STORAGE_ROOT", storageRoot)
+	environment, err := stageEnvironment(StageRequest{
+		ID: "format", Root: root, ArtifactDir: artifacts, Lane: "baseline",
+	}, filepath.Join(root, "qualitygate"))
+	if err != nil {
+		t.Fatalf("stageEnvironment() error=%v", err)
+	}
+	want := "COH_NATIVE_STORAGE_ROOT=" + storageRoot
+	found := false
+	for _, value := range environment {
+		found = found || value == want
+	}
+	if !found {
+		t.Fatal("native storage root was not forwarded to the fixed stage environment")
+	}
+	t.Setenv("COH_NATIVE_STORAGE_ROOT", t.TempDir())
+	if _, err := stageEnvironment(StageRequest{
+		ID: "format", Root: root, ArtifactDir: artifacts, Lane: "baseline",
+	}, filepath.Join(root, "qualitygate")); CodeOf(err) != CodeDenied {
+		t.Fatalf("unrelated native storage root code=%q err=%v", CodeOf(err), err)
+	}
+}

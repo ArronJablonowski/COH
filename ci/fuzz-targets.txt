@@ -1,3 +1,6 @@
 # package target
 ./internal/helper/architecture FuzzDecodeContract
+./internal/helper/filesize FuzzDecodePolicy
+./internal/helper/filesize FuzzGeneratedHeader
+./internal/helper/filesize FuzzSafePolicyPath
 ./internal/helper/quality FuzzDecodePolicy

@@ -1,6 +1,7 @@
 # CI quality contract v1
 
-Status: implemented locally for COH-E02-02 / CYB-33 on 2026-08-19.
+Status: implemented locally for COH-E02-02 / CYB-33 and extended by
+COH-E02-03 / CYB-38 on 2026-08-20.
 
 Requirements: NFR-027 and EVAL-029.
 
@@ -42,6 +43,7 @@ typed cancellation/timeout contract.
 | Stage | Timeout | Contract |
 |---|---:|---|
 | `format` | 60 s | `gofmt` has no diff |
+| `file-size` | 120 s | Strict v1 policy, complete Git-visible source snapshot, deterministic digest-bound report |
 | `workflow` | 120 s | Exact workflow digest, actionlint, ShellCheck, full-SHA actions, least privilege, full history |
 | `secret-worktree` | 120 s | Locked Gitleaks policy over current source |
 | `secret-history` | 120 s | Complete, non-shallow, non-partial, non-replaced Git history |
@@ -123,14 +125,22 @@ tree manifest and semantic indexes are verified before govulncheck. SARIF is
 strictly decoded and any result is a denial; govulncheck's SARIF exit zero is
 not treated as proof of zero findings.
 
-## External SSD and hosted storage
+## Native and hosted storage
 
-Native macOS refuses to create `/Volumes/Untitled` or any descendant until it
-proves that the path is a real mounted filesystem whose device differs from
-`/`. Every mutable Go cache, module cache, GOPATH, temporary directory, tool
-directory, XDG directory, Staticcheck cache, lock, download, and artifact path
-is checked through its nearest existing canonical parent before creation, then
-re-resolved afterward. Symlink escapes are denied before an outside write.
+Native macOS defaults to the workstation external volume contract. A caller may
+instead set `COH_NATIVE_STORAGE_ROOT` to an existing, real, trusted directory;
+the toolchain root and every mutable Go cache, module cache, GOPATH, temporary
+directory, tool directory, XDG directory, Staticcheck cache, lock, download,
+and artifact path must remain below that root. The fixed stage environment
+forwards the explicit root only after validating that containment. This Studio
+uses `/Users/aj_lobster/Developer` with mutable state under
+`/Users/aj_lobster/Developer/COH-toolchains`; no external drive is required.
+
+All prospective paths are checked through their nearest existing canonical
+parent before creation and re-resolved afterward. Symlink escapes are denied
+before an outside write. `TMPDIR` is fixed to the trusted `GOTMPDIR`, including
+for scrubbed secret-history scans, so macOS Git cannot silently scan zero
+commits after losing its native temporary-directory environment.
 
 Hosted runs apply the same prospective check below an already existing
 `RUNNER_TEMP`. Native Linux requires an explicit, pre-existing real

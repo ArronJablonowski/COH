@@ -15,6 +15,7 @@ git_environment=(
   GIT_CONFIG_KEY_0=core.fsmonitor GIT_CONFIG_VALUE_0=false
   GIT_CONFIG_KEY_1=core.hooksPath GIT_CONFIG_VALUE_1=/dev/null
   GIT_NO_REPLACE_OBJECTS=1 GIT_OPTIONAL_LOCKS=0 LANG=C LC_ALL=C PATH=/usr/bin:/bin
+  "TMPDIR=${GOTMPDIR:?GOTMPDIR is required}"
 )
 
 safe_git() {
@@ -62,7 +63,7 @@ case "${mode}" in
   history)
     if safe_git rev-parse --verify HEAD >/dev/null 2>&1; then
       verify_complete_history
-      safe_gitleaks git --config "${config}" --gitleaks-ignore-path "${ignore}" --ignore-gitleaks-allow --no-banner --redact --exit-code 2 "${scan_root}"
+      safe_gitleaks git --log-opts=--all --config "${config}" --gitleaks-ignore-path "${ignore}" --ignore-gitleaks-allow --no-banner --redact --exit-code 2 "${scan_root}"
     elif [[ -z "$(safe_git rev-list --all 2>/dev/null)" ]]; then
       if [[ "${CI:-}" == "true" ]]; then
         echo "Hosted CI requires a committed full-history checkout" >&2

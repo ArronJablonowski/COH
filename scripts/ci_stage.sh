@@ -38,6 +38,11 @@ case "${stage}" in
   format)
     run_logged format preserve /bin/bash -c 'files=$("$COH_GO_ROOT/bin/gofmt" -l cmd internal); test -z "$files" || { printf "%s\n" "$files"; exit 2; }'
     ;;
+  file-size)
+    run_logged file-size preserve "${COH_QUALITYGATE_BIN:?COH_QUALITYGATE_BIN is required}" \
+      -mode file-size -root "${repo_root}" -input "${repo_root}/ci/file-size-policy.json" \
+      -artifact-dir "${artifact_dir}" -output "${artifact_dir}/file-size-report.json"
+    ;;
   vet) run_logged vet denial "${COH_GO_BIN}" vet ./... ;;
   static-analysis) run_logged static-analysis denial "${repo_root}/scripts/check_static_analysis.sh" ;;
   unit) run_logged unit denial "${COH_GO_BIN}" test -count=1 ./... ;;

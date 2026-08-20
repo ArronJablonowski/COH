@@ -1,0 +1,1 @@
+{"schema_version":"coh.file-size-policy/v1","policy_version":"1.0.0","thresholds":{"warning_physical_lines":500,"hard_physical_lines":800,"script_physical_lines":300,"normal_minimum_lines":150,"normal_maximum_lines":400},"exceptions":[],"unexpected":true}

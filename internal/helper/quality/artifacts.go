@@ -14,12 +14,15 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/ArronJablonowski/COH/internal/helper/filesize"
 )
 
 const maximumArtifactSize = 64 << 20
 
 var stageArtifactNames = map[string][]string{
 	"format":           {"format.log"},
+	"file-size":        {"file-size.log", "file-size-report.json"},
 	"vet":              {"vet.log"},
 	"static-analysis":  {"static-analysis.log"},
 	"unit":             {"unit.log"},
@@ -44,12 +47,25 @@ func StageEvidence(directory, stage string) ([]string, error) {
 	}
 	evidence := make([]string, 0, len(names))
 	for _, name := range names {
-		if _, err := digestArtifact(directory, name); err != nil {
+		if err := verifyStageArtifact(directory, stage, name); err != nil {
 			return nil, err
 		}
 		evidence = append(evidence, name)
 	}
 	return evidence, nil
+}
+
+func verifyStageArtifact(directory, stage, name string) error {
+	if _, err := digestArtifact(directory, name); err != nil {
+		return err
+	}
+	if stage == "file-size" && name == "file-size-report.json" {
+		report, err := filesize.ReadAndVerifyReport(filepath.Join(directory, name))
+		if err != nil || report.Outcome != "passed" || !report.ScanComplete {
+			return qualityError(CodeDenied, "artifacts.file-size-report.json", "file-size evidence is invalid or non-passing", err)
+		}
+	}
+	return nil
 }
 
 func captureFailureEvidence(directory, stage string, exitCode int, code ErrorCode) FailureEvidence {

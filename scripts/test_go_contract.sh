@@ -9,12 +9,13 @@ go_cmd="${COH_GO_ROOT}/bin/go"
 
 cd "${repo_root}"
 
-for go_path in "${GOCACHE}" "${GOMODCACHE}" "${GOPATH}" "${GOTMPDIR}"; do
+for go_path in "${GOCACHE}" "${GOMODCACHE}" "${GOPATH}" "${GOTMPDIR}" "${TMPDIR}"; do
   if [[ "${go_path}" != "${COH_TOOLCHAIN_ROOT}"/* ]]; then
     echo "Go mutable path escapes external toolchain root: ${go_path}" >&2
     exit 1
   fi
 done
+[[ "${TMPDIR}" == "${GOTMPDIR}" ]] || { echo "TMPDIR must equal the SSD-backed GOTMPDIR" >&2; exit 1; }
 
 unformatted="$(${COH_GO_ROOT}/bin/gofmt -l cmd internal)"
 if [[ -n "${unformatted}" ]]; then

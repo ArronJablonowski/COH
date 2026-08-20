@@ -8,7 +8,164 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/ArronJablonowski/COH/internal/helper/filesize"
 )
+
+func TestStageEvidenceSemanticallyVerifiesFileSizeReport(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "file-size.log"), []byte("passed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	report := filesize.Report{
+		SchemaVersion: filesize.ReportSchema, ReportVersion: filesize.ReportVersion,
+		Issue: "COH-E02-03 / CYB-38", Requirements: []string{"NFR-016", "NFR-017", "NFR-018", "EVAL-027"},
+		Outcome: "passed", PolicyDigest: strings.Repeat("a", 64), ExceptionsDigest: strings.Repeat("b", 64),
+		SourceDigest: strings.Repeat("c", 64), SourceFileCount: 1, VCSRevision: strings.Repeat("d", 40),
+		EvaluationDate: "2026-08-20", Thresholds: filesize.Thresholds{
+			WarningPhysicalLines: 500, HardPhysicalLines: 800, ScriptPhysicalLines: 300,
+			NormalMinimumLines: 150, NormalMaximumLines: 400,
+		},
+		Counts: filesize.Counts{Checked: 1}, ScanComplete: true, Findings: []filesize.Finding{},
+	}
+	path := filepath.Join(directory, "file-size-report.json")
+	if err := filesize.WriteReportAtomic(path, &report); err != nil {
+		t.Fatal(err)
+	}
+	if evidence, err := StageEvidence(directory, "file-size"); err != nil || !slices.Equal(evidence, stageArtifactNames["file-size"]) {
+		t.Fatalf("evidence=%v err=%v", evidence, err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data[len(data)/2] ^= 1
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := StageEvidence(directory, "file-size"); CodeOf(err) != CodeDenied {
+		t.Fatalf("tampered file-size report code=%q err=%v", CodeOf(err), err)
+	}
+}
+
+func TestFinalEvidenceRejectsFileSizeReportSubstitutedAfterStage(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	for stage, names := range stageArtifactNames {
+		for _, name := range names {
+			if name == "ci-provenance.json" || name == "file-size-report.json" {
+				continue
+			}
+			if err := os.WriteFile(filepath.Join(directory, name), []byte(stage+"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	report := boundFileSizeTestReport(t, root)
+	fileSizePath := filepath.Join(directory, "file-size-report.json")
+	if err := filesize.WriteReportAtomic(fileSizePath, &report); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := StageEvidence(directory, "file-size"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(fileSizePath); err != nil {
+		t.Fatal(err)
+	}
+	report.SourceDigest = strings.Repeat("e", 64)
+	if err := filesize.WriteReportAtomic(fileSizePath, &report); err != nil {
+		t.Fatal(err)
+	}
+	if err := GenerateProvenance(context.Background(), root, directory, filepath.Join(directory, "ci-provenance.json")); err != nil {
+		t.Fatal(err)
+	}
+	qualityReport := validPassedTestReport()
+	qualityReport.Provenance.SourceFiles = report.SourceFileCount
+	qualityReport.Provenance.VCSRevision = report.VCSRevision
+	qualityReport.Provenance.VCSModified = report.VCSModified
+	qualityPath := filepath.Join(directory, "quality-report.json")
+	if err := WriteReportAtomic(qualityPath, &qualityReport); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyEvidenceBundle(context.Background(), root, directory, qualityPath, qualityReport); CodeOf(err) != CodeDenied {
+		t.Fatalf("substituted file-size report code=%q err=%v", CodeOf(err), err)
+	}
+}
+
+func TestFinalEvidenceRejectsSameCountSourceMutation(t *testing.T) {
+	root := newGitWorkspace(t)
+	snapshot, err := SnapshotWorkspace(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := validPassedTestReport()
+	report.Provenance.SourceDigest = snapshot.Digest
+	report.Provenance.SourceFiles = snapshot.FileCount
+	report.Provenance.VCSRevision = snapshot.VCSRevision
+	report.Provenance.VCSModified = snapshot.VCSModified
+	if err := verifyQualitySourceBinding(context.Background(), root, report); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "input.txt")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := slices.Clone(data)
+	mutated[0] ^= 1
+	if err := os.WriteFile(path, mutated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyQualitySourceBinding(context.Background(), root, report); CodeOf(err) != CodeDenied {
+		t.Fatalf("same-count source mutation code=%q err=%v", CodeOf(err), err)
+	}
+}
+
+func boundFileSizeTestReport(t *testing.T, root string) filesize.Report {
+	t.Helper()
+	snapshot, err := (filesize.OSSource{}).Snapshot(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "ci", "file-size-policy.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := filesize.DecodePolicy(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyDigest, err := filesize.PolicyDigest(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exceptionsDigest, err := filesize.ExceptionsDigest(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := validFileSizeTestReport()
+	report.PolicyDigest, report.ExceptionsDigest = policyDigest, exceptionsDigest
+	report.SourceDigest, report.SourceFileCount = snapshot.Digest, snapshot.FileCount
+	report.VCSRevision, report.VCSModified = snapshot.VCSRevision, snapshot.VCSModified
+	report.Counts = filesize.Counts{Checked: snapshot.FileCount}
+	return report
+}
+
+func validFileSizeTestReport() filesize.Report {
+	return filesize.Report{
+		SchemaVersion: filesize.ReportSchema, ReportVersion: filesize.ReportVersion,
+		Issue: "COH-E02-03 / CYB-38", Requirements: []string{"NFR-016", "NFR-017", "NFR-018", "EVAL-027"},
+		Outcome: "passed", PolicyDigest: strings.Repeat("a", 64), ExceptionsDigest: strings.Repeat("b", 64),
+		SourceDigest: strings.Repeat("c", 64), SourceFileCount: 1, VCSRevision: strings.Repeat("d", 40),
+		EvaluationDate: "2026-08-20", Thresholds: filesize.Thresholds{
+			WarningPhysicalLines: 500, HardPhysicalLines: 800, ScriptPhysicalLines: 300,
+			NormalMinimumLines: 150, NormalMaximumLines: 400,
+		}, Counts: filesize.Counts{Checked: 1}, ScanComplete: true, Findings: []filesize.Finding{},
+	}
+}
 
 func TestReportReadBackRejectsTamper(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "quality-report.json")

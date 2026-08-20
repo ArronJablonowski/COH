@@ -28,11 +28,17 @@ if [[ "${CI:-}" == "true" ]]; then
   coh_ci_mutable_root="${coh_ci_runner_root}"
 else
 	if [[ "$(/usr/bin/uname -s)" == "Darwin" ]]; then
-		coh_ci_volume=/Volumes/Untitled
-		coh_require_native_macos_volume "${coh_ci_volume}" || fail_ci_env "External SSD volume must be mounted and distinct from the root filesystem"
-		coh_ci_external_root="$(coh_real_existing_directory "${coh_ci_volume}")" || fail_ci_env "External SSD volume is unavailable"
-		COH_TOOLCHAIN_ROOT="$(coh_prepare_contained_directory "${coh_ci_external_root}" "${COH_TOOLCHAIN_ROOT:-${coh_ci_external_root}/Codex/toolchains}")" || fail_ci_env "Cannot resolve native toolchain root"
-		coh_ci_mutable_root="${coh_ci_external_root}"
+		if [[ -n "${COH_NATIVE_STORAGE_ROOT:-}" ]]; then
+			coh_ci_storage_root="$(coh_real_existing_directory "${COH_NATIVE_STORAGE_ROOT}")" || fail_ci_env "COH_NATIVE_STORAGE_ROOT must be an existing real directory"
+			coh_ci_default_toolchain_root="${coh_ci_storage_root}/COH-toolchains"
+		else
+			coh_ci_volume=/Volumes/Untitled
+			coh_require_native_macos_volume "${coh_ci_volume}" || fail_ci_env "External SSD volume must be mounted and distinct from the root filesystem"
+			coh_ci_storage_root="$(coh_real_existing_directory "${coh_ci_volume}")" || fail_ci_env "External SSD volume is unavailable"
+			coh_ci_default_toolchain_root="${coh_ci_storage_root}/Codex/toolchains"
+		fi
+		COH_TOOLCHAIN_ROOT="$(coh_prepare_contained_directory "${coh_ci_storage_root}" "${COH_TOOLCHAIN_ROOT:-${coh_ci_default_toolchain_root}}")" || fail_ci_env "Cannot resolve native toolchain root"
+		coh_ci_mutable_root="${coh_ci_storage_root}"
 	else
 		[[ -n "${COH_TOOLCHAIN_ROOT:-}" ]] || fail_ci_env "Native Linux requires an explicit external COH_TOOLCHAIN_ROOT"
 		COH_TOOLCHAIN_ROOT="$(coh_real_existing_directory "${COH_TOOLCHAIN_ROOT}")" || fail_ci_env "Native Linux toolchain root must already exist and be a real directory"
@@ -75,4 +81,4 @@ actual_version="$("${COH_GO_BIN}" env GOVERSION)"
 if [[ "${actual_version}" != "go${COH_CI_GO_VERSION}" ]]; then
   fail_ci_env "CI lane ${COH_CI_LANE} requires go${COH_CI_GO_VERSION}; found ${actual_version}"
 fi
-unset actual_version coh_ci_resolved coh_ci_value coh_ci_variable coh_ci_mutable_root coh_ci_external_root coh_ci_runner_root coh_ci_volume coh_ci_lib_root
+unset actual_version coh_ci_resolved coh_ci_value coh_ci_variable coh_ci_mutable_root coh_ci_storage_root coh_ci_default_toolchain_root coh_ci_runner_root coh_ci_volume coh_ci_lib_root

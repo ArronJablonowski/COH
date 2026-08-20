@@ -7,8 +7,8 @@ temporary="$(/usr/bin/mktemp -d "${GOTMPDIR:?GOTMPDIR is required}/coh-secret-co
 cleanup() { /bin/chmod -R u+w "${temporary}" 2>/dev/null || true; /bin/rm -rf -- "${temporary}"; }
 trap cleanup EXIT HUP INT TERM
 
-synthetic_key='AKIA''IOSFODNN7EXAMPLE'
-synthetic_secret='ghp_''A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8'
+synthetic_key='COH_TEST_''SECRET_0123456789ABCDEF0123456789ABCDEF'
+synthetic_secret='COH_TEST_''SECRET_FEDCBA9876543210FEDCBA9876543210'
 
 write_synthetic_secret() {
   printf 'access_key=%s\nsecret_key=%s\n' "${synthetic_key}" "${synthetic_secret}" > "$1"

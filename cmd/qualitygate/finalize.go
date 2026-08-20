@@ -30,7 +30,7 @@ func finalizeRunEvidence(
 		invalidateSuccessfulEvidence(reportPath, artifactDirectory)
 		return err
 	}
-	if err := quality.VerifyEvidenceBundle(root, artifactDirectory, reportPath, *report); err != nil {
+	if err := quality.VerifyEvidenceBundle(ctx, root, artifactDirectory, reportPath, *report); err != nil {
 		invalidateSuccessfulEvidence(reportPath, artifactDirectory)
 		return err
 	}

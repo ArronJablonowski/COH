@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ArronJablonowski/COH/internal/helper/filesize"
 )
 
 type fakeExecutor struct {
@@ -43,6 +45,22 @@ func (executor *fakeExecutor) Execute(ctx context.Context, request StageRequest)
 		return Execution{ExitCode: executor.exitCode}, nil
 	}
 	for _, name := range stageArtifactNames[request.ID] {
+		if request.ID == "file-size" && name == "file-size-report.json" {
+			report := filesize.Report{
+				SchemaVersion: filesize.ReportSchema, ReportVersion: filesize.ReportVersion,
+				Issue: "COH-E02-03 / CYB-38", Requirements: []string{"NFR-016", "NFR-017", "NFR-018", "EVAL-027"},
+				Outcome: "passed", PolicyDigest: strings.Repeat("a", 64), ExceptionsDigest: strings.Repeat("b", 64),
+				SourceDigest: strings.Repeat("c", 64), SourceFileCount: 1, VCSRevision: strings.Repeat("d", 40),
+				EvaluationDate: "2026-08-20", Thresholds: filesize.Thresholds{
+					WarningPhysicalLines: 500, HardPhysicalLines: 800, ScriptPhysicalLines: 300,
+					NormalMinimumLines: 150, NormalMaximumLines: 400,
+				}, Counts: filesize.Counts{Checked: 1}, ScanComplete: true, Findings: []filesize.Finding{},
+			}
+			if err := filesize.WriteReportAtomic(filepath.Join(request.ArtifactDir, name), &report); err != nil {
+				return Execution{}, err
+			}
+			continue
+		}
 		if err := os.WriteFile(filepath.Join(request.ArtifactDir, name), []byte(executor.content+request.ID+"\n"), 0o600); err != nil {
 			return Execution{}, err
 		}
@@ -82,7 +100,8 @@ func TestRunnerSuccessRecoveryAndDeterministicVerdict(t *testing.T) {
 
 	deniedExecutor := &fakeExecutor{failStage: "workflow", exitCode: 2}
 	denied, err := (Runner{Executor: deniedExecutor}).Run(context.Background(), policy, lane, root, t.TempDir(), "lock")
-	if CodeOf(err) != CodeDenied || denied.Outcome != "denied" || len(denied.Stages) != 2 || len(denied.Stages[1].Evidence) != 0 {
+	last := denied.Stages[len(denied.Stages)-1]
+	if CodeOf(err) != CodeDenied || denied.Outcome != "denied" || last.ID != "workflow" || len(last.Evidence) != 0 {
 		t.Fatalf("denied report=%+v err=%v", denied, err)
 	}
 

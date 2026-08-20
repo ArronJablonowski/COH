@@ -156,6 +156,12 @@ func stageEnvironment(request StageRequest, self string) ([]string, error) {
 		"XDG_CONFIG_HOME": xdgConfig, "XDG_CACHE_HOME": xdgCache,
 		"STATICCHECK_CACHE": staticcheckCache,
 	}
+	if nativeStorageRoot := os.Getenv("COH_NATIVE_STORAGE_ROOT"); nativeStorageRoot != "" {
+		if !pathWithin(nativeStorageRoot, toolchainRoot) {
+			return nil, qualityError(CodeDenied, "environment.COH_NATIVE_STORAGE_ROOT", "toolchain must remain under the native storage root", nil)
+		}
+		values["COH_NATIVE_STORAGE_ROOT"] = nativeStorageRoot
+	}
 	for _, name := range []string{"CI", "RUNNER_TEMP", "COH_CI_OFFLINE", "COH_GOVULNDB", "COH_GOVULNDB_MANIFEST", "COH_GOVULNDB_MANIFEST_SHA256"} {
 		if value := os.Getenv(name); value != "" {
 			values[name] = value

@@ -454,6 +454,15 @@ An operation with an indeterminate remote outcome transitions to `uncertain`, fr
 | EVAL-029 | Static analysis, race tests, fuzz seeds, dependency/secret/license scans, SBOM/provenance checks, and architecture-boundary tests shall pass with no unwaived critical/high finding. |
 | EVAL-030 | An independent security review shall close all critical/high findings and verify the threat model, T4 design, audit chain, isolation, supply chain, and incident procedures before GA. |
 
+### 9.1 Engineering-policy implementation trace
+
+| Requirement | COH-E02-03 implementation and evidence |
+|---|---|
+| NFR-016 | `internal/helper/filesize`, `ci/file-size-policy.json`, and the fixed `file-size` quality stage enforce 500/800 physical-line boundaries. |
+| NFR-017 | Script classification and the 300-line denial boundary are exercised through CLI, unit, integration, and wrapper tests. |
+| NFR-018 | The v1 schema and executable validator bind exceptions to exact path, category, owner, justification, expiry, CYB issue, content digest, approved maximum, and generator identity where required. |
+| EVAL-027 | Boundary, malformed-policy, exception lifecycle, symlink/TOCTOU, cancellation/timeout/recovery, atomic publication, and deterministic-report tests are recorded in `docs/evidence/CYB-38-file-size-policy-report.md`. |
+
 ## 10. Release milestones and traceability
 
 Each requirement has one primary delivery milestone. Security and evaluation requirements remain regression gates after their primary milestone.
