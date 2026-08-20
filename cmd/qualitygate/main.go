@@ -243,6 +243,7 @@ func run(arguments []string, stdout, stderr io.Writer) int {
 	}
 	if finalizeErr != nil {
 		printError(stderr, finalizeErr)
+		printGitHubStageFailure(stderr, report)
 		return exitCode(finalizeErr)
 	}
 	return 0
@@ -371,6 +372,18 @@ func annotationToken(value, fallback string) string {
 		}
 	}
 	return value
+}
+
+func printGitHubStageFailure(writer io.Writer, report quality.Report) {
+	if os.Getenv("GITHUB_ACTIONS") != "true" || len(report.Stages) == 0 {
+		return
+	}
+	stage := report.Stages[len(report.Stages)-1]
+	if stage.FailureEvidence == nil {
+		return
+	}
+	fmt.Fprintf(writer, "::error file=cmd/qualitygate/main.go,title=COH failed stage evidence::stage=%s exit_code=%d\n",
+		annotationToken(stage.ID, "redacted"), stage.FailureEvidence.ExitCode)
 }
 
 func exitCode(err error) int {

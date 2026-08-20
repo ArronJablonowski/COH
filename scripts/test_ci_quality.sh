@@ -15,11 +15,25 @@ quality_binary="${temporary}/qualitygate"
 chmod 0500 "${quality_binary}"
 export COH_QUALITYGATE_BIN="${quality_binary}"
 
-"${repo_root}/scripts/test_ci_storage.sh"
-"${repo_root}/scripts/test_secret_contract.sh"
-"${repo_root}/scripts/test_policy_status.sh"
-"${repo_root}/scripts/test_license_contract.sh"
-"${repo_root}/scripts/test_tool_promotion.sh"
+run_contract_test() {
+  local name=$1
+  local failure_status=$2
+  shift 2
+  set +e
+  "$@"
+  local actual=$?
+  set -e
+  if (( actual != 0 )); then
+    printf 'contract=%s child_status=%s\n' "${name}" "${actual}" >&2
+    exit "${failure_status}"
+  fi
+}
+
+run_contract_test storage 11 "${repo_root}/scripts/test_ci_storage.sh"
+run_contract_test secret 12 "${repo_root}/scripts/test_secret_contract.sh"
+run_contract_test policy-status 13 "${repo_root}/scripts/test_policy_status.sh"
+run_contract_test license 14 "${repo_root}/scripts/test_license_contract.sh"
+run_contract_test tool-promotion 15 "${repo_root}/scripts/test_tool_promotion.sh"
 
 while IFS= read -r script; do
   if [[ ! -x "${script}" ]]; then

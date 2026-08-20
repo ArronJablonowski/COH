@@ -69,6 +69,20 @@ func TestPrintErrorEmitsBoundedGitHubAnnotation(t *testing.T) {
 	}
 }
 
+func TestPrintGitHubStageFailureEmitsBoundedExitCode(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "true")
+	report := quality.Report{Stages: []quality.StageResult{{
+		ID:              "quality-contract",
+		FailureEvidence: &quality.FailureEvidence{ExitCode: 13},
+	}}}
+	var output bytes.Buffer
+	printGitHubStageFailure(&output, report)
+	want := "::error file=cmd/qualitygate/main.go,title=COH failed stage evidence::stage=quality-contract exit_code=13\n"
+	if got := output.String(); got != want {
+		t.Fatalf("annotation=%q, want %q", got, want)
+	}
+}
+
 func TestVerifyPublicationModeRequiresArtifactDirectory(t *testing.T) {
 	if status := run([]string{"-mode", "verify-publication"}, os.Stdout, os.Stderr); status != 64 {
 		t.Fatalf("status=%d, want 64", status)
