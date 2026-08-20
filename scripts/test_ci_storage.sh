@@ -56,14 +56,16 @@ CI=true RUNNER_TEMP="${hosted_go_root}" COH_TOOLCHAIN_ROOT="${hosted_go_root}/to
 
 native_storage_root="${temporary}/native storage"
 /bin/mkdir -p "${native_storage_root}/COH-toolchains"
-COH_NATIVE_STORAGE_ROOT="${native_storage_root}" \
+/usr/bin/env -u CI -u RUNNER_TEMP \
+  COH_NATIVE_STORAGE_ROOT="${native_storage_root}" \
   COH_TOOLCHAIN_ROOT="${native_storage_root}/COH-toolchains" \
   COH_GO_ROOT="${COH_GO_ROOT:?COH_GO_ROOT is required}" COH_GO_VERSION="${COH_CI_GO_VERSION:-1.26.7}" \
   /bin/bash -c 'source "$1"; [[ "$TMPDIR" == "$GOTMPDIR" && "$GOTMPDIR" == "$COH_TOOLCHAIN_ROOT"/* ]]' \
   _ "${repo_root}/scripts/lib/go_ssd_env.sh"
 
 missing_native_root="${temporary}/missing-native-root"
-if COH_NATIVE_STORAGE_ROOT="${missing_native_root}" \
+if /usr/bin/env -u CI -u RUNNER_TEMP \
+  COH_NATIVE_STORAGE_ROOT="${missing_native_root}" \
   COH_TOOLCHAIN_ROOT="${missing_native_root}/COH-toolchains" \
   COH_GO_ROOT="${COH_GO_ROOT}" COH_GO_VERSION="${COH_CI_GO_VERSION:-1.26.7}" \
   /bin/bash -c 'source "$1"' _ "${repo_root}/scripts/lib/go_ssd_env.sh" >/dev/null 2>&1; then
