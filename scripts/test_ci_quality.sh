@@ -25,11 +25,14 @@ run_contract_test() {
   set -e
   if (( actual != 0 )); then
     printf 'contract=%s child_status=%s\n' "${name}" "${actual}" >&2
+    if [[ "${failure_status}" == "preserve" ]]; then
+      exit "${actual}"
+    fi
     exit "${failure_status}"
   fi
 }
 
-run_contract_test storage 11 "${repo_root}/scripts/test_ci_storage.sh"
+run_contract_test storage preserve "${repo_root}/scripts/test_ci_storage.sh"
 run_contract_test secret 12 "${repo_root}/scripts/test_secret_contract.sh"
 run_contract_test policy-status 13 "${repo_root}/scripts/test_policy_status.sh"
 run_contract_test license 14 "${repo_root}/scripts/test_license_contract.sh"
