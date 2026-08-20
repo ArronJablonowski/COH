@@ -36,6 +36,7 @@ var stageArtifactNames = map[string][]string{
 	"license":          {"license.log"},
 	"dependency":       {"dependency.log", "govulncheck.sarif", "govulndb-verification.json"},
 	"sbom":             {"sbom.log", "coh.cdx.json"},
+	"supply-chain":     {"supply-chain.log"},
 	"secret-evidence":  {"secret-evidence.log"},
 	"provenance":       {"provenance.log", "ci-provenance.json"},
 }

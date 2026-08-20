@@ -57,6 +57,7 @@ typed cancellation/timeout contract.
 | `license` | 120 s | Default-deny module and shipped-input license inventory |
 | `dependency` | 300 s | Module verification, tidy diff, allowlist, locked offline vuln DB, zero SARIF findings |
 | `sbom` | 120 s | Deterministic minimal CycloneDX 1.6 SBOM |
+| `supply-chain` | 300 s | Reproducible signed native-bundle contract and offline verification |
 | `secret-evidence` | 120 s | Redacted secret scan over private evidence before provenance |
 | `provenance` | 120 s | COH-internal materials and subject statement |
 
@@ -148,8 +149,10 @@ Hosted runs apply the same prospective check below an already existing
 
 The native Go executable is exact-version checked but is a host trust input; it
 is not independently supply-chain attested by CYB-33. GitHub `setup-go` provides
-a stronger external acquisition record. Signed compiler provenance, signed
-release SBOMs, and SLSA-compatible release provenance are deferred to CYB-37.
+a stronger external acquisition record. CYB-37 adds a separate native release
+contract with compiler-bound binaries, signed release SBOM/checksum/provenance
+records, and SLSA-compatible provenance. Its public CI fixture signer proves
+mechanics only and cannot authorize a production release.
 
 ## Evidence and commit points
 
@@ -180,8 +183,10 @@ the race. `qualitygate -mode verify-publication -artifact-dir <download>`
 checks exact membership, every digest, the report self-digest, and the
 promotability agreement.
 
-The internal provenance predicate uses a COH-owned URI. It is unsigned and is
-not represented as in-toto, SLSA, or release provenance.
+The internal CI provenance predicate remains a COH-owned unsigned object and is
+not represented as release provenance. The separately signed CYB-37 native
+release statement uses in-toto Statement v1 and the SLSA provenance v1
+predicate; the two contracts are not interchangeable.
 
 ## GitHub Actions contract
 

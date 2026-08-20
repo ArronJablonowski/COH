@@ -37,6 +37,7 @@ run_contract_test secret 12 "${repo_root}/scripts/test_secret_contract.sh"
 run_contract_test policy-status 13 "${repo_root}/scripts/test_policy_status.sh"
 run_contract_test license 14 "${repo_root}/scripts/test_license_contract.sh"
 run_contract_test tool-promotion 15 "${repo_root}/scripts/test_tool_promotion.sh"
+run_contract_test release-lifecycle 16 "${repo_root}/scripts/test_release_lifecycle.sh"
 
 while IFS= read -r script; do
   if [[ ! -x "${script}" ]]; then

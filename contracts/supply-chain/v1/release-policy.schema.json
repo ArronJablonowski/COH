@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/supply-chain/v1/release-policy.schema.json",
+  "title": "COH release policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "release_version", "builder_ids", "targets", "go_versions", "release_go_binaries", "archive", "trusted_keys"],
+  "properties": {
+    "schema_version": {"const": "coh.release-policy/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "release_version": {"type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"},
+    "builder_ids": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^https://github\\.com/ArronJablonowski/COH/"}
+    },
+    "targets": {
+      "type": "array",
+	  "minItems": 3,
+	  "maxItems": 3,
+      "uniqueItems": true,
+      "items": {"enum": ["darwin/arm64", "linux/amd64", "linux/arm64"]}
+    },
+    "go_versions": {
+      "type": "array",
+	  "minItems": 2,
+	  "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^go[0-9]+\\.[0-9]+\\.[0-9]+$"}
+    },
+    "release_go_binaries": {
+      "type": "array",
+	  "minItems": 2,
+	  "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["go_version", "sha256"],
+        "properties": {
+          "go_version": {"type": "string", "pattern": "^go[0-9]+\\.[0-9]+\\.[0-9]+$"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "archive": {
+      "type": "array",
+	  "minItems": 6,
+	  "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "mode"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1, "maxLength": 256},
+          "mode": {"enum": [292, 365]},
+          "package": {"type": "string", "pattern": "^github\\.com/ArronJablonowski/COH/cmd/[a-z0-9-]+$"}
+        }
+      }
+    },
+    "trusted_keys": {
+      "type": "array",
+	  "minItems": 2,
+	  "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key_id", "role", "public_key_path"],
+        "properties": {
+          "key_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "role": {"enum": ["release", "ci-fixture"]},
+          "public_key_path": {"type": "string", "minLength": 1, "maxLength": 256}
+        }
+      }
+    }
+  }
+}

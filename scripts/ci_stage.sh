@@ -59,6 +59,7 @@ case "${stage}" in
   license) run_logged license preserve "${repo_root}/scripts/check_licenses.sh" ;;
   dependency) run_logged dependency preserve "${repo_root}/scripts/check_dependencies.sh" ;;
   sbom) run_logged sbom preserve "${COH_QUALITYGATE_BIN:?COH_QUALITYGATE_BIN is required}" -mode sbom -root "${repo_root}" -output "${artifact_dir}/coh.cdx.json" ;;
+  supply-chain) run_logged supply-chain preserve "${repo_root}/scripts/check_supply_chain.sh" ;;
   secret-evidence) run_logged secret-evidence preserve "${repo_root}/scripts/check_secrets.sh" evidence ;;
   provenance) run_logged provenance preserve "${COH_QUALITYGATE_BIN:?COH_QUALITYGATE_BIN is required}" -mode provenance -root "${repo_root}" -artifact-dir "${artifact_dir}" -output "${artifact_dir}/ci-provenance.json" ;;
   *) echo "Denied unknown CI stage: ${stage}" >&2; exit 64 ;;

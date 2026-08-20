@@ -1,0 +1,42 @@
+{
+  "schema_version": "coh.release-policy/v1",
+  "contract_version": "1.0.0",
+  "release_version": "v0.1.0",
+  "builder_ids": [
+    "https://github.com/ArronJablonowski/COH/blob/main/docs/design/release-supply-chain.md#github-hosted-builder",
+    "https://github.com/ArronJablonowski/COH/blob/main/docs/design/release-supply-chain.md#native-studio-builder"
+  ],
+  "targets": [
+    "darwin/arm64",
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "go_versions": [
+    "go1.26.7",
+    "go1.27.0"
+  ],
+  "release_go_binaries": [
+    {"go_version": "go1.26.7", "sha256": "9da68c657a8344623d37fc9dc048d845011736409249bc924dd9af47a61594e6"},
+    {"go_version": "go1.27.0", "sha256": "a19a71df81715c12d9a7e81bab036c12696fec1ddbd4258b48a2131a9080b267"}
+  ],
+  "archive": [
+    {"path": "bin/archcheck", "mode": 365, "package": "github.com/ArronJablonowski/COH/cmd/archcheck"},
+    {"path": "bin/installgate", "mode": 365, "package": "github.com/ArronJablonowski/COH/cmd/installgate"},
+    {"path": "bin/qualitygate", "mode": 365, "package": "github.com/ArronJablonowski/COH/cmd/qualitygate"},
+    {"path": "share/coh/LICENSE", "mode": 292},
+    {"path": "share/coh/install_release.sh", "mode": 365},
+    {"path": "share/coh/release-files.sha256", "mode": 292}
+  ],
+  "trusted_keys": [
+    {
+      "key_id": "sha256:659fb06ac3ca0943d312834773fed13dbde2c51239456939255317b412c9fe77",
+      "role": "release",
+      "public_key_path": "contracts/supply-chain/v1/keys/release-ed25519.pem"
+    },
+    {
+      "key_id": "sha256:c2d6aa555b261eb83958b61c1353dc04531721430bd6bb68d13ff4fc88f6e035",
+      "role": "ci-fixture",
+      "public_key_path": "contracts/supply-chain/v1/keys/ci-fixture-ed25519.pem"
+    }
+  ]
+}

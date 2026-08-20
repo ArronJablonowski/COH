@@ -1,6 +1,6 @@
 {
   "schema_version": "coh.ci-quality/v1",
-  "policy_version": "1.1.0",
+  "policy_version": "1.2.0",
   "lanes": [
     {
       "id": "baseline",
@@ -29,6 +29,7 @@
     {"id": "license", "timeout_seconds": 120},
     {"id": "dependency", "timeout_seconds": 300},
     {"id": "sbom", "timeout_seconds": 120},
+    {"id": "supply-chain", "timeout_seconds": 300},
     {"id": "secret-evidence", "timeout_seconds": 120},
     {"id": "provenance", "timeout_seconds": 120}
   ]

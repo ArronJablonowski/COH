@@ -19,9 +19,11 @@ The implementation backlog and acceptance gates live in the [COH Linear project]
 - [Architecture decision records](docs/adr/)
 - [Security governance](docs/security/)
 - [CI quality contract](docs/design/ci-quality-contract.md)
+- [Native release supply-chain contract](docs/design/release-supply-chain.md)
 - [File-size policy contract](contracts/file-size/v1/README.md)
 - [CYB-33 quality-gate evidence](docs/evidence/CYB-33-quality-gate-report.md)
 - [CYB-38 file-size policy evidence](docs/evidence/CYB-38-file-size-policy-report.md)
+- [CYB-37 supply-chain evidence](docs/evidence/CYB-37-supply-chain-report.md)
 
 ## Safety contract
 

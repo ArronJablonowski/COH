@@ -112,7 +112,7 @@ func testPassedReport(t *testing.T) quality.Report {
 		"vet": {"vet.log"}, "static-analysis": {"static-analysis.log"}, "unit": {"unit.log"},
 		"race": {"race.log"}, "fuzz-seed": {"fuzz-seed.log"}, "license": {"license.log"},
 		"dependency": {"dependency.log", "govulncheck.sarif", "govulndb-verification.json"},
-		"sbom":       {"sbom.log", "coh.cdx.json"}, "secret-evidence": {"secret-evidence.log"},
+		"sbom":       {"sbom.log", "coh.cdx.json"}, "supply-chain": {"supply-chain.log"}, "secret-evidence": {"secret-evidence.log"},
 		"provenance": {"provenance.log", "ci-provenance.json"},
 	}
 	for _, stage := range policy.Stages {
