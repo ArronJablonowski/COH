@@ -5,9 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ArronJablonowski/COH/internal/helper/filesize"
+	"github.com/ArronJablonowski/COH/internal/helper/quality"
 )
 
 func TestValidateOutputEnforcesReservedFreshExternalDirectory(t *testing.T) {
@@ -44,6 +46,26 @@ func TestValidateOutputRejectsSymlinkIntoRepository(t *testing.T) {
 func TestRunMapsInvalidArguments(t *testing.T) {
 	if status := run([]string{"-mode", "unknown"}, os.Stdout, os.Stderr); status != 64 {
 		t.Fatalf("status=%d, want 64", status)
+	}
+}
+
+func TestPrintErrorEmitsBoundedGitHubAnnotation(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "true")
+	for _, test := range []struct {
+		name  string
+		field string
+		want  string
+	}{
+		{name: "stage", field: "stage.quality-contract", want: "code=denied field=stage.quality-contract"},
+		{name: "unsafe", field: "stage.bad%0A::warning", want: "code=denied field=redacted"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var output bytes.Buffer
+			printError(&output, &quality.Error{Code: quality.CodeDenied, Field: test.field, Detail: "safe"})
+			if got := output.String(); !strings.Contains(got, "::error file=cmd/qualitygate/main.go,title=COH quality gate failure::"+test.want+"\n") {
+				t.Fatalf("annotation=%q, want fields %q", got, test.want)
+			}
+		})
 	}
 }
 

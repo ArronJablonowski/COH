@@ -345,9 +345,32 @@ func printError(writer io.Writer, err error) {
 	var qualityErr *quality.Error
 	if errors.As(err, &qualityErr) {
 		fmt.Fprintf(writer, "qualitygate: %s\n", qualityErr.Error())
+		printGitHubError(writer, string(qualityErr.Code), qualityErr.Field)
 		return
 	}
 	fmt.Fprintln(writer, "qualitygate: internal failure")
+	printGitHubError(writer, string(quality.CodeToolFailure), "unknown")
+}
+
+func printGitHubError(writer io.Writer, code, field string) {
+	if os.Getenv("GITHUB_ACTIONS") != "true" {
+		return
+	}
+	fmt.Fprintf(writer, "::error file=cmd/qualitygate/main.go,title=COH quality gate failure::code=%s field=%s\n",
+		annotationToken(code, "tool_failure"), annotationToken(field, "redacted"))
+}
+
+func annotationToken(value, fallback string) string {
+	if value == "" || len(value) > 128 {
+		return fallback
+	}
+	for _, character := range value {
+		if (character < 'a' || character > 'z') && (character < 'A' || character > 'Z') &&
+			(character < '0' || character > '9') && character != '.' && character != '_' && character != '-' {
+			return fallback
+		}
+	}
+	return value
 }
 
 func exitCode(err error) int {
