@@ -1,0 +1,4 @@
+title = "COH locked Gitleaks policy"
+
+[extend]
+useDefault = true

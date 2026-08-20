@@ -1,0 +1,11 @@
+{
+  "packages": [
+    {
+      "ImportPath": "github.com/ArronJablonowski/COH/internal/command",
+      "Imports": [
+        "github.com/ArronJablonowski/COH/internal/connector",
+        "github.com/ArronJablonowski/COH/internal/policy"
+      ]
+    }
+  ]
+}

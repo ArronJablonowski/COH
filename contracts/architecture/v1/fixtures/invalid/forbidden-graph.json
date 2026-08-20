@@ -1,0 +1,12 @@
+{
+  "packages": [
+    {
+      "ImportPath": "github.com/ArronJablonowski/COH/internal/workflow",
+      "Imports": ["github.com/ArronJablonowski/COH/internal/connector"]
+    },
+    {
+      "ImportPath": "github.com/ArronJablonowski/COH/internal/provider",
+      "Imports": ["github.com/ArronJablonowski/COH/internal/connector"]
+    }
+  ]
+}

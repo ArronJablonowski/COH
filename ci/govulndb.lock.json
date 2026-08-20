@@ -1,0 +1,7 @@
+{
+  "schema_version": "coh.govulndb-lock/v1",
+  "source": "https://vuln.go.dev/vulndb.zip",
+  "archive_sha256": "6956c9eda20845fc540d08c38e22129b32effad51375ad3d6374fe1bed6d38cc",
+  "database_modified": "2026-08-19T17:06:06Z",
+  "manifest_sha256": "a95e1ef286e8f04c1b14f899bc14b99ce2b357231e1abb2aae786ec168a5b75d"
+}

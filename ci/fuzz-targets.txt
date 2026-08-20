@@ -1,0 +1,3 @@
+# package target
+./internal/helper/architecture FuzzDecodeContract
+./internal/helper/quality FuzzDecodePolicy

@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Offline content packs are immutable binary inputs.
+*.zip binary -eol

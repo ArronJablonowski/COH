@@ -1,0 +1,60 @@
+name: COH quality gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Go ${{ matrix.go-version }} (${{ matrix.lane }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: baseline
+            go-version: 1.26.7
+            enforcement: required
+          - lane: go1.27
+            go-version: 1.27.0
+            enforcement: qualification
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install exact Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: false
+
+      - name: Run authoritative native quality contract
+        env:
+          CI: "true"
+          COH_CI_LANE: ${{ matrix.lane }}
+          COH_TOOLCHAIN_ROOT: ${{ runner.temp }}/coh-toolchains
+          COH_CI_ARTIFACT_DIR: ${{ runner.temp }}/coh-ci-evidence/${{ matrix.lane }}
+        run: env -u BASH_ENV -u ENV /bin/bash scripts/run_ci_quality.sh "${COH_CI_LANE}"
+
+      - name: Upload quality evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: quality-${{ matrix.lane }}
+          path: |
+            ${{ runner.temp }}/coh-ci-evidence/${{ matrix.lane }}/run.*.public/*
+          if-no-files-found: error
+          retention-days: 14

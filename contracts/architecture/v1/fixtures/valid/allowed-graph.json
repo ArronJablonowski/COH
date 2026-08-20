@@ -1,0 +1,27 @@
+{
+  "packages": [
+    {
+      "ImportPath": "github.com/ArronJablonowski/COH/internal/domain",
+      "Imports": ["github.com/ArronJablonowski/COH/internal/helper"]
+    },
+    {
+      "ImportPath": "github.com/ArronJablonowski/COH/internal/workflow",
+      "Imports": ["github.com/ArronJablonowski/COH/internal/domain"]
+    },
+    {
+      "ImportPath": "github.com/ArronJablonowski/COH/internal/broker",
+      "Imports": [
+        "github.com/ArronJablonowski/COH/internal/connector",
+        "github.com/ArronJablonowski/COH/internal/policy",
+        "github.com/ArronJablonowski/COH/internal/workflow"
+      ]
+    },
+    {
+      "ImportPath": "github.com/ArronJablonowski/COH/internal/transport",
+      "Imports": [
+        "github.com/ArronJablonowski/COH/internal/ui",
+        "github.com/ArronJablonowski/COH/internal/workflow"
+      ]
+    }
+  ]
+}

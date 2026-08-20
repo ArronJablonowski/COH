@@ -1,0 +1,8 @@
+{
+  "schema_version": "coh.architecture/v2",
+  "contract_version": "2.0.0",
+  "canonicalization": "COH-JSON-C14N-1",
+  "go_baseline": "1.26.7",
+  "module": "github.com/ArronJablonowski/COH",
+  "boundaries": []
+}

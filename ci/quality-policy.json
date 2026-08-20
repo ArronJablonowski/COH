@@ -1,0 +1,34 @@
+{
+  "schema_version": "coh.ci-quality/v1",
+  "policy_version": "1.0.0",
+  "lanes": [
+    {
+      "id": "baseline",
+      "go_version": "1.26.7",
+      "enforcement": "required"
+    },
+    {
+      "id": "go1.27",
+      "go_version": "1.27.0",
+      "enforcement": "qualification"
+    }
+  ],
+  "stages": [
+    {"id": "format", "timeout_seconds": 60},
+    {"id": "workflow", "timeout_seconds": 120},
+    {"id": "secret-worktree", "timeout_seconds": 120},
+    {"id": "secret-history", "timeout_seconds": 120},
+    {"id": "architecture", "timeout_seconds": 120},
+    {"id": "quality-contract", "timeout_seconds": 180},
+    {"id": "vet", "timeout_seconds": 120},
+    {"id": "static-analysis", "timeout_seconds": 180},
+    {"id": "unit", "timeout_seconds": 180},
+    {"id": "race", "timeout_seconds": 300},
+    {"id": "fuzz-seed", "timeout_seconds": 120},
+    {"id": "license", "timeout_seconds": 120},
+    {"id": "dependency", "timeout_seconds": 300},
+    {"id": "sbom", "timeout_seconds": 120},
+    {"id": "secret-evidence", "timeout_seconds": 120},
+    {"id": "provenance", "timeout_seconds": 120}
+  ]
+}

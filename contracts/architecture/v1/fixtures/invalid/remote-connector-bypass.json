@@ -1,0 +1,8 @@
+{
+  "packages": [
+    {
+      "ImportPath": "github.com/ArronJablonowski/COH/internal/transport/remote",
+      "Imports": ["github.com/ArronJablonowski/COH/internal/connector"]
+    }
+  ]
+}

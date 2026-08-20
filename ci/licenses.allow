@@ -1,0 +1,4 @@
+# kind identity approved-license-or-obligation sha256 source
+module github.com/ArronJablonowski/COH Apache-2.0 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4 repository
+artifact third_party/offline-packs/go-vulndb/vulndb-2026-08-19.zip CC-BY-4.0 6956c9eda20845fc540d08c38e22129b32effad51375ad3d6374fe1bed6d38cc https://vuln.go.dev/vulndb.zip
+notice third_party/offline-packs/go-vulndb/NOTICE.md CC-BY-4.0 34b256abd95789fb876fae30edea38614952858e554f01764d1485ea9bc37603 https://creativecommons.org/licenses/by/4.0/

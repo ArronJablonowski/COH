@@ -1,0 +1,75 @@
+{
+  "schema_version": "coh.architecture/v1",
+  "contract_version": "1.0.0",
+  "canonicalization": "COH-JSON-C14N-1",
+  "go_baseline": "1.26.7",
+  "module": "github.com/ArronJablonowski/COH",
+  "boundaries": [
+    {
+      "name": "command",
+      "roots": ["cmd", "internal/command"],
+      "purpose": "Thin entry points and dependency composition; no domain or authorization decisions.",
+      "may_import": ["broker", "command", "domain", "helper", "persistence", "provider", "transport", "ui", "workflow"]
+    },
+    {
+      "name": "broker",
+      "roots": ["cmd/coh-brokerd", "internal/broker"],
+      "purpose": "Sole action authority and the only production boundary that composes policy with connector dispatch.",
+      "may_import": ["broker", "connector", "domain", "helper", "policy", "workflow"]
+    },
+    {
+      "name": "domain",
+      "roots": ["internal/domain"],
+      "purpose": "Security-neutral business types and invariants without side effects.",
+      "may_import": ["domain", "helper"]
+    },
+    {
+      "name": "policy",
+      "roots": ["internal/policy"],
+      "purpose": "Authorization decisions and policy-domain behavior independent of adapters.",
+      "may_import": ["domain", "helper", "policy"]
+    },
+    {
+      "name": "workflow",
+      "roots": ["internal/workflow"],
+      "purpose": "Durable application use cases with model, action-authority, and persistence ports.",
+      "may_import": ["domain", "helper", "workflow"]
+    },
+    {
+      "name": "provider",
+      "roots": ["internal/provider"],
+      "purpose": "Model-provider adapters implementing bounded workflow ports.",
+      "may_import": ["domain", "helper", "provider", "workflow"]
+    },
+    {
+      "name": "connector",
+      "roots": ["internal/connector"],
+      "purpose": "External-system adapters exposing typed dispatch only to the broker boundary.",
+      "may_import": ["connector", "domain", "helper"]
+    },
+    {
+      "name": "persistence",
+      "roots": ["internal/persistence"],
+      "purpose": "Metadata and immutable-artifact reference adapters implementing workflow ports.",
+      "may_import": ["domain", "helper", "persistence", "workflow"]
+    },
+    {
+      "name": "transport",
+      "roots": ["internal/transport"],
+      "purpose": "Protocol translation into workflow ports plus delivery of immutable UI assets.",
+      "may_import": ["domain", "helper", "transport", "ui", "workflow"]
+    },
+    {
+      "name": "ui",
+      "roots": ["internal/ui"],
+      "purpose": "Immutable generated Web assets; React and TypeScript stay build-time only.",
+      "may_import": ["helper", "ui"]
+    },
+    {
+      "name": "helper",
+      "roots": ["internal/helper"],
+      "purpose": "Small product-agnostic utilities and architecture tooling with no inward dependencies.",
+      "may_import": ["helper"]
+    }
+  ]
+}

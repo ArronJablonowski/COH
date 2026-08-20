@@ -1,0 +1,26 @@
+.DS_Store
+.idea/
+.vscode/
+
+# Build and test output
+/bin/
+/coverage/
+/dist/
+/tmp/
+*.out
+*.test
+
+# Local operator state and generated working data
+/work/
+/.internal-mirror-backup-*/
+
+# Ephemeral repository-local CI runs; reviewed evidence remains tracked elsewhere.
+/ci-artifacts/
+/run.*/
+
+# Secrets and local overrides
+.env
+.env.*
+!.env.example
+*.key
+*.pem

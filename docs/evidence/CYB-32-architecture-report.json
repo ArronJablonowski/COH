@@ -1,0 +1,24 @@
+{
+  "schema_version": "coh.architecture/v1",
+  "contract_version": "1.0.0",
+  "contract_digest": "ea8078bebba2fb77210a7d6f3fda746854dfb1b408b23388c846b7836ce58904",
+  "graph_digest": "8291b1f1292184ba0fa057faa82f6599c9bfefb6472938e060dab5f6798b4230",
+  "module": "github.com/ArronJablonowski/COH",
+  "outcome": "allowed",
+  "provenance": {
+    "source_digest": "b126f90120e5a644e212d0cc34fdfb443da48d39deade616cf11ebffbf609754",
+    "source_file_count": 58,
+    "input_digest": "5696b5433659bafd83e0dcc65e41d2ee1c2754102253759781977f2b098adce1",
+    "input_file_count": 60,
+    "vcs_revision": "unborn",
+    "vcs_modified": true,
+    "checker_version": "0.1.0",
+    "go_version": "go1.26.7",
+    "goos": "darwin",
+    "goarch": "arm64",
+    "build_tags": []
+  },
+  "package_count": 15,
+  "violation_count": 0,
+  "violations": []
+}

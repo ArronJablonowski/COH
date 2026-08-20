@@ -1,0 +1,87 @@
+{
+  "schema_version": "coh.ci-tools/v1",
+  "tools": [
+    {
+      "id": "actionlint",
+      "command": "actionlint",
+      "package": "github.com/rhysd/actionlint/cmd/actionlint",
+      "module": "github.com/rhysd/actionlint",
+      "version": "v1.7.12",
+      "module_sum": "h1:vQ4GeJN86C0QH+gTUQcs8McmK62OLT3kmakPMtEWYnY=",
+      "go_mod_sum": "h1:krOUhujIsJusovkaYzQ/VNH8PFexjNKqU0q5XI/4w+g=",
+      "origin_hash": "914e7df21a07ef503a81201c76d2b11c789d3fca",
+      "binaries": [
+        {"go_version":"1.26.7","goos":"darwin","goarch":"arm64","sha256":"4bbdac8bf9cb5fb7760b5af2a5c6f84d0e020d63496227e684c8a735a3005206"},
+        {"go_version":"1.26.7","goos":"linux","goarch":"amd64","sha256":"3f5957c509266704ebef355fce3593b38f95a63593cbe8e368ffea1d5b8fcb33"},
+        {"go_version":"1.26.7","goos":"linux","goarch":"arm64","sha256":"fd44b7f20972cba7f7028f5e56909a36e4c8e7e2938629eae3f22eb4767335cf"},
+        {"go_version":"1.27.0","goos":"darwin","goarch":"arm64","sha256":"54975825d5fbc90251a65624f22ed188c62b856f2f06fc96b70ebe90d18e3ac4"},
+        {"go_version":"1.27.0","goos":"linux","goarch":"amd64","sha256":"a69a2ec6206fd4561aa4b00b78e7612b39eda09101bc62cf7fdf7aa6091439a7"},
+        {"go_version":"1.27.0","goos":"linux","goarch":"arm64","sha256":"96116e6db3e967e5ae156de809a9045f38af26b8439b0037b982a51eeeb673f6"}
+      ]
+    },
+    {
+      "id": "gitleaks",
+      "command": "gitleaks",
+      "package": "github.com/zricethezav/gitleaks/v8",
+      "module": "github.com/zricethezav/gitleaks/v8",
+      "version": "v8.30.1",
+      "module_sum": "h1:PmEvCfVI7ti9dV3s5aMZUY7sS2GxRvG3yzih7E+cS3w=",
+      "go_mod_sum": "h1:rTDwxRjufMKAkhTI/Mijd07nday1yOhf9qywjwz5Irw=",
+      "origin_hash": "8d1f98c7967eb1e79cb44ac6241a124e145d2165",
+      "binaries": [
+        {"go_version":"1.26.7","goos":"darwin","goarch":"arm64","sha256":"dfaf49ad50daaef7e07e3448cfd4763a6b2d2b10bf09a381b731567980f77f83"},
+        {"go_version":"1.26.7","goos":"linux","goarch":"amd64","sha256":"caf9c18dda54d359eb7068c8597e2d778c07a04db48c4e3f49f2653d88302e73"},
+        {"go_version":"1.26.7","goos":"linux","goarch":"arm64","sha256":"086b1c22a22c6fbc0f8b81642ad8ce1f7bed25f69c0b1cdc01a99a5c1d8e0171"},
+        {"go_version":"1.27.0","goos":"darwin","goarch":"arm64","sha256":"9cbdd151ea71aba9316dfce52f6d53b85f7da5a5fa81ebddf5727df8206d67b4"},
+        {"go_version":"1.27.0","goos":"linux","goarch":"amd64","sha256":"07f2cef677ca17d5d9599dac8b4fa510fb1fdb4be51f63dad47577cd4218282b"},
+        {"go_version":"1.27.0","goos":"linux","goarch":"arm64","sha256":"83200f59cefad291a258fcb295d261d5f053109104c5f883aa7cd97e4b7689fa"}
+      ]
+    },
+    {
+      "id": "govulncheck",
+      "command": "govulncheck",
+      "package": "golang.org/x/vuln/cmd/govulncheck",
+      "module": "golang.org/x/vuln",
+      "version": "v1.7.0",
+      "module_sum": "h1:4MQBuhmXbz2uepNJrf3v+aaZLGDqw1JluwYboegA1qg=",
+      "go_mod_sum": "h1:Xw7zvU3e1bsCYYBXu+w4wcn2Kgn27f34WBCTw8LL5Us=",
+      "origin_hash": "617f44b718537dccdea1915395650e0529e3b72e",
+      "binaries": [
+        {"go_version":"1.26.7","goos":"darwin","goarch":"arm64","sha256":"bf424b5fc732d43a00e997bd433d6f61f0bfb7395d9944b09223cb1cd2d5e96c"},
+        {"go_version":"1.26.7","goos":"linux","goarch":"amd64","sha256":"d3725b70cf83220fad293dab2c166ac549c44f0be73438cb4c6bda8dde05e3d4"},
+        {"go_version":"1.26.7","goos":"linux","goarch":"arm64","sha256":"5c831c04a3e1e6186726a02e5a5545aecb849fb406addfc9e516ef0c7f2a095d"},
+        {"go_version":"1.27.0","goos":"darwin","goarch":"arm64","sha256":"86a1ce50fba42862144777c862929a96c04266f878860f46a6500a65036c1cf4"},
+        {"go_version":"1.27.0","goos":"linux","goarch":"amd64","sha256":"7a9c8c36f14c3baec576be74d48f70b84ea7eb85733e5befc4fcab65367d8b33"},
+        {"go_version":"1.27.0","goos":"linux","goarch":"arm64","sha256":"772475ec287941eb788fd63e7a198fc91b97e3d3d87b6cd55256e927a7f2adce"}
+      ]
+    },
+    {
+      "id": "staticcheck",
+      "command": "staticcheck",
+      "package": "honnef.co/go/tools/cmd/staticcheck",
+      "module": "honnef.co/go/tools",
+      "version": "v0.7.0",
+      "module_sum": "h1:w6WUp1VbkqPEgLz4rkBzH/CSU6HkoqNLp6GstyTx3lU=",
+      "go_mod_sum": "h1:pm29oPxeP3P82ISxZDgIYeOaf9ta6Pi0EWvCFoLG2vc=",
+      "origin_hash": "ff63afafc529279f454e02f1d060210bd4263951",
+      "binaries": [
+        {"go_version":"1.26.7","goos":"darwin","goarch":"arm64","sha256":"6720a191cd05c268e42a2e000e84104d9bb7f2b9f43655dbd35bab8dc078b917"},
+        {"go_version":"1.26.7","goos":"linux","goarch":"amd64","sha256":"88c478e6d86c40bc8f6436aa09fb8df8075edf70acc2fb4a239a4a925e7a203b"},
+        {"go_version":"1.26.7","goos":"linux","goarch":"arm64","sha256":"0daa5fe1c65d1ef1ceca3560de184585fd4c6513795c594f8b0c051cd1643fb6"}
+      ]
+    }
+  ],
+  "binary_tools": [
+    {
+      "id": "shellcheck",
+      "command": "shellcheck",
+      "version": "0.11.0",
+      "license": "GPL-3.0-only (CI tool, not redistributed)",
+      "platforms": [
+        {"goos": "darwin", "goarch": "arm64", "asset": "darwin.aarch64", "archive_sha256": "339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f", "binary_sha256": "61c17246d69f012cd458ae82f244c46023dac75d1b69733ca1cc7d28fb270fd7"},
+        {"goos": "linux", "goarch": "amd64", "asset": "linux.x86_64", "archive_sha256": "b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6", "binary_sha256": "4da528ddb3a4d1b7b24a59d4e16eb2f5fd960f4bd9a3708a15baddbdf1d5a55b"},
+        {"goos": "linux", "goarch": "arm64", "asset": "linux.aarch64", "archive_sha256": "68a8133197a50beb8803f8d42f9908d1af1c5540d4bb05fdfca8c1fa47decefc", "binary_sha256": "127f13925eadd52c341bca0ebaf9ab0dbd78c6468f30a8f262a528bf8de47546"}
+      ]
+    }
+  ]
+}
