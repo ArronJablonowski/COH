@@ -1,0 +1,31 @@
+{
+  "schema": "coh.domain.registry/v1",
+  "contract_schema": "coh.domain/v1",
+  "canonical_encoding": "COH-CJ-1",
+  "status": "draft",
+  "blocked_by": [
+    "COH-E01"
+  ],
+  "kinds": [
+    "action",
+    "approval",
+    "artifact_manifest",
+    "case",
+    "claim",
+    "evidence",
+    "finding",
+    "model",
+    "query",
+    "risk",
+    "roe",
+    "run",
+    "skill",
+    "task",
+    "timeline_event",
+    "vulnerability"
+  ],
+  "requirements": [
+    "FR-010",
+    "NFR-021"
+  ]
+}
