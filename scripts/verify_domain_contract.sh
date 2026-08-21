@@ -10,6 +10,7 @@ evidence_schema="$contract/evidence-analysis-payloads.schema.json"
 authority_schema="$contract/authority-payloads.schema.json"
 capability_schema="$contract/capability-risk-payloads.schema.json"
 valid="$contract/fixtures/envelope.valid.json"
+workflow_valid="$contract/fixtures/workflow-payloads.valid.json"
 denied="$contract/fixtures/denied"
 
 for command in jq diff mktemp; do
@@ -18,12 +19,13 @@ for command in jq diff mktemp; do
     exit 2
   }
 done
-for path in "$registry" "$schema" "$workflow_schema" "$evidence_schema" "$authority_schema" "$capability_schema" "$valid" "$denied"; do
+for path in "$registry" "$schema" "$workflow_schema" "$evidence_schema" "$authority_schema" "$capability_schema" "$valid" "$workflow_valid" "$denied"; do
   [[ -e "$path" ]] || {
     printf 'error: domain contract input is missing: %s\n' "$path" >&2
     exit 2
   }
 done
+jq -e 'map(.kind) == ["artifact_manifest", "case", "run", "task"] and all(.[]; (.data | type) == "object")' "$workflow_valid" >/dev/null || fail 'workflow positive fixture inventory failed'
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/coh-domain-contract.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
