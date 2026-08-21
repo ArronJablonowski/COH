@@ -151,9 +151,10 @@ understood; capability discovery exposes that distinction.
 The following short tasks remain before CYB-36 can be reviewed for completion:
 
 - [x] Publish the strict common-envelope JSON Schema and initial envelope fixtures.
-- [ ] Publish the 16 strict per-kind JSON Schemas (12/16 drafted: `case`, `run`,
+- [x] Publish the 16 strict per-kind JSON Schemas (`case`, `run`,
   `task`, `artifact_manifest`, `evidence`, `finding`, `claim`, and
-  `timeline_event`, `query`, `action`, `approval`, and `roe`).
+  `timeline_event`, `query`, `action`, `approval`, `roe`, `model`, `skill`,
+  `vulnerability`, and `risk`).
 - [ ] Add one canonical positive fixture for every kind.
 - [ ] Add malformed, duplicate-key, unknown-field, wrong-boundary, bad-time,
   bad-digest, oversized, cancellation, and unsupported-version denial fixtures.
