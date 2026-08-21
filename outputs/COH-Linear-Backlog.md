@@ -1,6 +1,6 @@
 # COH — Cyber Operations Harness: Linear Backlog
 
-> Canonical offline mirror reconciled with [the target Linear project](https://linear.app/cyber-operations-harness/project/coh-cyber-operations-harness-2e12a30674e7) on 2026-08-19. Linear sync is **complete**: project, PRD document, 10 milestones, 24 parent epics, 144 leaves, and 631 blocker edges were read back successfully. Machine-readable companion: `work/COH-Linear-Manifest.json`.
+> Canonical offline mirror reconciled with [the target Linear project](https://linear.app/cyber-operations-harness/project/coh-cyber-operations-harness-2e12a30674e7) on 2026-08-19. Linear sync is **complete**: project, PRD document, 10 milestones, 24 parent epics, 144 leaves, and 631 blocker edges were read back successfully. This tracked mirror is the offline verification source; mutable generation data under `work/` is not required by repository gates.
 
 ## Project metadata
 

@@ -12,12 +12,11 @@ make_fixture() {
 
   mkdir -p \
     "$fixture/outputs" \
-    "$fixture/work" \
     "$fixture/docs/design" \
     "$fixture/docs/adr" \
     "$fixture/docs/security"
   cp "$repo_root/outputs/COH-PRD.md" "$fixture/outputs/"
-  cp "$repo_root/work/COH-Linear-Manifest.json" "$fixture/work/"
+  cp "$repo_root/outputs/COH-Linear-Backlog.md" "$fixture/outputs/"
   cp "$repo_root/docs/design/product-contract.md" "$fixture/docs/design/"
   cp "$repo_root/docs/adr/0001-trust-boundaries.md" "$fixture/docs/adr/"
   cp "$repo_root/docs/adr/0001-trust-boundaries-verification.md" "$fixture/docs/adr/"
@@ -48,10 +47,10 @@ baseline=$(make_fixture baseline)
 printf 'ok: current numbered PRD outline accepted\n'
 
 bad_mapping=$(make_fixture bad-mapping)
-jq '(.leaves[] | select(.key == "COH-E01-02").requirementIds) = ["SEC-001"]' \
-  "$bad_mapping/work/COH-Linear-Manifest.json" > "$bad_mapping/work/manifest.new"
-mv "$bad_mapping/work/manifest.new" "$bad_mapping/work/COH-Linear-Manifest.json"
-expect_failure bad-mapping 'COH-E01-02 has a missing, extra, or duplicate manifest mapping' "$bad_mapping"
+sed '/COH-E01-02 — Record architecture/ s/Requirements SEC-001, SEC-002, SEC-017, SEC-026/Requirements SEC-001/' \
+  "$bad_mapping/outputs/COH-Linear-Backlog.md" > "$bad_mapping/outputs/backlog.new"
+mv "$bad_mapping/outputs/backlog.new" "$bad_mapping/outputs/COH-Linear-Backlog.md"
+expect_failure bad-mapping 'COH-E01-02 has a missing, extra, or duplicate backlog mapping' "$bad_mapping"
 
 bad_heading=$(make_fixture bad-heading)
 sed 's/^## Decision drivers$/## Design considerations/' \

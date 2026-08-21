@@ -3,20 +3,20 @@ set -euo pipefail
 
 root=${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}
 prd="$root/outputs/COH-PRD.md"
-manifest="$root/work/COH-Linear-Manifest.json"
+backlog="$root/outputs/COH-Linear-Backlog.md"
 product_contract="$root/docs/design/product-contract.md"
 trust_adr="$root/docs/adr/0001-trust-boundaries.md"
 trust_verification="$root/docs/adr/0001-trust-boundaries-verification.md"
 action_tiers="$root/docs/security/action-tier-decision-table.md"
 
-for command in jq rg sort diff mktemp sed wc tr; do
+for command in rg sort diff mktemp sed wc tr; do
   command -v "$command" >/dev/null 2>&1 || {
     printf 'error: required command is unavailable: %s\n' "$command" >&2
     exit 2
   }
 done
 
-for path in "$prd" "$manifest" "$product_contract" "$trust_adr" "$trust_verification" "$action_tiers"; do
+for path in "$prd" "$backlog" "$product_contract" "$trust_adr" "$trust_verification" "$action_tiers"; do
   [[ -f "$path" ]] || {
     printf 'error: required input is missing: %s\n' "$path" >&2
     exit 2
@@ -44,14 +44,22 @@ require_heading() {
 assert_leaf_mapping() {
   local key=$1
   shift
+  local line
+  local requirements
+  local actual="$tmp/${key}.backlog.actual"
   local expected
 
-  expected=$(printf '%s\n' "$@" | jq -Rsc 'split("\n") | map(select(length > 0)) | sort')
-  jq -e --arg key "$key" --argjson expected "$expected" '
-    [.leaves[] | select(.key == $key)] as $matches
-    | ($matches | length) == 1
-      and (($matches[0].requirementIds | sort) == $expected)
-  ' "$manifest" >/dev/null || fail "$key has a missing, extra, or duplicate manifest mapping"
+  expected="$tmp/${key}.backlog.expected"
+  printf '%s\n' "$@" | LC_ALL=C sort -u > "$expected"
+  line=$(rg -m 1 "^- \\[[ x]\\] \\*\\*${key} —" "$backlog") ||
+    fail "$key is missing from the tracked Linear backlog mirror"
+  requirements=${line#*Requirements }
+  requirements=${requirements%%; Parent*}
+  printf '%s\n' "$requirements" |
+    rg -o '(FR|SEC|NFR|EVAL)-[0-9]{3}' |
+    LC_ALL=C sort -u > "$actual" || true
+  diff -u "$expected" "$actual" >/dev/null ||
+    fail "$key has a missing, extra, or duplicate backlog mapping"
 }
 
 assert_doc_table_mapping() {
@@ -80,12 +88,13 @@ for spec in FR:85 SEC:42 NFR:30 EVAL:30; do
   done
 done | LC_ALL=C sort > "$tmp/expected"
 
-rg -o '^\| (FR|SEC|NFR|EVAL)-[0-9]{3} \|' "$prd" |
+sed '/^### 9[.]1 Engineering-policy implementation trace$/q' "$prd" |
+  rg -o '^\| (FR|SEC|NFR|EVAL)-[0-9]{3} \|' |
   sed -E 's/^\| ([A-Z]+-[0-9]{3}) \|/\1/' |
   LC_ALL=C sort > "$tmp/defined"
 
-jq -r '[.epics[].requirementIds[], .leaves[].requirementIds[]] | unique[]' "$manifest" |
-  LC_ALL=C sort > "$tmp/referenced"
+rg -o '(FR|SEC|NFR|EVAL)-[0-9]{3}' "$backlog" |
+  LC_ALL=C sort -u > "$tmp/referenced"
 
 diff -u "$tmp/expected" "$tmp/defined" >/dev/null ||
   fail 'PRD requirement definitions are missing, duplicated, or unexpected'
