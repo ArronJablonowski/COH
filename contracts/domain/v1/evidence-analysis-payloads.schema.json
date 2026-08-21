@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/domain/v1/evidence-analysis-payloads.schema.json",
+  "title": "COH evidence and analysis payload schemas v1",
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "required": ["digest", "media_type", "length", "classification", "access_scope", "manifest_id"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "media_type": { "type": "string", "pattern": "^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$", "maxLength": 255 },
+        "length": { "type": "integer", "minimum": 0, "maximum": 1099511627776 },
+        "classification": { "$ref": "#/$defs/token" },
+        "access_scope": { "enum": ["case", "tenant", "organization"] },
+        "manifest_id": { "$ref": "#/$defs/uuid_v7" },
+        "derived_from": { "$ref": "#/$defs/digest_set" }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": ["status", "severity", "confidence_basis", "claim_ids", "evidence_digests", "counterevidence_digests", "owner_actor_id", "disposition"],
+      "properties": {
+        "status": { "enum": ["draft", "review", "confirmed", "rejected", "closed", "reopened"] },
+        "severity": { "enum": ["informational", "low", "medium", "high", "critical", "unknown"] },
+        "confidence_basis": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "claim_ids": { "$ref": "#/$defs/uuid_set" },
+        "evidence_digests": { "$ref": "#/$defs/digest_set" },
+        "counterevidence_digests": { "$ref": "#/$defs/digest_set" },
+        "owner_actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "disposition": { "$ref": "#/$defs/token" }
+      },
+      "additionalProperties": false
+    },
+    "claim": {
+      "type": "object",
+      "required": ["statement", "author_actor_id", "confidence_basis", "evidence_digests", "counterevidence_digests"],
+      "properties": {
+        "statement": { "type": "string", "minLength": 1, "maxLength": 16384 },
+        "author_actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "confidence_basis": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "evidence_digests": { "$ref": "#/$defs/digest_set" },
+        "counterevidence_digests": { "$ref": "#/$defs/digest_set" },
+        "hypothesis": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "timeline_event": {
+      "type": "object",
+      "required": ["source_time", "normalized_time", "source_precision", "clock_uncertainty_ns", "source", "entity_ids", "evidence_digest"],
+      "properties": {
+        "source_time": { "$ref": "#/$defs/timestamp" },
+        "normalized_time": { "$ref": "#/$defs/timestamp" },
+        "original_timezone": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "source_precision": { "enum": ["nanosecond", "microsecond", "millisecond", "second", "minute", "day", "unknown"] },
+        "clock_uncertainty_ns": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+        "source": { "$ref": "#/$defs/token" },
+        "source_event_id": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "entity_ids": { "$ref": "#/$defs/uuid_set" },
+        "evidence_digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "uuid_v7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9][.][0-9]{9}Z$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,127}$"
+    },
+    "digest_set": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": { "$ref": "#/$defs/digest" }
+    },
+    "uuid_set": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": { "$ref": "#/$defs/uuid_v7" }
+    }
+  }
+}

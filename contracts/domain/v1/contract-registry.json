@@ -10,8 +10,12 @@
   "implemented_kind_schemas": {
     "artifact_manifest": "workflow-payloads.schema.json#/$defs/artifact_manifest",
     "case": "workflow-payloads.schema.json#/$defs/case",
+    "claim": "evidence-analysis-payloads.schema.json#/$defs/claim",
+    "evidence": "evidence-analysis-payloads.schema.json#/$defs/evidence",
+    "finding": "evidence-analysis-payloads.schema.json#/$defs/finding",
     "run": "workflow-payloads.schema.json#/$defs/run",
-    "task": "workflow-payloads.schema.json#/$defs/task"
+    "task": "workflow-payloads.schema.json#/$defs/task",
+    "timeline_event": "evidence-analysis-payloads.schema.json#/$defs/timeline_event"
   },
   "kinds": [
     "action",

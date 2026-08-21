@@ -6,6 +6,7 @@ contract="$root/contracts/domain/v1"
 registry="$contract/contract-registry.json"
 schema="$contract/common-envelope.schema.json"
 workflow_schema="$contract/workflow-payloads.schema.json"
+evidence_schema="$contract/evidence-analysis-payloads.schema.json"
 valid="$contract/fixtures/envelope.valid.json"
 denied="$contract/fixtures/denied"
 
@@ -15,7 +16,7 @@ for command in jq diff mktemp; do
     exit 2
   }
 done
-for path in "$registry" "$schema" "$workflow_schema" "$valid" "$denied"; do
+for path in "$registry" "$schema" "$workflow_schema" "$evidence_schema" "$valid" "$denied"; do
   [[ -e "$path" ]] || {
     printf 'error: domain contract input is missing: %s\n' "$path" >&2
     exit 2
@@ -48,7 +49,8 @@ diff -u "$tmp/registry-kinds" "$tmp/schema-kinds" >/dev/null ||
   fail 'registry and common-schema kinds differ'
 
 jq -r '.implemented_kind_schemas | keys[]' "$registry" > "$tmp/implemented-kinds"
-printf '%s\n' artifact_manifest case run task > "$tmp/expected-implemented-kinds"
+printf '%s\n' artifact_manifest case claim evidence finding run task timeline_event \
+  > "$tmp/expected-implemented-kinds"
 diff -u "$tmp/expected-implemented-kinds" "$tmp/implemented-kinds" >/dev/null ||
   fail 'implemented per-kind registry entries differ'
 
@@ -59,6 +61,14 @@ for kind in artifact_manifest case run task; do
     and (."$defs"[$kind].additionalProperties == false)
     and (."$defs"[$kind].required | length > 0)
   ' "$workflow_schema" >/dev/null || fail "strict payload schema failed: $kind"
+done
+for kind in claim evidence finding timeline_event; do
+  jq -e --arg kind "$kind" '
+    .["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+    and (."$defs"[$kind].type == "object")
+    and (."$defs"[$kind].additionalProperties == false)
+    and (."$defs"[$kind].required | length > 0)
+  ' "$evidence_schema" >/dev/null || fail "strict payload schema failed: $kind"
 done
 
 jq -e '
@@ -102,5 +112,5 @@ for fixture in "$denied"/*.json; do
 done
 [[ "$denied_count" == 3 ]] || fail "expected 3 denial fixtures, found $denied_count"
 
-printf 'domain-contract summary: registry=16 schema-kinds=16 payloads=4 valid=1 denied=%d failures=0\n' \
+printf 'domain-contract summary: registry=16 schema-kinds=16 payloads=8 valid=1 denied=%d failures=0\n' \
   "$denied_count"
