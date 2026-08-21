@@ -7,6 +7,12 @@
   "blocked_by": [
     "COH-E01"
   ],
+  "implemented_kind_schemas": {
+    "artifact_manifest": "workflow-payloads.schema.json#/$defs/artifact_manifest",
+    "case": "workflow-payloads.schema.json#/$defs/case",
+    "run": "workflow-payloads.schema.json#/$defs/run",
+    "task": "workflow-payloads.schema.json#/$defs/task"
+  },
   "kinds": [
     "action",
     "approval",

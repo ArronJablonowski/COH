@@ -5,6 +5,7 @@ root=${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}
 contract="$root/contracts/domain/v1"
 registry="$contract/contract-registry.json"
 schema="$contract/common-envelope.schema.json"
+workflow_schema="$contract/workflow-payloads.schema.json"
 valid="$contract/fixtures/envelope.valid.json"
 denied="$contract/fixtures/denied"
 
@@ -14,7 +15,7 @@ for command in jq diff mktemp; do
     exit 2
   }
 done
-for path in "$registry" "$schema" "$valid" "$denied"; do
+for path in "$registry" "$schema" "$workflow_schema" "$valid" "$denied"; do
   [[ -e "$path" ]] || {
     printf 'error: domain contract input is missing: %s\n' "$path" >&2
     exit 2
@@ -45,6 +46,20 @@ jq -r '.kinds[]' "$registry" > "$tmp/registry-kinds"
 jq -r '.properties.kind.enum[]' "$schema" > "$tmp/schema-kinds"
 diff -u "$tmp/registry-kinds" "$tmp/schema-kinds" >/dev/null ||
   fail 'registry and common-schema kinds differ'
+
+jq -r '.implemented_kind_schemas | keys[]' "$registry" > "$tmp/implemented-kinds"
+printf '%s\n' artifact_manifest case run task > "$tmp/expected-implemented-kinds"
+diff -u "$tmp/expected-implemented-kinds" "$tmp/implemented-kinds" >/dev/null ||
+  fail 'implemented per-kind registry entries differ'
+
+for kind in artifact_manifest case run task; do
+  jq -e --arg kind "$kind" '
+    .["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+    and (."$defs"[$kind].type == "object")
+    and (."$defs"[$kind].additionalProperties == false)
+    and (."$defs"[$kind].required | length > 0)
+  ' "$workflow_schema" >/dev/null || fail "strict payload schema failed: $kind"
+done
 
 jq -e '
   .["$schema"] == "https://json-schema.org/draft/2020-12/schema"
@@ -87,5 +102,5 @@ for fixture in "$denied"/*.json; do
 done
 [[ "$denied_count" == 3 ]] || fail "expected 3 denial fixtures, found $denied_count"
 
-printf 'domain-contract summary: registry=16 schema-kinds=16 valid=1 denied=%d failures=0\n' \
+printf 'domain-contract summary: registry=16 schema-kinds=16 payloads=4 valid=1 denied=%d failures=0\n' \
   "$denied_count"
