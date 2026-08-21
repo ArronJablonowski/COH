@@ -2,6 +2,7 @@
   "schema": "coh.domain.registry/v1",
   "contract_schema": "coh.domain/v1",
   "canonical_encoding": "COH-CJ-1",
+  "common_schema": "common-envelope.schema.json",
   "status": "draft",
   "blocked_by": [
     "COH-E01"

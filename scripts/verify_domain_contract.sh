@@ -1,0 +1,91 @@
+#!/bin/bash
+set -euo pipefail
+
+root=${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}
+contract="$root/contracts/domain/v1"
+registry="$contract/contract-registry.json"
+schema="$contract/common-envelope.schema.json"
+valid="$contract/fixtures/envelope.valid.json"
+denied="$contract/fixtures/denied"
+
+for command in jq diff mktemp; do
+  command -v "$command" >/dev/null 2>&1 || {
+    printf 'error: required command is unavailable: %s\n' "$command" >&2
+    exit 2
+  }
+done
+for path in "$registry" "$schema" "$valid" "$denied"; do
+  [[ -e "$path" ]] || {
+    printf 'error: domain contract input is missing: %s\n' "$path" >&2
+    exit 2
+  }
+done
+
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/coh-domain-contract.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT
+
+fail() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+jq -e '
+  .schema == "coh.domain.registry/v1"
+  and .contract_schema == "coh.domain/v1"
+  and .canonical_encoding == "COH-CJ-1"
+  and .common_schema == "common-envelope.schema.json"
+  and .status == "draft"
+  and .blocked_by == ["COH-E01"]
+  and .requirements == ["FR-010", "NFR-021"]
+  and (.kinds | length) == 16
+  and (.kinds == (.kinds | sort | unique))
+' "$registry" >/dev/null || fail 'domain registry invariants failed'
+
+jq -r '.kinds[]' "$registry" > "$tmp/registry-kinds"
+jq -r '.properties.kind.enum[]' "$schema" > "$tmp/schema-kinds"
+diff -u "$tmp/registry-kinds" "$tmp/schema-kinds" >/dev/null ||
+  fail 'registry and common-schema kinds differ'
+
+jq -e '
+  .["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+  and .type == "object"
+  and .additionalProperties == false
+  and (.required | length) == 9
+  and ((.required | sort) == (.properties | keys | sort))
+  and (.properties.schema.const == "coh.domain/v1")
+  and (.properties.revision.minimum == 1)
+  and (.properties.data.maxProperties == 128)
+' "$schema" >/dev/null || fail 'common-envelope schema shape failed'
+
+envelope_filter='def uuidv7:
+    type == "string"
+    and test("^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
+  def timestamp:
+    type == "string"
+    and test("^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9][.][0-9]{9}Z$");
+  (keys | sort) == ["case_id", "created_at", "data", "id", "kind", "organization_id", "revision", "schema", "tenant_id"]
+  and .schema == "coh.domain/v1"
+  and (.kind as $kind | ($kinds | index($kind)) != null)
+  and (.id | uuidv7)
+  and (.organization_id | uuidv7)
+  and (.tenant_id | uuidv7)
+  and ((.case_id == null) or (.case_id | uuidv7))
+  and (.revision | type == "number" and floor == . and . >= 1 and . <= 9223372036854775807)
+  and (.created_at | timestamp)
+  and (.data | type == "object" and length <= 128)'
+
+kinds=$(jq -c '.kinds' "$registry")
+jq -e --argjson kinds "$kinds" "$envelope_filter" "$valid" >/dev/null ||
+  fail 'positive common-envelope fixture was denied'
+
+denied_count=0
+for fixture in "$denied"/*.json; do
+  if jq -e --argjson kinds "$kinds" "$envelope_filter" "$fixture" >/dev/null; then
+    fail "denial fixture was accepted: ${fixture#$root/}"
+  fi
+  denied_count=$((denied_count + 1))
+done
+[[ "$denied_count" == 3 ]] || fail "expected 3 denial fixtures, found $denied_count"
+
+printf 'domain-contract summary: registry=16 schema-kinds=16 valid=1 denied=%d failures=0\n' \
+  "$denied_count"
