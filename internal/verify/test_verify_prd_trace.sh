@@ -18,6 +18,7 @@ make_fixture() {
   cp "$repo_root/outputs/COH-PRD.md" "$fixture/outputs/"
   cp "$repo_root/outputs/COH-Linear-Backlog.md" "$fixture/outputs/"
   cp "$repo_root/docs/design/product-contract.md" "$fixture/docs/design/"
+  cp "$repo_root/docs/design/platform-support-matrix.md" "$fixture/docs/design/"
   cp "$repo_root/docs/adr/0001-trust-boundaries.md" "$fixture/docs/adr/"
   cp "$repo_root/docs/adr/0001-trust-boundaries-verification.md" "$fixture/docs/adr/"
   cp "$repo_root/docs/security/action-tier-decision-table.md" "$fixture/docs/security/"

@@ -12,6 +12,7 @@ make_fixture() {
   mkdir -p "$destination/docs/design" "$destination/docs/adr" \
     "$destination/docs/security" "$destination/outputs"
   cp "$root/docs/design/product-contract.md" "$destination/docs/design/"
+  cp "$root/docs/design/platform-support-matrix.md" "$destination/docs/design/"
   cp "$root/docs/adr/0001-trust-boundaries.md" "$destination/docs/adr/"
   cp "$root/docs/adr/0001-trust-boundaries-verification.md" "$destination/docs/adr/"
   cp "$root/docs/security/action-tier-decision-table.md" "$destination/docs/security/"
@@ -58,4 +59,14 @@ perl -0pi -e 's/public capability-surface/public surface/' \
   "$missing_capability/docs/adr/0001-trust-boundaries-verification.md"
 expect_failure missing-capability "$missing_capability"
 
-printf 'verify_design_decisions tests: 1 positive, 5 negative, failures=0\n'
+missing_windows=$(make_fixture missing-windows)
+perl -0pi -e 's/^\| Windows host \|.*\n//m' \
+  "$missing_windows/docs/design/platform-support-matrix.md"
+expect_failure missing-windows "$missing_windows"
+
+docker_required=$(make_fixture docker-required)
+perl -0pi -e 's/Docker absence must not alter native APIs/Docker availability may alter native APIs/' \
+  "$docker_required/docs/design/platform-support-matrix.md"
+expect_failure docker-required "$docker_required"
+
+printf 'verify_design_decisions tests: 1 positive, 7 negative, failures=0\n'

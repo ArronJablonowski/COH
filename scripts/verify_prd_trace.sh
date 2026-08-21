@@ -5,6 +5,7 @@ root=${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}
 prd="$root/outputs/COH-PRD.md"
 backlog="$root/outputs/COH-Linear-Backlog.md"
 product_contract="$root/docs/design/product-contract.md"
+platform_matrix="$root/docs/design/platform-support-matrix.md"
 trust_adr="$root/docs/adr/0001-trust-boundaries.md"
 trust_verification="$root/docs/adr/0001-trust-boundaries-verification.md"
 action_tiers="$root/docs/security/action-tier-decision-table.md"
@@ -16,7 +17,7 @@ for command in rg sort diff mktemp sed wc tr; do
   }
 done
 
-for path in "$prd" "$backlog" "$product_contract" "$trust_adr" "$trust_verification" "$action_tiers"; do
+for path in "$prd" "$backlog" "$product_contract" "$platform_matrix" "$trust_adr" "$trust_verification" "$action_tiers"; do
   [[ -f "$path" ]] || {
     printf 'error: required input is missing: %s\n' "$path" >&2
     exit 2
@@ -109,10 +110,12 @@ referenced_count=$(wc -l < "$tmp/referenced" | tr -d ' ')
 assert_leaf_mapping COH-E01-01 FR-001 FR-005 NFR-030
 assert_leaf_mapping COH-E01-02 SEC-001 SEC-002 SEC-017 SEC-026
 assert_leaf_mapping COH-E01-03 SEC-003 SEC-005 SEC-006 SEC-007 SEC-008
+assert_leaf_mapping COH-E01-04 NFR-001 NFR-002 NFR-003 NFR-030
 
 assert_doc_table_mapping "$product_contract" COH-E01-01 FR-001 FR-005 NFR-030
 assert_doc_table_mapping "$trust_adr" COH-E01-02 SEC-001 SEC-002 SEC-017 SEC-026
 assert_doc_table_mapping "$action_tiers" COH-E01-03 SEC-003 SEC-005 SEC-006 SEC-007 SEC-008
+assert_doc_table_mapping "$platform_matrix" COH-E01-04 NFR-001 NFR-002 NFR-003 NFR-030
 
 # Match semantic headings with optional section numbering. This deliberately avoids
 # coupling verification to a specific PRD outline number.
@@ -123,6 +126,13 @@ for heading in \
   'Failure semantics' 'Evaluation requirements' 'Release milestones and traceability' \
   'Locked assumptions' 'Definition of GA'; do
   require_heading "$prd" "$heading" "PRD semantic heading '$heading'"
+done
+
+for heading in \
+  'Support vocabulary' 'Normative platform matrix' 'Connectivity profiles' \
+  'Support-claim and failure rules' 'Alternatives and non-goals' \
+  'Requirement traceability' 'Approval checklist'; do
+  require_heading "$platform_matrix" "$heading" "COH-E01-04 heading '$heading'"
 done
 
 for heading in \
@@ -156,11 +166,11 @@ for heading in \
   require_heading "$action_tiers" "$heading" "COH-E01-03 heading '$heading'"
 done
 
-for path in "$prd" "$product_contract" "$trust_adr" "$trust_verification" "$action_tiers"; do
+for path in "$prd" "$product_contract" "$platform_matrix" "$trust_adr" "$trust_verification" "$action_tiers"; do
   if rg -n '\b(TODO|TBD|FIXME)\b' "$path"; then
     fail "unresolved placeholder found in ${path#$root/}"
   fi
 done
 
-printf 'PRD trace summary: defined=%d referenced=%d E01 mappings=3 documents=3 missing=0 unexpected=0\n' \
+printf 'PRD trace summary: defined=%d referenced=%d E01 mappings=4 documents=4 missing=0 unexpected=0\n' \
   "$defined_count" "$referenced_count"

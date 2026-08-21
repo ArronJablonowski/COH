@@ -3,6 +3,7 @@ set -euo pipefail
 
 root=${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}
 product="$root/docs/design/product-contract.md"
+platform="$root/docs/design/platform-support-matrix.md"
 adr="$root/docs/adr/0001-trust-boundaries.md"
 adr_verify="$root/docs/adr/0001-trust-boundaries-verification.md"
 tiers="$root/docs/security/action-tier-decision-table.md"
@@ -15,7 +16,7 @@ for command in awk rg; do
   }
 done
 
-for path in "$product" "$adr" "$adr_verify" "$tiers" "$prd"; do
+for path in "$product" "$platform" "$adr" "$adr_verify" "$tiers" "$prd"; do
   [[ -f "$path" ]] || {
     printf 'error: required decision record is missing: %s\n' "$path" >&2
     exit 2
@@ -44,6 +45,8 @@ for file in "$product" "$adr" "$tiers"; do
   require_literal "$file" '| Status | Ready for approval |'
 done
 require_literal "$adr_verify" '| Status | Ready for approval with ADR-0001 |'
+require_literal "$platform" '| Status | Draft — dependency and human review pending |'
+require_literal "$platform" '| Approval status | Blocked by approval of COH-E01-01, COH-E01-02, and COH-E01-03 |'
 
 require_regex "$product" '^## Personas and authority$'
 require_regex "$product" '^## Supported v1 workflows$'
@@ -62,6 +65,22 @@ workflow_count=$(awk '
   printf 'FAIL expected 10 supported workflows, found %s\n' "$workflow_count" >&2
   exit 1
 }
+
+for profile in \
+  'Native macOS workstation' 'Native Linux server' 'Native DGX' \
+  'Compose on macOS' 'Compose on Linux' 'Windows host'; do
+  require_regex "$platform" "^\\| ${profile} \\|"
+done
+for connectivity in Connected 'Restricted connected' 'Air-gapped'; do
+  require_regex "$platform" "^\\| ${connectivity} \\|"
+done
+require_literal "$platform" 'Docker absence must not alter native APIs'
+require_literal "$platform" 'Windows is best-effort Docker-only'
+require_regex "$platform" '(?i)Missing, stale, mismatched, or$'
+require_regex "$platform" '^incomplete qualification evidence leaves a profile experimental or unsupported[.]$'
+require_regex "$platform" '(?i)unknown OS, architecture, runtime, or profile.*reject'
+require_regex "$platform" '(?i)24-hour test must observe zero DNS'
+require_literal "$platform" 'shared Docker Desktop is not a T4 boundary'
 
 for boundary in Identity Process Model Data Credential Broker Connector Validator Runner Audit 'T4 isolation'; do
   require_regex "$adr" "^\\| ${boundary} \\|"
@@ -126,10 +145,10 @@ if rg -n -i \
   exit 1
 fi
 
-if rg -n '\b(TODO|TBD|FIXME)\b' "$product" "$adr" "$adr_verify" "$tiers"; then
+if rg -n '\b(TODO|TBD|FIXME)\b' "$product" "$platform" "$adr" "$adr_verify" "$tiers"; then
   printf 'FAIL unresolved placeholder found in decision record\n' >&2
   exit 1
 fi
 
-printf 'design-decision summary: workflows=%s boundaries=11 tiers=5 mermaid=1 ambiguity=0 failures=0\n' \
+printf 'design-decision summary: workflows=%s platforms=6 connectivity=3 boundaries=11 tiers=5 mermaid=1 ambiguity=0 failures=0\n' \
   "$workflow_count"

@@ -16,6 +16,7 @@ The implementation backlog and acceptance gates live in the [COH Linear project]
 - [Product Requirements Document](outputs/COH-PRD.md)
 - [Linear backlog mirror](outputs/COH-Linear-Backlog.md)
 - [Design decisions](docs/design/)
+- [Platform and support matrix](docs/design/platform-support-matrix.md)
 - [Architecture decision records](docs/adr/)
 - [Security governance](docs/security/)
 - [CI quality contract](docs/design/ci-quality-contract.md)
