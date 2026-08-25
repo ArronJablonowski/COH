@@ -32,7 +32,7 @@ func TestProtectedFileBackendResolvesDescriptorRootedSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	secret, decision, err := resolver.Resolve(context.Background(), validRequest())
+	secret, decision, err := resolveTest(resolver, context.Background(), validRequest())
 	if err != nil || secret == nil || decision.Outcome != "allowed" {
 		t.Fatalf("secret = %v, decision = %+v, err = %v", secret, decision, err)
 	}
@@ -147,7 +147,7 @@ func TestSealedMemoryRotationAndRevocationAreImmediate(t *testing.T) {
 	request := validRequest()
 	request.Reference.Backend = sealedMemoryBackendName
 	request.IdempotencyKey = "sealed-first"
-	secret, _, err := resolver.Resolve(context.Background(), request)
+	secret, _, err := resolveTest(resolver, context.Background(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,12 +166,12 @@ func TestSealedMemoryRotationAndRevocationAreImmediate(t *testing.T) {
 		t.Fatalf("rotation did not consume input: %q", rotatedValue)
 	}
 	request.IdempotencyKey = "sealed-stale"
-	if secret, decision, err := resolver.Resolve(context.Background(), request); secret != nil || secretref.Code(err) != secretref.Denied || decision.ReasonCode != "stale_reference" {
+	if secret, decision, err := resolveTest(resolver, context.Background(), request); secret != nil || secretref.Code(err) != secretref.Denied || decision.ReasonCode != "stale_reference" {
 		t.Fatalf("secret = %v, decision = %+v, err = %v", secret, decision, err)
 	}
 	request.Reference.Version = 8
 	request.IdempotencyKey = "sealed-rotated"
-	secret, _, err = resolver.Resolve(context.Background(), request)
+	secret, _, err = resolveTest(resolver, context.Background(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestSealedMemoryRotationAndRevocationAreImmediate(t *testing.T) {
 		t.Fatal(err)
 	}
 	request.IdempotencyKey = "sealed-revoked"
-	if secret, decision, err := resolver.Resolve(context.Background(), request); secret != nil || secretref.Code(err) != secretref.Denied || decision.ReasonCode != "secret_revoked" {
+	if secret, decision, err := resolveTest(resolver, context.Background(), request); secret != nil || secretref.Code(err) != secretref.Denied || decision.ReasonCode != "secret_revoked" {
 		t.Fatalf("secret = %v, decision = %+v, err = %v", secret, decision, err)
 	}
 }

@@ -21,20 +21,57 @@ const (
 )
 
 type backendStub struct {
-	name   string
-	record Record
-	err    error
-	last   []byte
+	name    string
+	record  Record
+	err     error
+	last    []byte
+	fetches int
 }
 
 func (backend *backendStub) Name() string { return backend.name }
 
 func (backend *backendStub) Fetch(_ context.Context, _ secretref.Reference) (Record, error) {
+	backend.fetches++
 	record := backend.record
 	record.CaseIDs = append([]string(nil), backend.record.CaseIDs...)
 	record.Value = append([]byte(nil), backend.record.Value...)
 	backend.last = record.Value
 	return record, backend.err
+}
+
+func TestResolveBindsAuthenticatedAuthorityBeforeBackendRead(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*secretref.AuthoritySnapshot)
+		code   secretref.ErrorCode
+		reason string
+	}{
+		{"organization", func(authority *secretref.AuthoritySnapshot) {
+			authority.Context.OrganizationID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa"
+		}, secretref.Denied, "authority_scope_mismatch"},
+		{"tenant", func(authority *secretref.AuthoritySnapshot) {
+			authority.Context.TenantID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa"
+		}, secretref.Denied, "authority_scope_mismatch"},
+		{"case", func(authority *secretref.AuthoritySnapshot) {
+			authority.Context.CaseID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa"
+		}, secretref.Denied, "authority_scope_mismatch"},
+		{"actor", func(authority *secretref.AuthoritySnapshot) {
+			authority.Context.ActorID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa"
+		}, secretref.Denied, "authority_scope_mismatch"},
+		{"revoked", func(authority *secretref.AuthoritySnapshot) { authority.Active = false }, secretref.Denied, "actor_revoked"},
+		{"invalid-digest", func(authority *secretref.AuthoritySnapshot) { authority.AuthorizationDecisionDigest = "invalid" }, secretref.InvalidInput, "authority_invalid"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resolver, backend, audit, _ := resolverFixture(t)
+			authority := validAuthority()
+			test.mutate(&authority)
+			secret, decision, err := resolver.Resolve(context.Background(), validRequest(), authority)
+			if secret != nil || secretref.Code(err) != test.code || reason(err) != test.reason || decision.Outcome == "allowed" || backend.fetches != 0 || len(audit.decisions) != 1 {
+				t.Fatalf("secret = %v, decision = %+v, fetches = %d, audit = %+v, err = %v", secret, decision, backend.fetches, audit.decisions, err)
+			}
+		})
+	}
 }
 
 type auditStub struct {
@@ -73,7 +110,7 @@ func (replay *replayStub) CheckAndStore(_ context.Context, record ReplayRecord) 
 
 func TestResolveReturnsScopedSecretAfterAuditAndZeroesBackendBuffer(t *testing.T) {
 	resolver, backend, audit, _ := resolverFixture(t)
-	secret, decision, err := resolver.Resolve(context.Background(), validRequest())
+	secret, decision, err := resolveTest(resolver, context.Background(), validRequest())
 	if err != nil || secret == nil || decision.Outcome != "allowed" || decision.Replayed || len(audit.decisions) != 1 || audit.decisions[0] != decision {
 		t.Fatalf("decision = %+v, audit = %+v, err = %v", decision, audit.decisions, err)
 	}
@@ -138,7 +175,7 @@ func TestResolveDeniesScopeStaleRevokedAndInvalidRecords(t *testing.T) {
 			resolver, backend, audit, _ := resolverFixture(t)
 			request := validRequest()
 			test.mutate(backend, &request)
-			secret, decision, err := resolver.Resolve(context.Background(), request)
+			secret, decision, err := resolveTest(resolver, context.Background(), request)
 			if secret != nil || secretref.Code(err) != secretref.Denied || reason(err) != test.reason || decision.Outcome != "denied" || len(audit.decisions) != 1 {
 				t.Fatalf("secret = %v, decision = %+v, audit = %+v, err = %v", secret, decision, audit.decisions, err)
 			}
@@ -152,18 +189,18 @@ func TestResolveDeniesScopeStaleRevokedAndInvalidRecords(t *testing.T) {
 func TestResolveDetectsExactReplayAndChangedRequest(t *testing.T) {
 	resolver, _, audit, _ := resolverFixture(t)
 	request := validRequest()
-	first, firstDecision, err := resolver.Resolve(context.Background(), request)
+	first, firstDecision, err := resolveTest(resolver, context.Background(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer first.Destroy()
-	second, replayed, err := resolver.Resolve(context.Background(), request)
+	second, replayed, err := resolveTest(resolver, context.Background(), request)
 	if err != nil || second == nil || !replayed.Replayed || replayed.DecisionDigest == firstDecision.DecisionDigest {
 		t.Fatalf("replayed = %+v, err = %v", replayed, err)
 	}
 	second.Destroy()
 	request.ActionDigest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-	secret, conflict, err := resolver.Resolve(context.Background(), request)
+	secret, conflict, err := resolveTest(resolver, context.Background(), request)
 	if secret != nil || secretref.Code(err) != secretref.Conflict || reason(err) != "idempotency_conflict" || conflict.Outcome != "denied" || len(audit.decisions) != 3 {
 		t.Fatalf("secret = %v, conflict = %+v, audit = %+v, err = %v", secret, conflict, audit.decisions, err)
 	}
@@ -187,7 +224,7 @@ func TestResolveFailsClosedAndRedactsBackendAuditAndReplayErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			resolver, backend, audit, replay := resolverFixture(t)
 			test.mutate(backend, audit, replay)
-			secret, decision, err := resolver.Resolve(context.Background(), validRequest())
+			secret, decision, err := resolveTest(resolver, context.Background(), validRequest())
 			if secret != nil || secretref.Code(err) != secretref.Unavailable || reason(err) != test.reason || decision.Outcome != "unavailable" {
 				t.Fatalf("secret = %v, decision = %+v, err = %v", secret, decision, err)
 			}
@@ -208,17 +245,17 @@ func TestResolveCancellationTimeoutAndRecovery(t *testing.T) {
 	request := validRequest()
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, decision, err := resolver.Resolve(canceled, request)
+	_, decision, err := resolveTest(resolver, canceled, request)
 	if secretref.Code(err) != secretref.Canceled || decision.Outcome != "canceled" {
 		t.Fatalf("canceled decision = %+v, err = %v", decision, err)
 	}
 	expired, stop := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer stop()
-	_, decision, err = resolver.Resolve(expired, request)
+	_, decision, err = resolveTest(resolver, expired, request)
 	if secretref.Code(err) != secretref.Timeout || decision.Outcome != "timeout" {
 		t.Fatalf("timeout decision = %+v, err = %v", decision, err)
 	}
-	secret, decision, err := resolver.Resolve(context.Background(), request)
+	secret, decision, err := resolveTest(resolver, context.Background(), request)
 	if err != nil || secret == nil || decision.Outcome != "allowed" || len(audit.decisions) != 3 {
 		t.Fatalf("recovery decision = %+v, audit = %+v, err = %v", decision, audit.decisions, err)
 	}
@@ -231,7 +268,7 @@ func TestInvalidCallerValuesAreOmittedFromAudit(t *testing.T) {
 	secretValue := "secret-value-in-malformed-field"
 	request.CredentialClass = secretValue
 	request.Context.ActorID = secretValue
-	secret, decision, err := resolver.Resolve(context.Background(), request)
+	secret, decision, err := resolveTest(resolver, context.Background(), request)
 	if secret != nil || secretref.Code(err) != secretref.InvalidInput || decision.Outcome != "invalid" || len(audit.decisions) != 1 {
 		t.Fatalf("secret = %v, decision = %+v, audit = %+v, err = %v", secret, decision, audit.decisions, err)
 	}
@@ -268,6 +305,20 @@ func validRequest() secretref.ResolutionRequest {
 			Backend: "protected-file", EntryID: "siem.primary", Version: 7,
 		},
 	}
+}
+
+func validAuthority() secretref.AuthoritySnapshot {
+	return secretref.AuthoritySnapshot{
+		Context: secretref.Context{
+			OrganizationID: testOrganizationID, TenantID: testTenantID, CaseID: testCaseID, ActorID: testActorID,
+		},
+		Active: true, ActorRevision: 1,
+		AuthorizationDecisionDigest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+	}
+}
+
+func resolveTest(resolver *Resolver, ctx context.Context, request secretref.ResolutionRequest) (*Secret, secretref.Decision, error) {
+	return resolver.Resolve(ctx, request, validAuthority())
 }
 
 func validRecord() Record {

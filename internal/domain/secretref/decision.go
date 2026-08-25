@@ -19,18 +19,27 @@ type Decision struct {
 	ReferenceDigest  string  `json:"reference_digest,omitempty"`
 	Backend          string  `json:"backend,omitempty"`
 	ReferenceVersion uint64  `json:"reference_version,omitempty"`
+	ActorRevision    uint64  `json:"actor_revision,omitempty"`
+	AuthorityDigest  string  `json:"authority_digest,omitempty"`
 	RecordRevision   uint64  `json:"record_revision,omitempty"`
 	Replayed         bool    `json:"replayed"`
 }
 
-func NewDecision(request ResolutionRequest, outcome, reason string, recordRevision uint64, replayed bool) Decision {
+func NewDecision(request ResolutionRequest, authority AuthoritySnapshot, outcome, reason string, recordRevision uint64, replayed bool) Decision {
 	decision := Decision{
 		SchemaVersion: SchemaVersion, ContractVersion: ContractVersion,
 		Outcome: outcome, ReasonCode: reason, RecordRevision: recordRevision, Replayed: replayed,
 	}
+	if err := ValidateAuthority(authority); err == nil {
+		decision.Context = authority.Context
+		decision.ActorRevision = authority.ActorRevision
+		decision.AuthorityDigest = authority.AuthorizationDecisionDigest
+	}
 	if err := ValidateResolutionRequest(request); err == nil {
 		decision.RequestID = request.RequestID
-		decision.Context = request.Context
+		if decision.Context == (Context{}) {
+			decision.Context = request.Context
+		}
 		decision.ActionDigest = request.ActionDigest
 		decision.CredentialClass = request.CredentialClass
 		referenceDigest, _ := ReferenceDigest(request.Reference)

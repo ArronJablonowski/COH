@@ -32,3 +32,12 @@ type Context struct {
 	CaseID         string `json:"case_id"`
 	ActorID        string `json:"actor_id"`
 }
+
+// AuthoritySnapshot is supplied by the authenticated broker boundary. Secret
+// resolution binds to it but does not manufacture authentication authority.
+type AuthoritySnapshot struct {
+	Context                     Context
+	Active                      bool
+	ActorRevision               uint64
+	AuthorizationDecisionDigest string
+}

@@ -43,6 +43,14 @@ func ValidateResolutionRequest(request ResolutionRequest) error {
 	return nil
 }
 
+func ValidateAuthority(authority AuthoritySnapshot) error {
+	if !validContext(authority.Context) || authority.ActorRevision == 0 ||
+		!digestPattern.MatchString(authority.AuthorizationDecisionDigest) {
+		return secretError(InvalidInput, "authority_invalid", nil)
+	}
+	return nil
+}
+
 func validContext(context Context) bool {
 	return uuidV7Pattern.MatchString(context.OrganizationID) && uuidV7Pattern.MatchString(context.TenantID) &&
 		uuidV7Pattern.MatchString(context.CaseID) && uuidV7Pattern.MatchString(context.ActorID)
