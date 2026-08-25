@@ -88,6 +88,8 @@ const (
 )
 
 type OutboxSettlement struct {
+	OrganizationID string
+	TenantID       string
 	MessageID      string
 	LeaseID        string
 	Outcome        OutboxOutcome

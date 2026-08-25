@@ -151,7 +151,7 @@ func NewFixture(t *testing.T) Fixture {
 	return Fixture{
 		Create: create, Update: update, ChangedRetry: changed,
 		Claim:      workflow.OutboxClaim{OrganizationID: OrganizationID, TenantID: TenantID, WorkerID: "conformance-worker", Limit: 8, LeaseUntil: time.Date(2026, 8, 25, 21, 0, 0, 0, time.UTC)},
-		Settlement: workflow.OutboxSettlement{MessageID: MessageID, Outcome: workflow.OutboxDelivered, EvidenceDigest: Digest("delivery-evidence")},
+		Settlement: workflow.OutboxSettlement{OrganizationID: OrganizationID, TenantID: TenantID, MessageID: MessageID, Outcome: workflow.OutboxDelivered, EvidenceDigest: Digest("delivery-evidence")},
 		Migration:  workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion, Component: "conformance", Version: 1, Checksum: Digest("conformance-v1"), BackupDigest: Digest("conformance-v0-backup"), Direction: workflow.MigrationApply},
 	}
 }

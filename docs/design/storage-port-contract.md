@@ -7,7 +7,7 @@
 | Contract | `coh.storage/v1` |
 | Domain dependency | Qualified `coh.domain/v1` canonical records |
 | Data classification | Operational metadata and immutable artifact references |
-| Status | Implemented for SQLite/PostgreSQL adapter adoption |
+| Status | Implemented by the qualified SQLite and PostgreSQL adapters |
 
 ## Decision
 
@@ -30,6 +30,9 @@ The repository is composed from three small capabilities:
 A transaction carries a bounded idempotency key, one or more uniquely sorted
 metadata mutations, and up to 256 uniquely sorted outbox messages. Each mutation
 names the complete organization, tenant, case, kind, and record identity.
+All mutations and outbox entries in one transaction must share exactly one
+organization and tenant; a cross-scope transaction is denied before a driver is
+called.
 
 - `ExpectedRevision == 0` means the record must not exist.
 - A put writes exactly `ExpectedRevision + 1`.
@@ -57,8 +60,8 @@ tenant, a named worker, a maximum of 256 messages, and an explicit UTC lease
 deadline. The guard denies over-limit, duplicate, unsorted, malformed, or
 cross-tenant results.
 
-Settlement binds the exact message and lease and records `delivered`, `retry`, or
-`dead_letter`. Repeating an identical settlement is idempotent. A different
+Settlement binds the exact organization, tenant, message, and lease and records
+`delivered`, `retry`, or `dead_letter`. Repeating an identical settlement is idempotent. A different
 outcome for an already settled lease is a conflict. Outbox delivery does not
 grant action authority; consequential effects still traverse the broker.
 

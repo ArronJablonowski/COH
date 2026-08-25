@@ -75,7 +75,8 @@ func (store *Store) SettleOutbox(ctx context.Context, settlement workflow.Outbox
 		return err
 	}
 	var leaseID, outcome, evidence string
-	err := store.db.QueryRowContext(ctx, "SELECT lease_id,settlement_outcome,evidence_digest FROM coh_outbox WHERE message_id=?", settlement.MessageID).Scan(&leaseID, &outcome, &evidence)
+	err := store.db.QueryRowContext(ctx, `SELECT lease_id,settlement_outcome,evidence_digest FROM coh_outbox
+WHERE organization_id=? AND tenant_id=? AND message_id=?`, settlement.OrganizationID, settlement.TenantID, settlement.MessageID).Scan(&leaseID, &outcome, &evidence)
 	if err != nil {
 		return normalizeError("settle_outbox", "message_id", err)
 	}
@@ -90,12 +91,14 @@ func (store *Store) SettleOutbox(ctx context.Context, settlement workflow.Outbox
 	}
 	leaseUntil := ""
 	if settlement.Outcome != workflow.OutboxRetry {
-		if err := store.db.QueryRowContext(ctx, "SELECT lease_until FROM coh_outbox WHERE message_id=?", settlement.MessageID).Scan(&leaseUntil); err != nil {
+		if err := store.db.QueryRowContext(ctx, `SELECT lease_until FROM coh_outbox
+WHERE organization_id=? AND tenant_id=? AND message_id=?`, settlement.OrganizationID, settlement.TenantID, settlement.MessageID).Scan(&leaseUntil); err != nil {
 			return normalizeError("settle_outbox", "lease", err)
 		}
 	}
 	result, err := store.db.ExecContext(ctx, `UPDATE coh_outbox SET settlement_outcome=?,evidence_digest=?,lease_until=?
-WHERE message_id=? AND lease_id=? AND settlement_outcome=''`, settlement.Outcome, settlement.EvidenceDigest, leaseUntil, settlement.MessageID, settlement.LeaseID)
+WHERE organization_id=? AND tenant_id=? AND message_id=? AND lease_id=? AND settlement_outcome=''`, settlement.Outcome, settlement.EvidenceDigest, leaseUntil,
+		settlement.OrganizationID, settlement.TenantID, settlement.MessageID, settlement.LeaseID)
 	if err != nil {
 		return normalizeError("settle_outbox", "settlement", err)
 	}

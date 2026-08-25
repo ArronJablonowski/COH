@@ -136,10 +136,15 @@ func ValidateTransaction(transaction Transaction) error {
 		return invalid(operation, "transaction", "mutation or outbox count is outside bounds")
 	}
 	keys := make([]string, 0, len(transaction.Mutations))
+	organizationID := transaction.Mutations[0].Key.Case.OrganizationID
+	tenantID := transaction.Mutations[0].Key.Case.TenantID
 	for index, mutation := range transaction.Mutations {
 		field := "mutations[" + itoa(index) + "]"
 		if err := validateMutation(operation, field, mutation); err != nil {
 			return err
+		}
+		if mutation.Key.Case.OrganizationID != organizationID || mutation.Key.Case.TenantID != tenantID {
+			return denied(operation, field+".key", "transaction crosses organization or tenant scope")
 		}
 		keys = append(keys, recordKeyString(mutation.Key))
 	}
@@ -150,6 +155,9 @@ func ValidateTransaction(transaction Transaction) error {
 	for index, message := range transaction.Outbox {
 		if err := validateOutboxMessage(operation, "outbox["+itoa(index)+"]", message); err != nil {
 			return err
+		}
+		if message.Case.OrganizationID != organizationID || message.Case.TenantID != tenantID {
+			return denied(operation, "outbox["+itoa(index)+"].case", "transaction crosses organization or tenant scope")
 		}
 		outboxIDs = append(outboxIDs, message.ID)
 	}
@@ -203,6 +211,9 @@ func ValidateOutboxClaim(claim OutboxClaim) error {
 }
 
 func ValidateOutboxSettlement(settlement OutboxSettlement) error {
+	if !uuidV7Pattern.MatchString(settlement.OrganizationID) || !uuidV7Pattern.MatchString(settlement.TenantID) {
+		return invalid("settle_outbox", "scope", "organization and tenant must be UUIDv7 identifiers")
+	}
 	if !uuidV7Pattern.MatchString(settlement.MessageID) || !uuidV7Pattern.MatchString(settlement.LeaseID) {
 		return invalid("settle_outbox", "identity", "message and lease must be UUIDv7 identifiers")
 	}

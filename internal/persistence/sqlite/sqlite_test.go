@@ -102,7 +102,7 @@ func TestOutboxRetryIsReplaySafeAndReclaimable(t *testing.T) {
 	if err != nil || len(deliveries) != 1 {
 		t.Fatalf("claim = %+v, err = %v", deliveries, err)
 	}
-	retry := workflow.OutboxSettlement{MessageID: deliveries[0].Message.ID, LeaseID: deliveries[0].LeaseID, Outcome: workflow.OutboxRetry}
+	retry := workflow.OutboxSettlement{OrganizationID: storetest.OrganizationID, TenantID: storetest.TenantID, MessageID: deliveries[0].Message.ID, LeaseID: deliveries[0].LeaseID, Outcome: workflow.OutboxRetry}
 	if err := guarded.SettleOutbox(context.Background(), retry); err != nil {
 		t.Fatal(err)
 	}

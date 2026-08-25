@@ -167,7 +167,7 @@ func TestGuardedStorageReadAndOutboxBoundaries(t *testing.T) {
 	if err != nil || len(deliveries) != 1 || deliveries[0].LeaseID != testLease {
 		t.Fatalf("ClaimOutbox result=%+v err=%v", deliveries, err)
 	}
-	settlement := OutboxSettlement{MessageID: testMessage, LeaseID: testLease, Outcome: OutboxDelivered, EvidenceDigest: digestOf("evidence")}
+	settlement := OutboxSettlement{OrganizationID: testOrg, TenantID: testTenant, MessageID: testMessage, LeaseID: testLease, Outcome: OutboxDelivered, EvidenceDigest: digestOf("evidence")}
 	if err := store.SettleOutbox(context.Background(), settlement); err != nil {
 		t.Fatalf("SettleOutbox error: %v", err)
 	}
@@ -229,6 +229,15 @@ func TestRecordAndTransactionDenials(t *testing.T) {
 	transaction.Mutations = append(transaction.Mutations, transaction.Mutations[0])
 	if err := ValidateTransaction(transaction); StorageCode(err) != StorageInvalidInput {
 		t.Fatalf("duplicate mutation code = %q", StorageCode(err))
+	}
+	transaction = validTransaction(t)
+	transaction.Outbox[0].Case.TenantID = "0198d6c4-3333-7333-8333-333333333333"
+	if err := ValidateTransaction(transaction); StorageCode(err) != StorageDenied {
+		t.Fatalf("cross-tenant transaction code = %q", StorageCode(err))
+	}
+	settlement := OutboxSettlement{MessageID: testMessage, LeaseID: testLease, Outcome: OutboxDelivered}
+	if err := ValidateOutboxSettlement(settlement); StorageCode(err) != StorageInvalidInput {
+		t.Fatalf("unscoped settlement code = %q", StorageCode(err))
 	}
 }
 
