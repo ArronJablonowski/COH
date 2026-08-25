@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/identity/oidc/v1/token-claims.schema.json",
+  "title": "COH server OIDC token claims v1",
+  "type": "object",
+  "required": ["iss", "sub", "aud", "exp", "iat", "nbf", "jti", "nonce", "coh_org_id", "coh_actor_id", "coh_roles", "coh_tenant_ids"],
+  "properties": {
+    "iss": {"type": "string", "minLength": 1, "maxLength": 512},
+    "sub": {"type": "string", "minLength": 1, "maxLength": 256},
+    "aud": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+    "exp": {"type": "integer", "minimum": 1},
+    "iat": {"type": "integer", "minimum": 1},
+    "nbf": {"type": "integer", "minimum": 1},
+    "jti": {"type": "string", "minLength": 1, "maxLength": 128},
+    "nonce": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+    "coh_org_id": {"$ref": "#/$defs/uuid_v7"},
+    "coh_actor_id": {"$ref": "#/$defs/uuid_v7"},
+    "coh_roles": {"type": "array", "minItems": 1, "maxItems": 5, "uniqueItems": true, "items": {"enum": ["administrator", "analyst", "approver", "auditor", "service"]}},
+    "coh_tenant_ids": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/uuid_v7"}}
+  },
+  "$defs": {"uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"}},
+  "additionalProperties": false
+}

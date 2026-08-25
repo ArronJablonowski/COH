@@ -1,0 +1,30 @@
+{
+  "schema": "coh.server-oidc-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name":"provider-schema","document":"provider","operation":"set","path":"/schema_version","value":"coh.server-oidc/v2","reason":"unsupported_contract"},
+    {"name":"provider-profile","document":"provider","operation":"set","path":"/profile_kind","value":"workstation","reason":"provider_profile"},
+    {"name":"provider-http-issuer","document":"provider","operation":"set","path":"/issuer","value":"http://identity.invalid","reason":"provider_issuer"},
+    {"name":"provider-issuer-query","document":"provider","operation":"set","path":"/issuer","value":"https://identity.invalid/?tenant=a","reason":"provider_issuer"},
+    {"name":"provider-empty-audience","document":"provider","operation":"set","path":"/audiences","value":[],"reason":"provider_audience"},
+    {"name":"provider-unsorted-audience","document":"provider","operation":"set","path":"/audiences","value":["z-client","a-client"],"reason":"provider_audience"},
+    {"name":"provider-duplicate-algorithm","document":"provider","operation":"set","path":"/allowed_algorithms","value":["RS256","RS256"],"reason":"provider_algorithm"},
+    {"name":"provider-none-algorithm","document":"provider","operation":"set","path":"/allowed_algorithms","value":["none"],"reason":"provider_algorithm"},
+    {"name":"provider-jwks-url","document":"provider","operation":"set","path":"/jwks_source_reference","value":"https://keys.invalid","reason":"provider_jwks"},
+    {"name":"provider-no-mtls","document":"provider","operation":"set","path":"/transport_security","value":"tls","reason":"provider_transport"},
+    {"name":"provider-long-age","document":"provider","operation":"set","path":"/maximum_token_age_seconds","value":901,"reason":"provider_time"},
+    {"name":"provider-secret-field","document":"provider","operation":"set","path":"/client_secret","value":"do-not-store","reason":"provider_decoding"},
+    {"name":"claims-http-issuer","document":"claims","operation":"set","path":"/iss","value":"http://identity.invalid","reason":"claims_issuer"},
+    {"name":"claims-empty-subject","document":"claims","operation":"set","path":"/sub","value":"","reason":"claims_identity"},
+    {"name":"claims-empty-audience","document":"claims","operation":"set","path":"/aud","value":[],"reason":"claims_audience"},
+    {"name":"claims-exp-before-issued","document":"claims","operation":"set","path":"/exp","value":1787695100,"reason":"claims_time"},
+    {"name":"claims-not-before-after-issued","document":"claims","operation":"set","path":"/nbf","value":1787695300,"reason":"claims_time"},
+    {"name":"claims-empty-jti","document":"claims","operation":"set","path":"/jti","value":"","reason":"claims_identity"},
+    {"name":"claims-bad-nonce","document":"claims","operation":"set","path":"/nonce","value":"nonce","reason":"claims_nonce"},
+    {"name":"claims-bad-actor","document":"claims","operation":"set","path":"/coh_actor_id","value":"actor","reason":"claims_identity"},
+    {"name":"claims-unsorted-roles","document":"claims","operation":"set","path":"/coh_roles","value":["approver","analyst"],"reason":"claims_roles"},
+    {"name":"claims-service-mixed","document":"claims","operation":"set","path":"/coh_roles","value":["analyst","service"],"reason":"claims_roles"},
+    {"name":"claims-duplicate-tenant","document":"claims","operation":"set","path":"/coh_tenant_ids","value":["0198d6c4-3333-7333-8333-333333333333","0198d6c4-3333-7333-8333-333333333333"],"reason":"claims_tenants"},
+    {"name":"claims-token-field","document":"claims","operation":"set","path":"/access_token","value":"do-not-store","reason":"claims_decoding"}
+  ]
+}

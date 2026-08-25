@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/identity/oidc/v1/provider.schema.json",
+  "title": "COH server OIDC provider configuration v1",
+  "type": "object",
+  "required": ["schema_version", "contract_version", "profile_kind", "issuer", "audiences", "allowed_algorithms", "jwks_source_reference", "transport_security", "profile_decision_digest", "maximum_token_age_seconds", "clock_skew_seconds"],
+  "properties": {
+    "schema_version": {"const": "coh.server-oidc/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "profile_kind": {"enum": ["native_server", "compose"]},
+    "issuer": {"type": "string", "minLength": 1, "maxLength": 512},
+    "audiences": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+    "allowed_algorithms": {"type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": true, "items": {"enum": ["EdDSA", "ES256", "RS256"]}},
+    "jwks_source_reference": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "transport_security": {"const": "mtls"},
+    "profile_decision_digest": {"$ref": "#/$defs/digest"},
+    "maximum_token_age_seconds": {"type": "integer", "minimum": 60, "maximum": 900},
+    "clock_skew_seconds": {"type": "integer", "minimum": 0, "maximum": 60}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+  "additionalProperties": false
+}
