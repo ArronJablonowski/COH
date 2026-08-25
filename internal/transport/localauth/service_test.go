@@ -476,6 +476,28 @@ func TestAuthorizeRejectsMalformedAndTamperedSessionsWithoutCredentialDisclosure
 	}
 }
 
+func TestAuthorizeCancellationTimeoutAndRecovery(t *testing.T) {
+	service, privateKey, _, _, _, audit, _ := authenticationFixture(t)
+	issued := issueTestSession(t, service, privateKey)
+	request := validAuthorizationRequest(localidentity.CaseRead, "")
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	decision, err := service.Authorize(canceled, issued.Token, request)
+	if localidentity.Code(err) != localidentity.Canceled || decision.Outcome != "canceled" {
+		t.Fatalf("canceled decision = %+v, err = %v", decision, err)
+	}
+	expired, stop := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer stop()
+	decision, err = service.Authorize(expired, issued.Token, request)
+	if localidentity.Code(err) != localidentity.Timeout || decision.Outcome != "timeout" {
+		t.Fatalf("timeout decision = %+v, err = %v", decision, err)
+	}
+	decision, err = service.Authorize(context.Background(), issued.Token, request)
+	if err != nil || decision.Outcome != "allowed" || len(audit.decisions) != 3 {
+		t.Fatalf("recovery decision = %+v, audit = %+v, err = %v", decision, audit.decisions, err)
+	}
+}
+
 func issueTestSession(t *testing.T, service Service, privateKey ed25519.PrivateKey) IssuedSession {
 	t.Helper()
 	challenge, err := service.Begin(context.Background(), BeginRequest{OrganizationID: testOrganizationID, ActorID: testActorID})
