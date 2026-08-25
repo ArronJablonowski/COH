@@ -18,16 +18,16 @@ const maximumAuthorityAge = 30 * time.Second
 
 func (systemClock) Now() time.Time { return time.Now().UTC() }
 
-func New(store Store, audit AuditSink) (*Broker, error) {
-	return NewWithDependencies(store, audit, systemClock{}, rand.Reader, time.Duration(leasecontract.MaximumTTLSeconds)*time.Second)
+func New(store Store, audit AuditSink, resolver SecretResolver) (*Broker, error) {
+	return NewWithDependencies(store, audit, resolver, systemClock{}, rand.Reader, time.Duration(leasecontract.MaximumTTLSeconds)*time.Second)
 }
 
-func NewWithDependencies(store Store, audit AuditSink, clock Clock, random io.Reader, maximumTTL time.Duration) (*Broker, error) {
-	if store == nil || audit == nil || clock == nil || random == nil || maximumTTL <= 0 ||
+func NewWithDependencies(store Store, audit AuditSink, resolver SecretResolver, clock Clock, random io.Reader, maximumTTL time.Duration) (*Broker, error) {
+	if store == nil || audit == nil || resolver == nil || clock == nil || random == nil || maximumTTL <= 0 ||
 		maximumTTL > time.Duration(leasecontract.MaximumTTLSeconds)*time.Second {
 		return nil, brokerError(leasecontract.InvalidInput, "broker_configuration_invalid")
 	}
-	return &Broker{store: store, audit: audit, clock: clock, random: random, maxTTL: maximumTTL}, nil
+	return &Broker{store: store, audit: audit, resolver: resolver, clock: clock, random: random, maxTTL: maximumTTL}, nil
 }
 
 func (broker *Broker) Issue(ctx context.Context, request leasecontract.IssuanceRequest, authority leasecontract.IssuanceAuthority) (*Handle, leasecontract.Decision, error) {
@@ -119,9 +119,11 @@ func validateAuthority(request leasecontract.IssuanceRequest, authority leasecon
 
 func (broker *Broker) recordIssue(ctx context.Context, request leasecontract.IssuanceRequest, authority leasecontract.IssuanceAuthority, leaseID string, handle *Handle, resultErr error, referenceDigest string, issuedAt, expiresAt time.Time) (*Handle, leasecontract.Decision, error) {
 	decision := issuanceDecision(request, authority, leaseID, resultErr, referenceDigest, issuedAt, expiresAt)
-	if err := broker.audit.AppendCredentialLeaseDecision(ctx, decision); err != nil {
+	auditCtx, cancel := auditContext(ctx)
+	defer cancel()
+	if err := broker.audit.AppendCredentialLeaseDecision(auditCtx, decision); err != nil {
 		if handle != nil {
-			_ = broker.store.Revoke(context.WithoutCancel(ctx), handle.LeaseID, "audit_unavailable")
+			_, _ = broker.store.Revoke(context.WithoutCancel(ctx), handle.LeaseID, "audit_unavailable")
 			handle.Destroy()
 		}
 		auditErr := brokerError(leasecontract.Unavailable, "audit_unavailable")

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/broker/secretresolver"
 	leasecontract "github.com/ArronJablonowski/COH/internal/domain/credentiallease"
 	"github.com/ArronJablonowski/COH/internal/domain/secretref"
 )
@@ -23,6 +24,12 @@ type auditStub struct {
 	mu        sync.Mutex
 	decisions []leasecontract.Decision
 	err       error
+}
+
+type resolverStub struct{}
+
+func (*resolverStub) Resolve(context.Context, secretref.ResolutionRequest, secretref.AuthoritySnapshot) (*secretresolver.Secret, secretref.Decision, error) {
+	panic("resolver is not used by issuance tests")
 }
 
 func (audit *auditStub) AppendCredentialLeaseDecision(_ context.Context, decision leasecontract.Decision) error {
@@ -166,7 +173,7 @@ func TestConcurrentIssueHasSingleWinner(t *testing.T) {
 	store := NewMemoryStore()
 	audit := &auditStub{}
 	request, authority := validIssueInput()
-	broker, err := NewWithDependencies(store, audit, fixedClock{now: authority.Audience.ObservedAt.Add(time.Second)}, rand.Reader, 5*time.Minute)
+	broker, err := NewWithDependencies(store, audit, &resolverStub{}, fixedClock{now: authority.Audience.ObservedAt.Add(time.Second)}, rand.Reader, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +208,7 @@ func issueFixture(t *testing.T) (*Broker, *MemoryStore, *auditStub, leasecontrac
 	audit := &auditStub{}
 	random := bytes.NewReader(bytes.Repeat([]byte{0x42}, 4096))
 	clock := fixedClock{now: time.Date(2026, 8, 25, 22, 0, 0, 0, time.UTC)}
-	broker, err := NewWithDependencies(store, audit, clock, random, 5*time.Minute)
+	broker, err := NewWithDependencies(store, audit, &resolverStub{}, clock, random, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

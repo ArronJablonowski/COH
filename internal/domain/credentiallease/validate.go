@@ -55,6 +55,32 @@ func ValidateIssuanceAuthority(authority IssuanceAuthority) error {
 	return nil
 }
 
+func ValidateDispatchRequest(request DispatchRequest) error {
+	if !validContext(request.Context) || !validUUID(request.TaskID) || !validDigest(request.ActionDigest) ||
+		!validTargets(request.TargetDigests) || !validToken(request.Operation) ||
+		(request.Audience.Kind != "connector" && request.Audience.Kind != "runner") ||
+		!validToken(request.Audience.ID) || !validDigest(request.Audience.TransportIdentityDigest) {
+		return leaseError(InvalidInput, "dispatch_scope_invalid", nil)
+	}
+	return nil
+}
+
+func ValidateDispatchAuthority(authority DispatchAuthority) error {
+	return ValidateIssuanceAuthority(authority.IssuanceAuthority)
+}
+
+func ValidateRevocationRequest(request RevocationRequest) error {
+	if !validUUID(request.LeaseID) {
+		return leaseError(InvalidInput, "revocation_identity", nil)
+	}
+	switch request.Reason {
+	case "operator_revoked", "credential_rotated", "actor_revoked", "task_canceled", "emergency_stop", "audience_revoked":
+		return nil
+	default:
+		return leaseError(InvalidInput, "revocation_reason", nil)
+	}
+}
+
 func validTargets(targets []string) bool {
 	if len(targets) == 0 || len(targets) > 64 || !slices.IsSorted(targets) {
 		return false

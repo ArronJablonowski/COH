@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/broker/secretresolver"
 	leasecontract "github.com/ArronJablonowski/COH/internal/domain/credentiallease"
+	"github.com/ArronJablonowski/COH/internal/domain/secretref"
 )
 
 const tokenBytes = 32
@@ -23,7 +25,12 @@ type AuditSink interface {
 
 type Store interface {
 	Create(context.Context, Record) (CreateResult, error)
-	Revoke(context.Context, string, string) error
+	Claim(context.Context, string, [32]byte, time.Time) (Record, error)
+	Revoke(context.Context, string, string) (Record, error)
+}
+
+type SecretResolver interface {
+	Resolve(context.Context, secretref.ResolutionRequest, secretref.AuthoritySnapshot) (*secretresolver.Secret, secretref.Decision, error)
 }
 
 type CreateResult string
@@ -48,11 +55,12 @@ type Record struct {
 }
 
 type Broker struct {
-	store  Store
-	audit  AuditSink
-	clock  Clock
-	random io.Reader
-	maxTTL time.Duration
+	store    Store
+	audit    AuditSink
+	resolver SecretResolver
+	clock    Clock
+	random   io.Reader
+	maxTTL   time.Duration
 }
 
 type Handle struct {

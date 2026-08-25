@@ -60,3 +60,27 @@ type AudienceAuthority struct {
 	MutualTLS  bool
 	ObservedAt time.Time
 }
+
+// DispatchRequest is the actual adapter scope presented for one credential
+// use. It must exactly equal the immutable issuance scope.
+type DispatchRequest struct {
+	Context       secretref.Context
+	TaskID        string
+	ActionDigest  string
+	TargetDigests []string
+	Operation     string
+	Audience      Audience
+}
+
+// DispatchAuthority is a fresh trusted snapshot. Rotation, revocation,
+// cancellation, E-stop, or any changed decision invalidates the lease.
+type DispatchAuthority struct {
+	IssuanceAuthority
+	TaskActive          bool
+	EmergencyStopActive bool
+}
+
+type RevocationRequest struct {
+	LeaseID string
+	Reason  string
+}

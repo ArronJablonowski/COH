@@ -2,7 +2,9 @@ package credentiallease
 
 import (
 	"context"
+	"crypto/subtle"
 	"sync"
+	"time"
 
 	leasecontract "github.com/ArronJablonowski/COH/internal/domain/credentiallease"
 )
@@ -43,20 +45,47 @@ func (store *MemoryStore) Create(ctx context.Context, record Record) (CreateResu
 	return CreateNew, nil
 }
 
-func (store *MemoryStore) Revoke(ctx context.Context, leaseID, reason string) error {
+func (store *MemoryStore) Claim(ctx context.Context, leaseID string, tokenDigest [32]byte, now time.Time) (Record, error) {
 	if err := ctx.Err(); err != nil {
-		return err
+		return Record{}, err
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	record, exists := store.records[leaseID]
 	if !exists {
-		return brokerError(leasecontract.Denied, "lease_not_found")
+		return Record{}, brokerError(leasecontract.Denied, "lease_not_found")
+	}
+	if subtle.ConstantTimeCompare(record.TokenDigest[:], tokenDigest[:]) != 1 {
+		return Record{}, brokerError(leasecontract.Denied, "capability_invalid")
+	}
+	if record.Revoked {
+		return cloneRecord(record), brokerError(leasecontract.Denied, "lease_revoked")
+	}
+	if !now.Before(record.ExpiresAt) {
+		return cloneRecord(record), brokerError(leasecontract.Denied, "lease_expired")
+	}
+	if record.Consumed {
+		return cloneRecord(record), brokerError(leasecontract.Conflict, "lease_replayed")
+	}
+	record.Consumed = true
+	store.records[leaseID] = record
+	return cloneRecord(record), nil
+}
+
+func (store *MemoryStore) Revoke(ctx context.Context, leaseID, reason string) (Record, error) {
+	if err := ctx.Err(); err != nil {
+		return Record{}, err
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	record, exists := store.records[leaseID]
+	if !exists {
+		return Record{}, brokerError(leasecontract.Denied, "lease_not_found")
 	}
 	record.Revoked = true
 	record.RevokeReason = reason
 	store.records[leaseID] = record
-	return nil
+	return cloneRecord(record), nil
 }
 
 func cloneRecord(record Record) Record {

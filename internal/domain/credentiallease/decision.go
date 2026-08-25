@@ -33,10 +33,28 @@ type Decision struct {
 	AuthorizationDecisionDigest string    `json:"authorization_decision_digest"`
 	PolicyDecisionDigest        string    `json:"policy_decision_digest"`
 	ApprovalDecisionDigest      string    `json:"approval_decision_digest,omitempty"`
+	SecretDecisionDigest        string    `json:"secret_decision_digest,omitempty"`
 	IssuedAt                    time.Time `json:"issued_at,omitempty"`
 	ExpiresAt                   time.Time `json:"expires_at,omitempty"`
 	OccurredAt                  time.Time `json:"occurred_at"`
 	DecisionDigest              string    `json:"decision_digest"`
+}
+
+func NewDispatchDecision(bound IssuanceRequest, authority IssuanceAuthority, leaseID, outcome, reason, referenceDigest, secretDecisionDigest string, issuedAt, expiresAt, occurredAt time.Time) Decision {
+	decision := NewIssuanceDecision(bound, authority, leaseID, outcome, reason, referenceDigest, issuedAt, expiresAt)
+	decision.Event = "lease_dispatch"
+	decision.OccurredAt = occurredAt
+	decision.SecretDecisionDigest = secretDecisionDigest
+	decision.DecisionDigest = decisionDigest(decision)
+	return decision
+}
+
+func NewRevocationDecision(bound IssuanceRequest, authority IssuanceAuthority, leaseID, outcome, reason, referenceDigest string, issuedAt, expiresAt, occurredAt time.Time) Decision {
+	decision := NewIssuanceDecision(bound, authority, leaseID, outcome, reason, referenceDigest, issuedAt, expiresAt)
+	decision.Event = "lease_revocation"
+	decision.OccurredAt = occurredAt
+	decision.DecisionDigest = decisionDigest(decision)
+	return decision
 }
 
 func NewIssuanceDecision(request IssuanceRequest, authority IssuanceAuthority, leaseID, outcome, reason, referenceDigest string, issuedAt, expiresAt time.Time) Decision {
