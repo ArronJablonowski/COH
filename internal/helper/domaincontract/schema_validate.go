@@ -35,11 +35,32 @@ func (validator *Validator) Validate(ctx context.Context, input []byte) ([]byte,
 	if !exists {
 		return nil, deny("kind %q has no payload schema", kind)
 	}
+	if err := validateCaseBoundary(target.boundary, envelope); err != nil {
+		return nil, err
+	}
 	state := &validationState{context: ctx}
 	if err := validator.validateNode(state, target.document, target.document.definitions[target.name], envelope["data"], "$.data"); err != nil {
 		return nil, err
 	}
 	return canonical, nil
+}
+
+func validateCaseBoundary(mode string, envelope map[string]any) error {
+	switch mode {
+	case "required":
+		if envelope["case_id"] == nil {
+			return deny("case_id is required for kind %q", envelope["kind"])
+		}
+	case "self":
+		if envelope["case_id"] != envelope["id"] {
+			return deny("case_id must equal id for kind %q", envelope["kind"])
+		}
+	case "optional":
+		return nil
+	default:
+		return schemaError("unknown case boundary mode")
+	}
+	return nil
 }
 
 func (validator *Validator) validateNode(state *validationState, document *schemaDocument, rawNode, value any, location string) error {
@@ -64,7 +85,7 @@ func (validator *Validator) validateNode(state *validationState, document *schem
 		for _, choice := range choices.([]any) {
 			branch := *state
 			err := validator.validateNode(&branch, document, choice, value, location)
-			if errors.Is(err, ErrCancelled) {
+			if errors.Is(err, ErrCancelled) || errors.Is(err, ErrTimeout) {
 				return err
 			}
 			if err == nil {

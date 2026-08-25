@@ -7,6 +7,24 @@
   "blocked_by": [
     "COH-E01"
   ],
+  "case_boundaries": {
+    "action": "required",
+    "approval": "required",
+    "artifact_manifest": "required",
+    "case": "self",
+    "claim": "required",
+    "evidence": "required",
+    "finding": "required",
+    "model": "optional",
+    "query": "required",
+    "risk": "required",
+    "roe": "required",
+    "run": "required",
+    "skill": "optional",
+    "task": "required",
+    "timeline_event": "required",
+    "vulnerability": "required"
+  },
   "implemented_kind_schemas": {
     "action": "authority-payloads.schema.json#/$defs/action",
     "approval": "authority-payloads.schema.json#/$defs/approval",

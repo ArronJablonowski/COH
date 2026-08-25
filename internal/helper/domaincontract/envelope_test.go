@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestValidateEnvelopeFixture(t *testing.T) {
@@ -35,6 +36,19 @@ func TestValidateEnvelopeCancellation(t *testing.T) {
 	cancel()
 	if _, err := ValidateEnvelope(ctx, readFixture(t, "envelope.valid.json")); !errors.Is(err, ErrCancelled) {
 		t.Fatalf("ValidateEnvelope() err=%v", err)
+	}
+}
+
+func TestValidateEnvelopeTimeoutAndRecovery(t *testing.T) {
+	input := readFixture(t, "envelope.valid.json")
+	ctx, cancel := context.WithDeadline(context.Background(), time.Unix(0, 0))
+	defer cancel()
+	output, err := ValidateEnvelope(ctx, input)
+	if !errors.Is(err, ErrTimeout) || output != nil {
+		t.Fatalf("timeout output=%s err=%v", output, err)
+	}
+	if _, err := ValidateEnvelope(context.Background(), input); err != nil {
+		t.Fatalf("same-input recovery failed: %v", err)
 	}
 }
 

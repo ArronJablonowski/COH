@@ -122,10 +122,52 @@ func TestValidatorDeniesTrackedPayloadExamples(t *testing.T) {
 
 func TestValidatorPreservesCancellation(t *testing.T) {
 	validator := loadTrackedValidator(t)
+	casePayload := loadPositivePayloads(t)["case"]
+	encoded, err := json.Marshal(casePayload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := wrapPayload(t, encoded)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := validator.Validate(ctx, readFixture(t, "envelope.valid.json")); !errors.Is(err, ErrCancelled) {
+	if _, err := validator.Validate(ctx, input); !errors.Is(err, ErrCancelled) {
 		t.Fatalf("Validate() err=%v", err)
+	}
+	if _, err := validator.Validate(context.Background(), input); err != nil {
+		t.Fatalf("same-input recovery failed: %v", err)
+	}
+}
+
+func TestValidatorEnforcesCaseBoundaryModes(t *testing.T) {
+	validator := loadTrackedValidator(t)
+	positives := loadPositivePayloads(t)
+	for _, test := range []struct {
+		kind   string
+		caseID any
+		denied bool
+	}{
+		{kind: "case", caseID: "0198d6c4-9999-7999-8999-999999999999", denied: true},
+		{kind: "action", caseID: nil, denied: true},
+		{kind: "model", caseID: nil, denied: false},
+	} {
+		encoded, err := json.Marshal(positives[test.kind])
+		if err != nil {
+			t.Fatal(err)
+		}
+		value, err := DecodeUnique(wrapPayload(t, encoded))
+		if err != nil {
+			t.Fatal(err)
+		}
+		document := value.(map[string]any)
+		document["case_id"] = test.caseID
+		input, err := json.Marshal(document)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, validationErr := validator.Validate(context.Background(), input)
+		if test.denied != errors.Is(validationErr, ErrDenied) {
+			t.Fatalf("%s denied=%v err=%v", test.kind, test.denied, validationErr)
+		}
 	}
 }
 

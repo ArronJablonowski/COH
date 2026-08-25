@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrCancelled = errors.New("domain contract cancelled")
+	ErrTimeout   = errors.New("domain contract timed out")
 	uuidV7       = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 	timestamp    = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9][.][0-9]{9}Z$`)
 )
@@ -90,7 +91,11 @@ func ValidateEnvelope(ctx context.Context, input []byte) ([]byte, error) {
 func checkContext(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
-		return fmt.Errorf("%w: %v", ErrCancelled, context.Cause(ctx))
+		cause := context.Cause(ctx)
+		if errors.Is(cause, context.DeadlineExceeded) {
+			return fmt.Errorf("%w: %v", ErrTimeout, cause)
+		}
+		return fmt.Errorf("%w: %v", ErrCancelled, cause)
 	default:
 		return nil
 	}

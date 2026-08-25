@@ -22,6 +22,7 @@ type schemaDocument struct {
 type schemaTarget struct {
 	document *schemaDocument
 	name     string
+	boundary string
 }
 
 // Validator evaluates the deliberately bounded JSON Schema vocabulary used by
@@ -51,9 +52,17 @@ func LoadValidator(root fs.FS) (*Validator, error) {
 	if !ok || len(references) != len(registered) {
 		return nil, schemaError("registry implementation map")
 	}
+	boundaries, ok := registry["case_boundaries"].(map[string]any)
+	if !ok || len(boundaries) != len(registered) {
+		return nil, schemaError("registry case-boundary map")
+	}
 	validator := &Validator{patterns: make(map[string]*regexp.Regexp), kinds: make(map[string]schemaTarget)}
 	documents := make(map[string]*schemaDocument)
 	for kind := range registered {
+		boundary, ok := boundaries[kind].(string)
+		if !ok || boundary != "required" && boundary != "optional" && boundary != "self" {
+			return nil, schemaError("invalid case boundary for %s", kind)
+		}
 		reference, ok := references[kind].(string)
 		if !ok {
 			return nil, schemaError("missing schema for %s", kind)
@@ -73,7 +82,7 @@ func LoadValidator(root fs.FS) (*Validator, error) {
 		if _, exists := document.definitions[name]; !exists || name != kind {
 			return nil, schemaError("schema target mismatch for %s", kind)
 		}
-		validator.kinds[kind] = schemaTarget{document: document, name: name}
+		validator.kinds[kind] = schemaTarget{document: document, name: name, boundary: boundary}
 	}
 	return validator, nil
 }

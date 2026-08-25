@@ -69,6 +69,11 @@ storage boundaries. A contract that legitimately precedes case creation uses the
 separately defined nullability rule in its schema; implementations may not invent,
 copy from model output, or default a missing boundary.
 
+The registry makes that rule executable. The `case` kind is `self`-bound, so
+`case_id` must equal `id`. Reusable `model` and `skill` catalog records are
+`optional` and may use `null`; all other v1 kinds are `required` to carry a
+case UUID. These draft modes fail closed and remain subject to COH-E01 approval.
+
 The envelope never contains raw credentials, reusable capabilities, arbitrary
 vendor payloads, unbounded evidence bytes, full prompts, or executable code.
 Those values remain behind dedicated trust boundaries and are referenced only by

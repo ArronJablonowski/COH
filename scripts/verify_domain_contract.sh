@@ -53,6 +53,11 @@ jq -e '
   and .requirements == ["FR-010", "NFR-021"]
   and (.kinds | length) == 16
   and (.kinds == (.kinds | sort | unique))
+  and ((.case_boundaries | keys) == .kinds)
+  and (.case_boundaries.case == "self")
+  and (.case_boundaries.model == "optional")
+  and (.case_boundaries.skill == "optional")
+  and ([.case_boundaries[] | select(. == "required")] | length == 13)
 ' "$registry" >/dev/null || fail 'domain registry invariants failed'
 
 jq -r '.kinds[]' "$registry" > "$tmp/registry-kinds"
