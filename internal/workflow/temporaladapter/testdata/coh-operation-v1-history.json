@@ -1,0 +1,53 @@
+{
+  "events": [
+    {
+      "eventId": 1,
+      "eventTime": "2026-08-25T19:55:00Z",
+      "eventType": "WorkflowExecutionStarted",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "coh.operation.v1"
+        },
+        "taskQueue": {
+          "name": "coh-replay"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJPcGVyYXRpb25JRCI6IjAxOThkNmM0LTg4ODgtNzg4OC04ODg4LTg4ODg4ODg4ODg4OCIsIkNhc2UiOnsiT3JnYW5pemF0aW9uSUQiOiIwMTk4ZDZjNC0wYjY4LTdjNGYtOTA4ZC1iYjIxYjRlNWFjOWUiLCJUZW5hbnRJRCI6IjAxOThkNmM0LTIyZGMtN2IzYy1hZjJjLTc1YzFiOGViNGYxNiIsIkNhc2VJRCI6IjAxOThkNmM0LTc2MTgtN2QzMS04ZTBhLTlkYTUzY2FlOGNhMiJ9LCJLaW5kIjoiY2FzZSIsIlZlcnNpb24iOiJjb2gub3BlcmF0aW9uLnYxIiwiSW5wdXREaWdlc3QiOiJzaGEyNTY6NzJjODRiYTk5ZDc3ZWU3NjZlOTQ2OGEwZDdiMWY5NDY2NGIwNWIyNGQ0YzliOTZiNjIzMDY3NWYzZWZjMGY2YyIsIlN0YXJ0RGlnZXN0Ijoic2hhMjU2OjUyMjU5MGM5NGQyMWMwYzYyODJlMjlmYTExZGIwZWRkMTg2NTgwYjUwN2E0OTI2OWYzNzRjZDY0NmJkYjZjM2IifQ=="
+            }
+          ]
+        },
+        "workflowExecutionTimeout": "86400s",
+        "workflowRunTimeout": "86400s",
+        "workflowTaskTimeout": "10s",
+        "identity": "coh-retained-fixture"
+      }
+    },
+    {
+      "eventId": 2,
+      "eventTime": "2026-08-25T19:55:00Z",
+      "eventType": "WorkflowTaskScheduled",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "coh-replay"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": 3,
+      "eventTime": "2026-08-25T19:55:00Z",
+      "eventType": "WorkflowTaskStarted",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": 2,
+        "identity": "coh-replay-worker",
+        "requestId": "0198d6c4-9999-7999-8999-999999999999"
+      }
+    }
+  ]
+}

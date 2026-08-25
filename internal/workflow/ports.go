@@ -20,9 +20,19 @@ type ActionAuthority interface {
 	Submit(context.Context, domain.ToolIntent) (domain.ActionReceipt, error)
 }
 
-// Engine is the durable application boundary exposed to transports.
+// Engine is the guarded durable application boundary exposed to transports.
 type Engine interface {
-	Start(context.Context, domain.Operation) error
+	Start(context.Context, WorkflowStart) (WorkflowHandle, error)
+	Signal(context.Context, WorkflowSignal) error
+	Query(context.Context, WorkflowQuery) (WorkflowSnapshot, error)
+	Cancel(context.Context, WorkflowCancel) error
+	Replay(context.Context, WorkflowReplay) (WorkflowReplayResult, error)
+}
+
+// EngineDriver is implemented by durable workflow adapters. GuardEngine must
+// wrap a driver before it is exposed to a transport or command.
+type EngineDriver interface {
+	Engine
 }
 
 // Dependencies are explicit, testable application ports.
