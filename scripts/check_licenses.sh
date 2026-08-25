@@ -47,7 +47,7 @@ while read -r module directory; do
   fi
   digest="$("${COH_QUALITYGATE_BIN:?COH_QUALITYGATE_BIN is required}" -mode digest -input "${license_file}")"
 	if ! awk -v id="${module}" -v hash="${digest}" '
-		$1 == "module" && $2 == id && $3 ~ /^(Apache-2.0|BSD-3-Clause|MIT|MPL-2.0)$/ && $4 == hash && $5 == "repository" { found=1 }
+		$1 == "module" && $2 == id && $3 ~ /^(Apache-2.0|BSD-3-Clause|ISC|MIT|MIT-AND-Apache-2.0|MPL-2.0)$/ && $4 == hash && $5 == "repository" { found=1 }
 		END { exit !found }
 	' "${rule_list}"; then
     echo "Unapproved module license or digest for ${module}" >&2
