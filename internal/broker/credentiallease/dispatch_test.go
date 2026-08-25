@@ -60,7 +60,7 @@ func TestDispatchUsesSecretOnlyAfterAtomicClaimAndAudit(t *testing.T) {
 	fixture := newDispatchFixture(t)
 	dispatchRequest, dispatchAuthority := fixture.dispatchInput()
 	var consumed []byte
-	decision, err := fixture.broker.Dispatch(context.Background(), fixture.handle, dispatchRequest, dispatchAuthority, func(value []byte) error {
+	decision, err := fixture.broker.Use(context.Background(), fixture.handle, dispatchRequest, dispatchAuthority, func(value []byte) error {
 		consumed = append([]byte(nil), value...)
 		return nil
 	})
@@ -84,11 +84,11 @@ func TestDispatchRejectsReplayBeforeResolution(t *testing.T) {
 	fixture := newDispatchFixture(t)
 	clone := cloneHandle(fixture.handle)
 	request, authority := fixture.dispatchInput()
-	if _, err := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { return nil }); err != nil {
+	if _, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { return nil }); err != nil {
 		t.Fatal(err)
 	}
 	called := false
-	decision, err := fixture.broker.Dispatch(context.Background(), clone, request, authority, func([]byte) error {
+	decision, err := fixture.broker.Use(context.Background(), clone, request, authority, func([]byte) error {
 		called = true
 		return nil
 	})
@@ -115,7 +115,7 @@ func TestConcurrentDispatchHasExactlyOneCredentialConsumer(t *testing.T) {
 	for _, handle := range handles {
 		go func(candidate *Handle) {
 			defer wait.Done()
-			_, _ = fixture.broker.Dispatch(context.Background(), candidate, request, authority, func([]byte) error {
+			_, _ = fixture.broker.Use(context.Background(), candidate, request, authority, func([]byte) error {
 				consumers.Add(1)
 				return nil
 			})
@@ -174,7 +174,7 @@ func TestDispatchDeniesScopeAndAuthorityChanges(t *testing.T) {
 			request, authority := fixture.dispatchInput()
 			test.mutate(&request, &authority)
 			called := false
-			decision, err := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error {
+			decision, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error {
 				called = true
 				return nil
 			})
@@ -203,7 +203,7 @@ func TestDispatchDeniesExpirationRevocationAndCapabilityTamper(t *testing.T) {
 			test.mutate(fixture)
 			request, authority := fixture.dispatchInput()
 			called := false
-			decision, err := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
+			decision, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
 			if (leasecontract.Code(err) != leasecontract.Denied && leasecontract.Code(err) != leasecontract.Conflict) || reason(err) != test.reason || decision.Outcome != "denied" || called || len(fixture.secretAudit.decisions) != 0 {
 				t.Fatalf("decision = %+v, called = %t, err = %v", decision, called, err)
 			}
@@ -230,7 +230,7 @@ func TestDispatchDeniesCredentialRotationAndRevocation(t *testing.T) {
 			test.mutate(fixture)
 			request, authority := fixture.dispatchInput()
 			called := false
-			decision, err := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
+			decision, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
 			if leasecontract.Code(err) != leasecontract.Denied || reason(err) != test.reason || decision.Outcome != "denied" || decision.SecretDecisionDigest == "" || called {
 				t.Fatalf("decision = %+v, called = %t, err = %v", decision, called, err)
 			}
@@ -244,7 +244,7 @@ func TestDispatchAuditFailureAndCallbackFailureStayFailClosed(t *testing.T) {
 		fixture.leaseAudit.err = errors.New("private lease audit failure")
 		request, authority := fixture.dispatchInput()
 		called := false
-		decision, err := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
+		decision, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
 		if leasecontract.Code(err) != leasecontract.Unavailable || reason(err) != "audit_unavailable" || decision.ReasonCode != "audit_unavailable" || called {
 			t.Fatalf("decision = %+v, called = %t, err = %v", decision, called, err)
 		}
@@ -254,7 +254,7 @@ func TestDispatchAuditFailureAndCallbackFailureStayFailClosed(t *testing.T) {
 		fixture.secretAudit.err = errors.New("private secret audit failure")
 		request, authority := fixture.dispatchInput()
 		called := false
-		decision, err := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
+		decision, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
 		if leasecontract.Code(err) != leasecontract.Unavailable || reason(err) != "credential_audit_unavailable" || decision.Outcome != "unavailable" || called {
 			t.Fatalf("decision = %+v, called = %t, err = %v", decision, called, err)
 		}
@@ -263,7 +263,7 @@ func TestDispatchAuditFailureAndCallbackFailureStayFailClosed(t *testing.T) {
 		fixture := newDispatchFixture(t)
 		request, authority := fixture.dispatchInput()
 		privateErr := errors.New("private connector failure with credential-value")
-		_, err := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { return privateErr })
+		_, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { return privateErr })
 		if leasecontract.Code(err) != leasecontract.Unavailable || reason(err) != "dispatch_failed" || bytes.Contains([]byte(err.Error()), []byte(privateErr.Error())) {
 			t.Fatalf("err = %v", err)
 		}
@@ -293,11 +293,11 @@ func TestDispatchRecoversAfterPredispatchStoreOutage(t *testing.T) {
 	fixture.broker.store = flaky
 	request, authority := fixture.dispatchInput()
 	called := false
-	decision, err := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
+	decision, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
 	if leasecontract.Code(err) != leasecontract.Unavailable || reason(err) != "lease_store_unavailable" || decision.Outcome != "unavailable" || called || fixture.handle.dead {
 		t.Fatalf("first decision = %+v, called = %t, dead = %t, err = %v", decision, called, fixture.handle.dead, err)
 	}
-	decision, err = fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
+	decision, err = fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
 	if err != nil || decision.Outcome != "allowed" || !called {
 		t.Fatalf("retry decision = %+v, called = %t, err = %v", decision, called, err)
 	}
@@ -309,11 +309,11 @@ func TestDispatchCancellationBeforeClaimCanRecover(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	called := false
-	decision, err := fixture.broker.Dispatch(ctx, fixture.handle, request, authority, func([]byte) error { called = true; return nil })
+	decision, err := fixture.broker.Use(ctx, fixture.handle, request, authority, func([]byte) error { called = true; return nil })
 	if leasecontract.Code(err) != leasecontract.Canceled || decision.Outcome != "canceled" || called || fixture.handle.dead {
 		t.Fatalf("canceled decision = %+v, called = %t, dead = %t, err = %v", decision, called, fixture.handle.dead, err)
 	}
-	decision, err = fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
+	decision, err = fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { called = true; return nil })
 	if err != nil || decision.Outcome != "allowed" || !called {
 		t.Fatalf("retry decision = %+v, called = %t, err = %v", decision, called, err)
 	}

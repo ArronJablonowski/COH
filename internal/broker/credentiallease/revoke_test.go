@@ -18,7 +18,7 @@ func TestRevokeImmediatelyBlocksDispatchAndRecordsProof(t *testing.T) {
 	}
 	request, authority := fixture.dispatchInput()
 	called := false
-	dispatchDecision, dispatchErr := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error {
+	dispatchDecision, dispatchErr := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error {
 		called = true
 		return nil
 	})
@@ -41,7 +41,7 @@ func TestRevocationAuditFailureCannotRestoreLease(t *testing.T) {
 	}
 	fixture.leaseAudit.err = nil
 	request, authority := fixture.dispatchInput()
-	_, dispatchErr := fixture.broker.Dispatch(context.Background(), fixture.handle, request, authority, func([]byte) error { return nil })
+	_, dispatchErr := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error { return nil })
 	if leasecontract.Code(dispatchErr) != leasecontract.Denied || reason(dispatchErr) != "lease_revoked" {
 		t.Fatalf("dispatch err = %v", dispatchErr)
 	}

@@ -11,10 +11,10 @@ import (
 	"github.com/ArronJablonowski/COH/internal/domain/secretref"
 )
 
-// Dispatch atomically consumes one lease, revalidates every authority binding,
+// Use atomically consumes one lease, revalidates every authority binding,
 // resolves the current credential version, appends audit, and only then gives
 // a temporary secret copy to the callback.
-func (broker *Broker) Dispatch(ctx context.Context, handle *Handle, request leasecontract.DispatchRequest, authority leasecontract.DispatchAuthority, consumer func([]byte) error) (leasecontract.Decision, error) {
+func (broker *Broker) Use(ctx context.Context, handle *Handle, request leasecontract.DispatchRequest, authority leasecontract.DispatchAuthority, consumer func([]byte) error) (leasecontract.Decision, error) {
 	now := time.Time{}
 	if broker != nil && broker.clock != nil {
 		now = broker.clock.Now().UTC()
