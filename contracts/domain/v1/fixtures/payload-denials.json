@@ -1,0 +1,18 @@
+[
+  {"name":"action-invalid-tier","kind":"action","operation":"replace","property":"tier","value":"T5"},
+  {"name":"approval-use-count-below-minimum","kind":"approval","operation":"replace","property":"maximum_use_count","value":0},
+  {"name":"artifact-manifest-invalid-digest","kind":"artifact_manifest","operation":"replace","property":"artifact_digest","value":"sha256:bad"},
+  {"name":"case-missing-required-state","kind":"case","operation":"remove","property":"state"},
+  {"name":"claim-empty-statement","kind":"claim","operation":"replace","property":"statement","value":""},
+  {"name":"evidence-length-below-minimum","kind":"evidence","operation":"replace","property":"length","value":-1},
+  {"name":"finding-additional-property","kind":"finding","operation":"add","property":"unexpected","value":true},
+  {"name":"model-invalid-version","kind":"model","operation":"replace","property":"parser_version","value":"0"},
+  {"name":"query-timeout-below-minimum","kind":"query","operation":"replace","property":"timeout_ms","value":0},
+  {"name":"risk-array-below-minimum","kind":"risk","operation":"replace","property":"ordered_factors","value":[]},
+  {"name":"roe-array-below-minimum","kind":"roe","operation":"replace","property":"method_digests","value":[]},
+  {"name":"run-budget-below-minimum","kind":"run","operation":"add","property":"budget_units","value":0},
+  {"name":"skill-invalid-version","kind":"skill","operation":"replace","property":"version","value":"1."},
+  {"name":"task-attempt-below-minimum","kind":"task","operation":"replace","property":"attempt","value":0},
+  {"name":"timeline-event-invalid-digest","kind":"timeline_event","operation":"replace","property":"evidence_digest","value":"sha256:bad"},
+  {"name":"vulnerability-invalid-token","kind":"vulnerability","operation":"replace","property":"identifiers","value":["BAD TOKEN"]}
+]

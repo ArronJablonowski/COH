@@ -78,6 +78,48 @@ func TestValidatorDeniesPayloadViolations(t *testing.T) {
 	}
 }
 
+func TestValidatorDeniesTrackedPayloadExamples(t *testing.T) {
+	validator := loadTrackedValidator(t)
+	positives := loadPositivePayloads(t)
+	value, err := DecodeUnique(readFixture(t, "payload-denials.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	denials := value.([]any)
+	seen := make(map[string]struct{}, len(denials))
+	for _, rawDenial := range denials {
+		denial := rawDenial.(map[string]any)
+		name := denial["name"].(string)
+		kind := denial["kind"].(string)
+		positive, exists := positives[kind]
+		if !exists {
+			t.Fatalf("%s: positive fixture missing", kind)
+		}
+		payload := cloneObject(t, positive)
+		data := payload["data"].(map[string]any)
+		property := denial["property"].(string)
+		switch denial["operation"] {
+		case "add", "replace":
+			data[property] = denial["value"]
+		case "remove":
+			delete(data, property)
+		default:
+			t.Fatalf("%s: unsupported fixture operation", name)
+		}
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := validator.Validate(context.Background(), wrapPayload(t, encoded)); !errors.Is(err, ErrDenied) {
+			t.Fatalf("%s: err=%v", name, err)
+		}
+		seen[kind] = struct{}{}
+	}
+	if len(denials) != 16 || len(seen) != 16 {
+		t.Fatalf("denials=%d kinds=%d, want 16 each", len(denials), len(seen))
+	}
+}
+
 func TestValidatorPreservesCancellation(t *testing.T) {
 	validator := loadTrackedValidator(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -125,6 +167,35 @@ func readContractFile(t *testing.T, name string) []byte {
 		t.Fatal(err)
 	}
 	return input
+}
+
+func loadPositivePayloads(t *testing.T) map[string]map[string]any {
+	t.Helper()
+	result := make(map[string]map[string]any)
+	for _, name := range []string{"workflow-payloads.valid.json", "evidence-analysis-payloads.valid.json", "authority-payloads.valid.json", "capability-risk-payloads.valid.json"} {
+		value, err := DecodeUnique(readFixture(t, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, rawPayload := range value.([]any) {
+			payload := rawPayload.(map[string]any)
+			result[payload["kind"].(string)] = payload
+		}
+	}
+	return result
+}
+
+func cloneObject(t *testing.T, value map[string]any) map[string]any {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := DecodeUnique(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return decoded.(map[string]any)
 }
 
 func wrapPayload(t *testing.T, payload []byte) []byte {

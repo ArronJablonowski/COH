@@ -14,6 +14,7 @@ workflow_valid="$contract/fixtures/workflow-payloads.valid.json"
 evidence_valid="$contract/fixtures/evidence-analysis-payloads.valid.json"
 authority_valid="$contract/fixtures/authority-payloads.valid.json"
 capability_valid="$contract/fixtures/capability-risk-payloads.valid.json"
+payload_denials="$contract/fixtures/payload-denials.json"
 denied="$contract/fixtures/denied"
 
 fail() {
@@ -27,7 +28,7 @@ for command in go jq diff mktemp; do
     exit 2
   }
 done
-for path in "$registry" "$schema" "$workflow_schema" "$evidence_schema" "$authority_schema" "$capability_schema" "$valid" "$workflow_valid" "$evidence_valid" "$authority_valid" "$capability_valid" "$denied"; do
+for path in "$registry" "$schema" "$workflow_schema" "$evidence_schema" "$authority_schema" "$capability_schema" "$valid" "$workflow_valid" "$evidence_valid" "$authority_valid" "$capability_valid" "$payload_denials" "$denied"; do
   [[ -e "$path" ]] || {
     printf 'error: domain contract input is missing: %s\n' "$path" >&2
     exit 2
@@ -37,6 +38,7 @@ jq -e 'map(.kind) == ["artifact_manifest", "case", "run", "task"] and all(.[]; (
 jq -e 'map(.kind) == ["claim", "evidence", "finding", "timeline_event"] and all(.[]; (.data | type) == "object")' "$evidence_valid" >/dev/null || fail 'evidence positive fixture inventory failed'
 jq -e 'map(.kind) == ["action", "approval", "query", "roe"] and all(.[]; (.data | type) == "object")' "$authority_valid" >/dev/null || fail 'authority positive fixture inventory failed'
 jq -e 'map(.kind) == ["model", "risk", "skill", "vulnerability"] and all(.[]; (.data | type) == "object")' "$capability_valid" >/dev/null || fail 'capability positive fixture inventory failed'
+jq -e 'length == 16 and (map(.kind) | sort | unique | length) == 16 and all(.[]; (.name | type) == "string" and (.kind | type) == "string" and (.property | type) == "string" and (.operation == "add" or .operation == "remove" or .operation == "replace"))' "$payload_denials" >/dev/null || fail 'payload denial fixture inventory failed'
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/coh-domain-contract.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
@@ -136,4 +138,4 @@ done
 go test ./internal/helper/domaincontract -count=1 >/dev/null ||
   fail 'executable domain contract tests failed'
 
-printf 'domain-contract summary: registry=16 schema-kinds=16 payloads-valid=16 envelope-valid=1 fixtures-denied=4 failures=0\n'
+printf 'domain-contract summary: registry=16 schema-kinds=16 payloads-valid=16 payloads-denied=16 envelope-valid=1 envelopes-denied=4 failures=0\n'
