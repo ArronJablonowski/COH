@@ -1,0 +1,22 @@
+{
+  "schema": "coh.deployment-profile-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name":"native-requires-docker","base":"native-workstation-connected.json","path":"/isolation/docker_required","value":true,"expected_code":"denied","reason":"native_docker_dependency"},
+    {"name":"docker-socket-mounted","base":"compose-connected.json","path":"/isolation/docker_socket_mounted","value":true,"expected_code":"denied","reason":"unsafe_isolation"},
+    {"name":"public-database","base":"compose-connected.json","path":"/isolation/database_public","value":true,"expected_code":"denied","reason":"unsafe_isolation"},
+    {"name":"environment-secret","base":"compose-connected.json","path":"/isolation/secrets_in_environment","value":true,"expected_code":"denied","reason":"unsafe_isolation"},
+    {"name":"server-shared-identity","base":"native-server-restricted.json","path":"/identities/database","value":"temporal.service","expected_code":"denied","reason":"service_identity_mismatch"},
+    {"name":"floating-compose-image","base":"compose-connected.json","path":"/compose/image_digests/provider","value":"coh-provider:latest","expected_code":"denied","reason":"compose_image_unpinned"},
+    {"name":"extra-compose-image","base":"compose-connected.json","path":"/compose/image_digests/rogue","value":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","expected_code":"denied","reason":"compose_image_inventory"},
+    {"name":"compose-without-migrations","base":"compose-connected.json","path":"/compose/migrations_run","value":false,"expected_code":"denied","reason":"compose_component_mismatch"},
+    {"name":"compose-local-auth","base":"compose-connected.json","path":"/services/authentication","value":"local","expected_code":"denied","reason":"compose_profile_mismatch"},
+    {"name":"workstation-ephemeral-temporal","base":"native-workstation-connected.json","path":"/services/workflow","value":"temporal_development","expected_code":"denied","reason":"workstation_profile_mismatch"},
+    {"name":"duplicate-endpoint-reference","base":"compose-connected.json","path":"/connectivity/endpoint_references","value":["provider.primary","provider.primary"],"expected_code":"denied","reason":"endpoint_reference_invalid"},
+    {"name":"air-gap-dns","base":"native-workstation-air-gap.json","path":"/connectivity/dns_allowed","value":true,"expected_code":"denied","reason":"air_gap_egress_enabled"},
+    {"name":"air-gap-provider-route","base":"compose-air-gap.json","path":"/connectivity/endpoint_references","value":["provider.primary"],"expected_code":"denied","reason":"air_gap_egress_enabled"},
+    {"name":"air-gap-missing-provenance","base":"compose-air-gap.json","path":"/air_gap/provenance","value":false,"expected_code":"denied","reason":"air_gap_bundle_incomplete"},
+    {"name":"connected-with-offline-bundle","base":"compose-connected.json","path":"/air_gap/signed_packages","value":true,"expected_code":"denied","reason":"connectivity_conflict"},
+    {"name":"unsupported-contract","base":"native-workstation-connected.json","path":"/contract_version","value":"2.0.0","expected_code":"invalid_input","reason":"unsupported_contract"}
+  ]
+}

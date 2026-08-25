@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/deployment/v1/deployment-profile.schema.json",
+  "title": "COH deployment profile v1",
+  "type": "object",
+  "required": ["schema_version", "contract_version", "change", "deployment", "services", "isolation", "connectivity", "identities", "compose", "air_gap"],
+  "properties": {
+    "schema_version": {"const": "coh.deployment-profile/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "change": {
+      "type": "object",
+      "required": ["organization_id", "actor_id", "revision", "previous_config_digest"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "revision": {"type": "integer", "minimum": 1},
+        "previous_config_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]}
+      },
+      "additionalProperties": false
+    },
+    "deployment": {
+      "type": "object",
+      "required": ["kind", "os", "arch"],
+      "properties": {
+        "kind": {"enum": ["native_workstation", "native_server", "compose"]},
+        "os": {"enum": ["darwin", "linux", "windows"]},
+        "arch": {"enum": ["amd64", "arm64"]}
+      },
+      "additionalProperties": false
+    },
+    "services": {
+      "type": "object",
+      "required": ["storage", "workflow", "authentication", "transport_security", "evidence_store"],
+      "properties": {
+        "storage": {"enum": ["sqlite", "postgresql_18"]},
+        "workflow": {"enum": ["temporal_development_persistent", "temporal_production"]},
+        "authentication": {"enum": ["local", "oidc"]},
+        "transport_security": {"enum": ["loopback", "mtls"]},
+        "evidence_store": {"enum": ["local", "configured"]}
+      },
+      "additionalProperties": false
+    },
+    "isolation": {
+      "type": "object",
+      "required": ["listen_scope", "docker_required", "docker_socket_mounted", "database_public", "workflow_public", "secrets_in_environment"],
+      "properties": {
+        "listen_scope": {"enum": ["loopback", "private"]},
+        "docker_required": {"type": "boolean"},
+        "docker_socket_mounted": {"type": "boolean"},
+        "database_public": {"type": "boolean"},
+        "workflow_public": {"type": "boolean"},
+        "secrets_in_environment": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "connectivity": {
+      "type": "object",
+      "required": ["mode", "endpoint_references", "dns_allowed", "internet_allowed", "telemetry_allowed", "updates_allowed", "external_time_allowed"],
+      "properties": {
+        "mode": {"enum": ["connected", "restricted_connected", "air_gapped"]},
+        "endpoint_references": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/token"}},
+        "dns_allowed": {"type": "boolean"},
+        "internet_allowed": {"type": "boolean"},
+        "telemetry_allowed": {"type": "boolean"},
+        "updates_allowed": {"type": "boolean"},
+        "external_time_allowed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "identities": {
+      "type": "object",
+      "required": ["control_plane", "workflow", "database"],
+      "properties": {
+        "control_plane": {"oneOf": [{"$ref": "#/$defs/token"}, {"const": ""}]},
+        "workflow": {"oneOf": [{"$ref": "#/$defs/token"}, {"const": ""}]},
+        "database": {"oneOf": [{"$ref": "#/$defs/token"}, {"const": ""}]}
+      },
+      "additionalProperties": false
+    },
+    "compose": {
+      "type": "object",
+      "required": ["enabled", "provider", "image_digests", "migrations_run", "validators_run"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "provider": {"oneOf": [{"$ref": "#/$defs/token"}, {"const": ""}]},
+        "image_digests": {
+          "type": "object",
+          "properties": {
+            "control_plane": {"$ref": "#/$defs/digest"},
+            "postgresql": {"$ref": "#/$defs/digest"},
+            "temporal": {"$ref": "#/$defs/digest"},
+            "migrations": {"$ref": "#/$defs/digest"},
+            "validator": {"$ref": "#/$defs/digest"},
+            "provider": {"$ref": "#/$defs/digest"}
+          },
+          "additionalProperties": false
+        },
+        "migrations_run": {"type": "boolean"},
+        "validators_run": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "air_gap": {
+      "type": "object",
+      "required": ["bundle_manifest_digest", "signed_packages", "oci_archives", "policies", "validators", "sboms", "provenance", "offline_feeds", "verification_tools"],
+      "properties": {
+        "bundle_manifest_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "signed_packages": {"type": "boolean"},
+        "oci_archives": {"type": "boolean"},
+        "policies": {"type": "boolean"},
+        "validators": {"type": "boolean"},
+        "sboms": {"type": "boolean"},
+        "provenance": {"type": "boolean"},
+        "offline_feeds": {"type": "boolean"},
+        "verification_tools": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}
