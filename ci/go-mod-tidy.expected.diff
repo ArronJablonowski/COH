@@ -8,5 +8,5 @@ diff current/go.mod tidy/go.mod
 -toolchain go1.26.7
 -
  require (
+ 	github.com/jackc/pgx/v5 v5.10.0
  	go.temporal.io/api v1.62.12
- 	go.temporal.io/sdk v1.45.0
