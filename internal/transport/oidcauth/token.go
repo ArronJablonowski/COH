@@ -142,7 +142,11 @@ func validKeyRecord(record KeyRecord) bool {
 	case ed25519.PublicKey:
 		return record.Algorithm == "EdDSA" && len(key) == ed25519.PublicKeySize
 	case *ecdsa.PublicKey:
-		return record.Algorithm == "ES256" && key != nil && key.Curve == elliptic.P256() && key.X != nil && key.Y != nil && key.Curve.IsOnCurve(key.X, key.Y)
+		if record.Algorithm != "ES256" || key == nil || key.Curve != elliptic.P256() {
+			return false
+		}
+		_, err := key.Bytes()
+		return err == nil
 	case *rsa.PublicKey:
 		return record.Algorithm == "RS256" && key != nil && key.N != nil && key.N.BitLen() >= 2048 && key.E >= 65537 && key.E%2 == 1
 	default:
