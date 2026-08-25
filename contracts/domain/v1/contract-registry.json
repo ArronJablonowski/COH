@@ -3,10 +3,8 @@
   "contract_schema": "coh.domain/v1",
   "canonical_encoding": "COH-CJ-1",
   "common_schema": "common-envelope.schema.json",
-  "status": "draft",
-  "blocked_by": [
-    "COH-E01"
-  ],
+  "status": "qualified",
+  "blocked_by": [],
   "case_boundaries": {
     "action": "required",
     "approval": "required",

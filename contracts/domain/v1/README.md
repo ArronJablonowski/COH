@@ -3,20 +3,22 @@
 | Field | Value |
 |---|---|
 | Issue | COH-E03-01 / CYB-36 |
-| Status | Draft — blocked by COH-E01 approval |
+| Status | Qualified for M1 implementation |
 | Requirements | FR-010, NFR-021 |
 | Contract version | `coh.domain/v1` |
 | Canonical encoding | `COH-CJ-1` |
 | Data classification | Operational metadata and workflow identifiers |
 
-This directory will define the versioned wire and persistence-neutral contracts
+This directory defines the versioned wire and persistence-neutral contracts
 shared by the API, workflows, stores, evidence service, broker, providers,
 connectors, and export tooling. It does not define database tables, vendor payloads,
 transport framing, authorization policy, or executable authority.
 
-The PRD remains normative. This draft freezes the v1 inventory, namespace,
-canonical encoding profile, and compatibility rules before executable schemas and
-fixtures are added. It does not claim CYB-36 is complete or approved.
+The PRD remains normative. This qualified contract freezes the v1 inventory,
+namespace, canonical encoding profile, and compatibility rules for M1
+implementation. Qualification is not a production-readiness claim; the independent
+security architecture review tracked by CYB-173 remains required before the first
+production release.
 
 ## Contract inventory
 
@@ -72,7 +74,8 @@ copy from model output, or default a missing boundary.
 The registry makes that rule executable. The `case` kind is `self`-bound, so
 `case_id` must equal `id`. Reusable `model` and `skill` catalog records are
 `optional` and may use `null`; all other v1 kinds are `required` to carry a
-case UUID. These draft modes fail closed and remain subject to COH-E01 approval.
+case UUID. These approved design-freeze modes fail closed. Changing a boundary mode
+is security-sensitive and requires the change control described below.
 
 The envelope never contains raw credentials, reusable capabilities, arbitrary
 vendor payloads, unbounded evidence bytes, full prompts, or executable code.
@@ -151,9 +154,9 @@ migration writes a new object with lineage to the source rather than rewriting
 custody history. API `/api/v1` compatibility does not imply every domain schema is
 understood; capability discovery exposes that distinction.
 
-## Planned executable artifacts
+## Qualification checklist
 
-The following short tasks remain before CYB-36 can be reviewed for completion:
+The CYB-36 qualification packet includes:
 
 - [x] Publish the strict common-envelope JSON Schema and initial envelope fixtures.
 - [x] Publish the 16 strict per-kind JSON Schemas (`case`, `run`,
@@ -166,8 +169,9 @@ The following short tasks remain before CYB-36 can be reviewed for completion:
 - [x] Implement bounded Go validation and COH-CJ-1 canonical serialization.
 - [x] Prove canonical determinism, idempotence, and source-input immutability.
 - [x] Publish the compatibility matrix and contract-test report.
-- [ ] Run architecture, race, size, secret, license, and dependency gates.
-- [ ] Obtain dependency and human approval, then attach exact digests to CYB-36.
+- [x] Run architecture, race, size, secret, license, and dependency gates.
+- [x] Record dependency decisions and Product Owner acceptance, then attach exact
+  digests to CYB-36.
 
 ## Change control
 

@@ -5,11 +5,12 @@
 | Issue | COH-E03-01 / CYB-36 |
 | Requirements | FR-010, NFR-021 |
 | Verification date | 2026-08-25 |
-| Source checkpoint | `7c253ac` |
+| Technical checkpoint | `8b0ed55` |
+| Design-freeze approval record | `ddfcd45` |
 | Contract | `coh.domain/v1` |
 | Canonical profile | `COH-CJ-1` |
 | Data classification | Internal engineering contract metadata; no credentials or case evidence |
-| Review status | Local technical evidence complete; upstream and human approvals pending |
+| Review status | Qualified for M1 implementation; production security follow-up tracked by CYB-173 |
 
 ## Outcome
 
@@ -19,9 +20,11 @@ JSON serialization, explicit case-boundary modes, and a positive/negative
 fixture corpus. Validation is fail-closed and publishes canonical bytes only
 after the envelope, boundary rule, and per-kind payload all pass.
 
-This report does not mark CYB-36 Done. COH-E01/COH-E02 dependency resolution,
-independent review, and required Product/Security/Implementation approvals remain
-outside the locally verified source checkpoint.
+COH-E01 and COH-E02 are Done. The Product Owner accepted the COH-E01 design-freeze
+packet at `8c6012d`, with the final record at `ddfcd45`, and reported no unresolved
+blocking findings. The independent security architecture review is intentionally
+not represented as complete: CYB-173 retains it as a hard gate before the first
+production release.
 
 ## Delivered artifacts
 
@@ -105,10 +108,8 @@ scripts/run_ci_quality.sh baseline
 All 18 stages passed: format, file size, workflow policy, worktree and history
 secret scans, architecture, quality-contract tests, vet, static analysis, unit,
 race, fuzz seeds, licenses, dependencies/offline vulnerability scan, SBOM,
-supply chain, evidence-secret scan, and provenance. The local report correctly
-sets `quality_gate_promotable=false` because it ran against an evidence worktree
-whose documentation had not yet been committed. Clean hosted evidence remains a
-publication gate, not a reason to weaken the local checks.
+supply chain, evidence-secret scan, and provenance. The attached clean report for
+technical checkpoint `8b0ed55` sets `quality_gate_promotable=true`.
 
 The following focused commands also passed:
 
@@ -126,10 +127,12 @@ scripts/check_markdown_links.sh \
   docs/evidence/CYB-36-domain-contract-report.md
 ```
 
-## Remaining completion gates
+## Closure record
 
-- Resolve and record COH-E01/COH-E02 dependency decisions.
-- Obtain independent technical review and the required human approvals.
-- Attach this report and checksum ledger to CYB-36.
-- Keep the issue in Backlog until those gates and the issue's Done criteria are
-  satisfied.
+- COH-E01 and COH-E02 dependency decisions are resolved and recorded as Done.
+- Product Owner acceptance and the non-blocking pre-production security follow-up
+  are recorded in the COH-E01 approval packet and Linear.
+- The report, checksum ledger, and clean quality report are attached to CYB-36.
+- The independent security architecture review remains open in CYB-173 and is a
+  hard gate before the first production release, not a CYB-36 implementation
+  qualification blocker.

@@ -48,8 +48,8 @@ jq -e '
   and .contract_schema == "coh.domain/v1"
   and .canonical_encoding == "COH-CJ-1"
   and .common_schema == "common-envelope.schema.json"
-  and .status == "draft"
-  and .blocked_by == ["COH-E01"]
+  and .status == "qualified"
+  and .blocked_by == []
   and .requirements == ["FR-010", "NFR-021"]
   and (.kinds | length) == 16
   and (.kinds == (.kinds | sort | unique))

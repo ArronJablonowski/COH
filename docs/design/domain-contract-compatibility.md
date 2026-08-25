@@ -6,8 +6,9 @@
 | Reader | `internal/helper/domaincontract.Validator` |
 | Schema | `coh.domain/v1` |
 | Canonical profile | `COH-CJ-1` |
-| Source checkpoint | `7c253ac` |
-| Status | Draft — blocked by COH-E01/COH-E02 and reviewer approval |
+| Technical checkpoint | `8b0ed55` |
+| Design-freeze approval record | `ddfcd45` |
+| Status | Qualified for M1 implementation |
 
 ## Reader decisions
 
@@ -50,16 +51,19 @@
 - Rollback restores the prior reader and contract together. It does not strip
   fields or relabel newer bytes as v1.
 - API `/api/v1` support does not imply support for every domain schema or kind.
-- The draft case-boundary modes require COH-E01 approval before they become a
-  stable product promise.
+- The case-boundary modes were accepted through the COH-E01 design-freeze record
+  at `ddfcd45`. A later boundary-mode change is security-sensitive and requires
+  explicit change approval and migration evidence.
+- Qualification supports M1 implementation. It is not production-release
+  approval; CYB-173 tracks the independent security architecture review required
+  before the first production release.
 
 ## Current qualification
 
 | Pair | Status |
 |---|---|
-| Current reader + exact `coh.domain/v1` + 16 registered kinds | Locally verified at `7c253ac` |
+| Current reader + exact `coh.domain/v1` + 16 registered kinds | Qualified; technical packet at `8b0ed55` |
 | Current reader + unknown kind | Denied |
 | Current reader + any schema other than exact `coh.domain/v1` | Denied |
 | Older reader + a future optional field or kind | Denied until explicit mixed-version qualification |
 | Any reader + changed COH-CJ-1 semantics | Unsupported; requires a new profile/version |
-
