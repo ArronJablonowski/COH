@@ -131,9 +131,9 @@ for fixture in "$denied"/*.json; do
 done
 [[ "$denied_count" == 3 ]] || fail "expected 3 denial fixtures, found $denied_count"
 
-# jq applies last-key-wins semantics, so duplicate-key denial must be exercised
-# by the token-aware production decoder rather than by the jq shape check.
-go test ./internal/helper/domaincontract -run 'TestValidateEnvelope(DenialFixtures|AdditionalDenials|Cancellation)$' -count=1 >/dev/null ||
-  fail 'executable envelope denial tests failed'
+# jq applies last-key-wins semantics, so duplicate-key denial and per-kind
+# payload semantics are exercised by the production decoder and validator.
+go test ./internal/helper/domaincontract -count=1 >/dev/null ||
+  fail 'executable domain contract tests failed'
 
-printf 'domain-contract summary: registry=16 schema-kinds=16 payloads=16 valid=1 fixtures-denied=4 executable-denials=7 failures=0\n'
+printf 'domain-contract summary: registry=16 schema-kinds=16 payloads-valid=16 envelope-valid=1 fixtures-denied=4 failures=0\n'
