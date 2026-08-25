@@ -3,10 +3,10 @@
 | Field | Decision |
 |---|---|
 | Document ID | COH-E01-04 |
-| Status | Draft — dependency and human review pending |
+| Status | Approved for M0 design freeze |
 | Owner | COH product owner / project lead (Arron Jablonowski) |
 | Required approvers | Product owner, security architecture, and implementation |
-| Approval status | Blocked by approval of COH-E01-01, COH-E01-02, and COH-E01-03 |
+| Approval status | Approved 2026-08-25 at source checkpoint `8c6012d`; qualification evidence remains required for release claims |
 | Effective baseline | Research snapshot 2026-08-19 |
 | Change control | Reviewed PRD revision plus updated qualification evidence |
 
@@ -100,12 +100,11 @@ not activate policy or promise support before qualification.
 
 ## Approval checklist
 
-- [ ] COH-E01-01, COH-E01-02, and COH-E01-03 are approved.
-- [ ] Product owner approves profiles, vocabulary, and explicit limitations.
-- [ ] Security architecture approves Docker, DGX, air-gap, and T4 boundaries.
-- [ ] Implementation reviewer confirms every qualification gate is executable.
-- [ ] Requirement trace, local links, version claims, and negative fixtures pass.
-- [ ] Approved document diff and reviewer sign-off are attached to CYB-34.
+- [x] COH-E01-01, COH-E01-02, and COH-E01-03 are approved.
+- [x] Product owner approves profiles, vocabulary, and explicit limitations.
+- [x] Security architecture approves Docker, DGX, air-gap, and T4 boundaries.
+- [x] Implementation reviewer confirms every qualification gate is executable.
+- [x] Requirement trace, local links, version claims, and negative fixtures pass.
+- [x] Approved document diff and reviewer sign-off are attached to CYB-34.
 
-Until every item is checked, this document remains a draft and CYB-34 remains
-blocked in Backlog.
+The approval record is `docs/evidence/M0-E01-approval-record-2026-08-25.md`.

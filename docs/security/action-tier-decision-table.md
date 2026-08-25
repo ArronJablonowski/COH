@@ -6,7 +6,7 @@
 |---|---|
 | Decision ID | `COH-E01-03` |
 | Linear issue | [CYB-30](https://linear.app/cyber-operations-harness/issue/CYB-30/coh-e01-03-define-the-t0-t4-action-decision-table) |
-| Status | Ready for approval |
+| Status | Accepted for M0 design freeze |
 | Version | 1.0 |
 | Decision date | 2026-08-19 |
 | Effective date | 2026-08-19 |
@@ -14,7 +14,7 @@
 | Accountable owner | Product Owner |
 | Required reviewers | Product, Security Architecture, and Implementation |
 | Approval basis | Proposed implementation of the approved [COH PRD](../../outputs/COH-PRD.md) and dated [COH research dossier](../../outputs/COH-Research.md) |
-| Review evidence | Independent technical review is recorded on `COH-E01-03`; Product, Security Architecture, and Implementation sign-off remain pending |
+| Review evidence | Approved 2026-08-25 at source checkpoint `8c6012d`; independent security architecture review tracked by CYB-173 before production |
 | Data classification | Internal product-governance metadata; no credentials or case evidence |
 | Security impact | High: defines the authorization floor for every tool action |
 | Migration impact | None for this document; future tier changes may require policy, manifest, workflow, and stored-action migrations |
@@ -22,8 +22,8 @@
 | Next review | Before a new action class, execution zone, approval mode, or tier semantic is introduced, and at every major release |
 | Normative language | “Shall,” “must,” “never,” and “required” are mandatory; “may” is explicitly discretionary |
 
-This document is the proposed decision record for classifying and controlling COH
-actions. It becomes the accepted baseline only after the required sign-offs. It does
+This document is the accepted M0 decision record for classifying and controlling COH
+actions. It records design intent and does
 not itself grant authority. Signed tool manifests and signed runtime policy implement
 the approved decision, and `coh-brokerd` is the sole action authority.
 

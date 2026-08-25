@@ -10,12 +10,13 @@ make_fixture() {
   local name=$1
   local destination="$tmp/$name"
   mkdir -p "$destination/docs/design" "$destination/docs/adr" \
-    "$destination/docs/security" "$destination/outputs"
+    "$destination/docs/security" "$destination/docs/evidence" "$destination/outputs"
   cp "$root/docs/design/product-contract.md" "$destination/docs/design/"
   cp "$root/docs/design/platform-support-matrix.md" "$destination/docs/design/"
   cp "$root/docs/adr/0001-trust-boundaries.md" "$destination/docs/adr/"
   cp "$root/docs/adr/0001-trust-boundaries-verification.md" "$destination/docs/adr/"
   cp "$root/docs/security/action-tier-decision-table.md" "$destination/docs/security/"
+  cp "$root/docs/evidence/M0-E01-approval-record-2026-08-25.md" "$destination/docs/evidence/"
   cp "$root/outputs/COH-PRD.md" "$destination/outputs/"
   printf '%s\n' "$destination"
 }
@@ -50,7 +51,7 @@ printf '\nT4 remains unavailable until a second eligible human is enrolled.\n' \
 expect_failure ambiguous-staffing "$ambiguous_staffing"
 
 bad_status=$(make_fixture bad-status)
-perl -0pi -e 's/\| Status \| Ready for approval \|/| Status | Accepted |/' \
+perl -0pi -e 's/\| Status \| Accepted for M0 design freeze \|/| Status | Ready for approval |/' \
   "$bad_status/docs/security/action-tier-decision-table.md"
 expect_failure bad-status "$bad_status"
 

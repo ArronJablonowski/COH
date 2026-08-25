@@ -4,7 +4,7 @@
 |---|---|
 | Parent decision | [ADR-0001](0001-trust-boundaries.md) |
 | Implementation issue | [COH-E01-02 / CYB-31](https://linear.app/cyber-operations-harness/issue/CYB-31/coh-e01-02-record-architecture-and-trust-boundary-adr) |
-| Status | Ready for approval with ADR-0001 |
+| Status | Accepted with ADR-0001 for M0 design freeze |
 | Requirements | `SEC-001`, `SEC-002`, `SEC-017`, `SEC-026` |
 
 This companion is normative. It separates executable rules and verification

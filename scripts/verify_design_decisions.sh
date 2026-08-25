@@ -7,6 +7,7 @@ platform="$root/docs/design/platform-support-matrix.md"
 adr="$root/docs/adr/0001-trust-boundaries.md"
 adr_verify="$root/docs/adr/0001-trust-boundaries-verification.md"
 tiers="$root/docs/security/action-tier-decision-table.md"
+approval="$root/docs/evidence/M0-E01-approval-record-2026-08-25.md"
 prd="$root/outputs/COH-PRD.md"
 
 for command in awk rg; do
@@ -16,7 +17,7 @@ for command in awk rg; do
   }
 done
 
-for path in "$product" "$platform" "$adr" "$adr_verify" "$tiers" "$prd"; do
+for path in "$product" "$platform" "$adr" "$adr_verify" "$tiers" "$approval" "$prd"; do
   [[ -f "$path" ]] || {
     printf 'error: required decision record is missing: %s\n' "$path" >&2
     exit 2
@@ -41,12 +42,14 @@ require_regex() {
   }
 }
 
-for file in "$product" "$adr" "$tiers"; do
-  require_literal "$file" '| Status | Ready for approval |'
-done
-require_literal "$adr_verify" '| Status | Ready for approval with ADR-0001 |'
-require_literal "$platform" '| Status | Draft — dependency and human review pending |'
-require_literal "$platform" '| Approval status | Blocked by approval of COH-E01-01, COH-E01-02, and COH-E01-03 |'
+require_literal "$product" '| Status | Approved for M0 design freeze |'
+require_literal "$adr" '| Status | Accepted for M0 design freeze |'
+require_literal "$adr_verify" '| Status | Accepted with ADR-0001 for M0 design freeze |'
+require_literal "$tiers" '| Status | Accepted for M0 design freeze |'
+require_literal "$platform" '| Status | Approved for M0 design freeze |'
+require_literal "$approval" '| Reviewer-declared role | Product Owner |'
+require_literal "$approval" '| Blocking findings | None |'
+require_literal "$approval" 'CYB-173 — independent security architecture review before first production release'
 
 require_regex "$product" '^## Personas and authority$'
 require_regex "$product" '^## Supported v1 workflows$'
@@ -145,7 +148,7 @@ if rg -n -i \
   exit 1
 fi
 
-if rg -n '\b(TODO|TBD|FIXME)\b' "$product" "$platform" "$adr" "$adr_verify" "$tiers"; then
+if rg -n '\b(TODO|TBD|FIXME)\b' "$product" "$platform" "$adr" "$adr_verify" "$tiers" "$approval"; then
   printf 'FAIL unresolved placeholder found in decision record\n' >&2
   exit 1
 fi

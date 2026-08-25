@@ -3,10 +3,10 @@
 | Field | Decision |
 |---|---|
 | Document ID | COH-E01-01 |
-| Status | Ready for approval |
+| Status | Approved for M0 design freeze |
 | Owner | COH product owner / project lead (Arron Jablonowski) |
-| Required approvers | Product owner and security reviewer |
-| Approval status | Product decisions are ratified by the approved PRD; document review and reviewer sign-off remain pending |
+| Required approvers | Product owner, security reviewer, and requirements reviewer |
+| Approval status | Approved 2026-08-25 at source checkpoint `8c6012d`; independent security review tracked by CYB-173 before production |
 | Effective baseline | Research snapshot 2026-08-19 |
 | Change control | A reviewed PRD revision with updated requirement trace and qualification impact |
 
@@ -163,11 +163,11 @@ required before the related support claims can be made.
 
 ## Approval checklist
 
-- [ ] Product owner confirms the primary/secondary personas, supported workflows,
+- [x] Product owner confirms the primary/secondary personas, supported workflows,
   measurable outcomes, and non-goals.
-- [ ] Security reviewer confirms solo/T4 separation and denial behavior.
-- [ ] Requirement reviewer confirms exact coverage of FR-001, FR-005, and NFR-030.
-- [ ] Local links and cited version URLs pass the recorded link check.
-- [ ] Reviewer sign-off and the approved document diff are attached to COH-E01-01.
+- [x] Security reviewer confirms solo/T4 separation and denial behavior.
+- [x] Requirement reviewer confirms exact coverage of FR-001, FR-005, and NFR-030.
+- [x] Local links and cited version URLs pass the recorded link check.
+- [x] Reviewer sign-off and the approved document diff are attached to COH-E01-01.
 
-Until these checks are signed, the document is **ready for approval**, not Done.
+The approval record is `docs/evidence/M0-E01-approval-record-2026-08-25.md`.

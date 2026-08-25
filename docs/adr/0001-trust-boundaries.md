@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Ready for approval |
+| Status | Accepted for M0 design freeze |
 | Decision date | 2026-08-19 |
 | Effective from | Initial implementation |
 | Decision owners | COH product owner and security architecture owner |
@@ -11,6 +11,7 @@
 | Superseded by | None |
 | Normative sources | [COH PRD](../../outputs/COH-PRD.md), [COH research dossier](../../outputs/COH-Research.md) |
 | Classification | Public design metadata; no evidence or credentials |
+| Approval record | `docs/evidence/M0-E01-approval-record-2026-08-25.md`; independent security review tracked by CYB-173 before production |
 
 ## Context
 
