@@ -83,3 +83,4 @@ func (adapter *Adapter) String() string {
 }
 
 var _ core.EngineDriver = (*Adapter)(nil)
+var _ temporalClient = (client.Client)(nil)

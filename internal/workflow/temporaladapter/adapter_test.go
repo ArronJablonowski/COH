@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,6 +105,13 @@ func TestGuardRejectsInvalidAndCanceledRequests(t *testing.T) {
 	defer stop()
 	if _, err := engine.Start(expired, testStart()); core.EngineCode(err) != core.EngineTimeout {
 		t.Fatalf("expired start code = %q", core.EngineCode(err))
+	}
+	if _, err := engine.Start(context.Background(), testStart()); err != nil {
+		t.Fatalf("clean-context recovery: %v", err)
+	}
+	backend.executeErr = errors.New("secret temporal endpoint detail")
+	if _, err := engine.Start(context.Background(), testStart()); core.EngineCode(err) != core.EngineUnavailable || strings.Contains(err.Error(), "secret temporal") {
+		t.Fatalf("backend redaction code = %q, err = %v", core.EngineCode(err), err)
 	}
 }
 
@@ -214,6 +222,7 @@ func testStart() core.WorkflowStart {
 type fakeTemporalClient struct {
 	duplicate    bool
 	executeCalls int
+	executeErr   error
 	snapshot     core.WorkflowSnapshot
 	signal       lifecycleSignal
 	canceled     bool
@@ -221,6 +230,9 @@ type fakeTemporalClient struct {
 
 func (fake *fakeTemporalClient) ExecuteWorkflow(context.Context, client.StartWorkflowOptions, interface{}, ...interface{}) (client.WorkflowRun, error) {
 	fake.executeCalls++
+	if fake.executeErr != nil {
+		return nil, fake.executeErr
+	}
 	if fake.duplicate {
 		return nil, serviceerror.NewWorkflowExecutionAlreadyStarted("duplicate", "request", testRun)
 	}
