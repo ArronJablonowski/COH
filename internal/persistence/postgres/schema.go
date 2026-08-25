@@ -89,10 +89,15 @@ type migration struct {
 	down      []string
 }
 
-func builtInMigrations() map[string]migration {
+type migrationKey struct {
+	component string
+	version   uint64
+}
+
+func builtInMigrations() map[migrationKey]migration {
 	metadata := migration{component: "metadata", version: 1, up: metadataUp, down: metadataDown}
 	metadata.checksum = migrationChecksum(metadata)
-	return map[string]migration{metadata.component: metadata}
+	return map[migrationKey]migration{{component: metadata.component, version: metadata.version}: metadata}
 }
 
 func migrationChecksum(value migration) string {
@@ -116,7 +121,7 @@ func (store *Store) ensureMetadataSchema(ctx context.Context, backupDigest strin
 	if status.State == workflow.MigrationApplied {
 		return nil
 	}
-	spec := store.migrations["metadata"]
+	spec := store.migrations[migrationKey{component: "metadata", version: 1}]
 	_, err = store.Migrate(ctx, workflow.MigrationPlan{
 		ContractVersion: workflow.StorageContractVersion, Component: spec.component,
 		Version: spec.version, Checksum: spec.checksum, BackupDigest: backupDigest,

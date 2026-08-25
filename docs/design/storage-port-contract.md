@@ -83,6 +83,14 @@ or restarts safely and never accepts a changed checksum. Repeating a completed
 direction returns the same result with `Replayed=true`. Rollback is an explicit
 registered direction and cannot be synthesized from newer state.
 
+Adapters register migrations by the pair `(component, version)`, allowing a
+deployment binary to carry adjacent schema versions without conflating their
+artifacts. After a component has persisted a nonzero version, any otherwise
+valid registered plan whose version or checksum differs is rejected as
+`denied`; the adapter does not auto-upgrade, auto-downgrade, or reinterpret that
+mixed-version state. A version transition therefore requires a separately
+designed transition protocol rather than an implicit `Migrate` call.
+
 ## Failure and recovery behavior
 
 | Condition | Required result | Publication behavior |
@@ -108,7 +116,8 @@ storage adapter. It covers:
 2. changed-input idempotency conflict, stale revision conflict, and valid update;
 3. atomic outbox visibility, bounded claim, and replay-safe settlement;
 4. cancellation, timeout, and clean recovery; and
-5. initial migration state, apply, replay, checksum denial, and rollback.
+5. initial migration state, apply, replay, registered mixed-version denial,
+   checksum denial, and rollback.
 
 CYB-39 and CYB-40 cannot qualify by substituting adapter-specific happy-path
 tests for this suite. The M1 integration gate later runs the same domain and
@@ -121,6 +130,6 @@ storage conformance inputs against both implementations.
 | NFR-020 versioned and checksummed | `StorageContractVersion`, `MigrationPlan.Version`, `Checksum` |
 | NFR-020 resumable or safely restartable | idempotent `Migrate`, persisted status/result, cancellation recovery suite |
 | NFR-020 backup-aware | mandatory `BackupDigest` on every apply or rollback plan |
-| NFR-020 upgrade and rollback tested | shared migration apply/replay/denial/rollback conformance scenario |
+| NFR-020 upgrade and rollback tested | shared migration apply/replay/mixed-version denial/checksum denial/rollback conformance scenario |
 | CYB-35 optimistic concurrency and idempotency | `Mutation.ExpectedRevision`, transaction idempotency conformance scenarios |
 | CYB-35 storage-neutral boundary | six-method reflected API surface and architecture gate |

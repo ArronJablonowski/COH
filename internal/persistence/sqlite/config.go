@@ -31,7 +31,7 @@ type Store struct {
 	path       string
 	backupDir  string
 	clock      func() time.Time
-	migrations map[string]migration
+	migrations map[migrationKey]migration
 }
 
 func Open(ctx context.Context, config Config) (*Store, error) {

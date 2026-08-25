@@ -29,7 +29,7 @@ type memoryDriver struct {
 	commits       map[string]memoryCommit
 	outbox        map[string]*memoryOutbox
 	sequence      uint64
-	registered    workflow.MigrationPlan
+	registered    map[uint64]workflow.MigrationPlan
 	migration     workflow.MigrationResult
 	migrationRuns map[workflow.MigrationDirection]bool
 }
@@ -38,7 +38,9 @@ func TestReferenceDriverConformance(t *testing.T) {
 	Run(t, func(_ *testing.T, fixture Fixture) workflow.StorageDriver {
 		return &memoryDriver{
 			records: make(map[string]workflow.MetadataRecord), commits: make(map[string]memoryCommit),
-			outbox: make(map[string]*memoryOutbox), registered: fixture.Migration,
+			outbox: make(map[string]*memoryOutbox), registered: map[uint64]workflow.MigrationPlan{
+				fixture.Migration.Version: fixture.Migration, fixture.NextMigration.Version: fixture.NextMigration,
+			},
 			migration:     workflow.MigrationResult{Component: fixture.Migration.Component, State: workflow.MigrationPending},
 			migrationRuns: make(map[workflow.MigrationDirection]bool),
 		}
@@ -170,7 +172,8 @@ func (driver *memoryDriver) MigrationStatus(ctx context.Context, component strin
 	}
 	driver.mu.Lock()
 	defer driver.mu.Unlock()
-	if component != driver.registered.Component {
+	registered := driver.registered[1]
+	if component != registered.Component {
 		return workflow.MigrationResult{}, workflow.NewStorageError(workflow.StorageNotFound, "migration_status", "component", "migration component not found", nil)
 	}
 	return driver.migration, nil
@@ -182,8 +185,12 @@ func (driver *memoryDriver) Migrate(ctx context.Context, plan workflow.Migration
 	}
 	driver.mu.Lock()
 	defer driver.mu.Unlock()
-	if plan.Component != driver.registered.Component || plan.Version != driver.registered.Version || plan.Checksum != driver.registered.Checksum {
+	registered, ok := driver.registered[plan.Version]
+	if !ok || plan.Component != registered.Component || plan.Checksum != registered.Checksum {
 		return workflow.MigrationResult{}, workflow.NewStorageError(workflow.StorageDenied, "migrate", "checksum", "migration is not registered", nil)
+	}
+	if driver.migration.Version != 0 && (driver.migration.Version != plan.Version || driver.migration.Checksum != plan.Checksum) {
+		return workflow.MigrationResult{}, workflow.NewStorageError(workflow.StorageDenied, "migrate", "state", "stored migration identity differs from plan", nil)
 	}
 	state := workflow.MigrationApplied
 	if plan.Direction == workflow.MigrationRollback {

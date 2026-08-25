@@ -51,8 +51,8 @@ func (store *Store) Migrate(ctx context.Context, plan workflow.MigrationPlan) (w
 }
 
 func (store *Store) migrate(ctx context.Context, plan workflow.MigrationPlan) (workflow.MigrationResult, error) {
-	spec, ok := store.migrations[plan.Component]
-	if !ok || spec.version != plan.Version || spec.checksum != plan.Checksum {
+	spec, ok := store.migrations[migrationKey{component: plan.Component, version: plan.Version}]
+	if !ok || spec.checksum != plan.Checksum {
 		return workflow.MigrationResult{}, storageError(workflow.StorageDenied, "migrate", "plan", "migration is not registered by this adapter")
 	}
 	if err := store.verifyBackup(ctx, plan.BackupDigest); err != nil {
@@ -153,7 +153,7 @@ func migrationResumeDigest(plan workflow.MigrationPlan, state workflow.Migration
 }
 
 func (store *Store) registerMigration(spec migration) {
-	store.migrations[spec.component] = spec
+	store.migrations[migrationKey{component: spec.component, version: spec.version}] = spec
 }
 
 func (store *Store) registerBackupForTest(ctx context.Context, path, digest string) error {

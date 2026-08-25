@@ -39,7 +39,7 @@ type Store struct {
 	pool       *pgxpool.Pool
 	clock      func() time.Time
 	backups    BackupVerifier
-	migrations map[string]migration
+	migrations map[migrationKey]migration
 	closeOnce  sync.Once
 	closed     atomic.Bool
 }

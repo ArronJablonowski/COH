@@ -24,12 +24,13 @@ const (
 type Factory func(*testing.T, Fixture) workflow.StorageDriver
 
 type Fixture struct {
-	Create       workflow.Transaction
-	Update       workflow.Transaction
-	ChangedRetry workflow.Transaction
-	Claim        workflow.OutboxClaim
-	Settlement   workflow.OutboxSettlement
-	Migration    workflow.MigrationPlan
+	Create        workflow.Transaction
+	Update        workflow.Transaction
+	ChangedRetry  workflow.Transaction
+	Claim         workflow.OutboxClaim
+	Settlement    workflow.OutboxSettlement
+	Migration     workflow.MigrationPlan
+	NextMigration workflow.MigrationPlan
 }
 
 // Run proves semantics shared by SQLite and PostgreSQL implementations.
@@ -119,6 +120,9 @@ func Run(t *testing.T, factory Factory) {
 		if !replayed.Replayed || replayed.State != workflow.MigrationApplied {
 			t.Fatalf("replayed migration = %+v", replayed)
 		}
+		if _, err := store.Migrate(context.Background(), fixture.NextMigration); workflow.StorageCode(err) != workflow.StorageDenied {
+			t.Fatalf("mixed-version migration code = %q, err = %v", workflow.StorageCode(err), err)
+		}
 		tampered := fixture.Migration
 		tampered.Checksum = Digest("tampered-migration")
 		if _, err := store.Migrate(context.Background(), tampered); workflow.StorageCode(err) != workflow.StorageDenied {
@@ -150,9 +154,10 @@ func NewFixture(t *testing.T) Fixture {
 	changed.Outbox[0].PayloadRef = "record:" + CaseID + ":changed"
 	return Fixture{
 		Create: create, Update: update, ChangedRetry: changed,
-		Claim:      workflow.OutboxClaim{OrganizationID: OrganizationID, TenantID: TenantID, WorkerID: "conformance-worker", Limit: 8, LeaseUntil: time.Date(2026, 8, 25, 21, 0, 0, 0, time.UTC)},
-		Settlement: workflow.OutboxSettlement{OrganizationID: OrganizationID, TenantID: TenantID, MessageID: MessageID, Outcome: workflow.OutboxDelivered, EvidenceDigest: Digest("delivery-evidence")},
-		Migration:  workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion, Component: "conformance", Version: 1, Checksum: Digest("conformance-v1"), BackupDigest: Digest("conformance-v0-backup"), Direction: workflow.MigrationApply},
+		Claim:         workflow.OutboxClaim{OrganizationID: OrganizationID, TenantID: TenantID, WorkerID: "conformance-worker", Limit: 8, LeaseUntil: time.Date(2026, 8, 25, 21, 0, 0, 0, time.UTC)},
+		Settlement:    workflow.OutboxSettlement{OrganizationID: OrganizationID, TenantID: TenantID, MessageID: MessageID, Outcome: workflow.OutboxDelivered, EvidenceDigest: Digest("delivery-evidence")},
+		Migration:     workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion, Component: "conformance", Version: 1, Checksum: Digest("conformance-v1"), BackupDigest: Digest("conformance-v0-backup"), Direction: workflow.MigrationApply},
+		NextMigration: workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion, Component: "conformance", Version: 2, Checksum: Digest("conformance-v2"), BackupDigest: Digest("conformance-v0-backup"), Direction: workflow.MigrationApply},
 	}
 }
 

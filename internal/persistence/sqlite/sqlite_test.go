@@ -22,6 +22,11 @@ func TestStorageConformance(t *testing.T) {
 			version:   fixture.Migration.Version,
 			checksum:  fixture.Migration.Checksum,
 		})
+		store.registerMigration(migration{
+			component: fixture.NextMigration.Component,
+			version:   fixture.NextMigration.Version,
+			checksum:  fixture.NextMigration.Checksum,
+		})
 		backupPath := filepath.Join(store.backupDir, "conformance-fixture.backup")
 		if err := os.WriteFile(backupPath, []byte("conformance-v0-backup"), 0o600); err != nil {
 			t.Fatal(err)
@@ -125,7 +130,7 @@ func TestMetadataRollbackRequiresEmptyStore(t *testing.T) {
 	if _, err := guarded.Transact(context.Background(), fixture.Create); err != nil {
 		t.Fatal(err)
 	}
-	spec := store.migrations["metadata"]
+	spec := store.migrations[migrationKey{component: "metadata", version: 1}]
 	backup, err := store.Backup(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +169,7 @@ func TestMigrationRejectsTamperedBackup(t *testing.T) {
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
-	spec := store.migrations["metadata"]
+	spec := store.migrations[migrationKey{component: "metadata", version: 1}]
 	_, err = guarded.Migrate(context.Background(), workflow.MigrationPlan{
 		ContractVersion: workflow.StorageContractVersion,
 		Component:       spec.component,

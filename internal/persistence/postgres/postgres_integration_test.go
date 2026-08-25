@@ -38,6 +38,11 @@ func TestPostgresConformance(t *testing.T) {
 			up:   []string{`CREATE TABLE public.coh_conformance_marker (identity INTEGER PRIMARY KEY)`},
 			down: []string{`DROP TABLE public.coh_conformance_marker`},
 		})
+		store.registerMigration(migration{
+			component: fixture.NextMigration.Component, version: fixture.NextMigration.Version, checksum: fixture.NextMigration.Checksum,
+			up:   []string{`CREATE TABLE public.coh_conformance_marker_v2 (identity INTEGER PRIMARY KEY)`},
+			down: []string{`DROP TABLE public.coh_conformance_marker_v2`},
+		})
 		t.Cleanup(func() { resetDatabase(t, url) })
 		t.Cleanup(store.Close)
 		return store
