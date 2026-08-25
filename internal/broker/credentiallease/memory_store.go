@@ -36,12 +36,12 @@ func (store *MemoryStore) Create(ctx context.Context, record Record) (CreateResu
 	if _, exists := store.records[record.LeaseID]; exists {
 		return CreateConflict, nil
 	}
-	if _, exists := store.tokens[record.TokenDigest]; exists {
+	if _, exists := store.tokens[record.tokenDigest]; exists {
 		return CreateConflict, nil
 	}
 	store.records[record.LeaseID] = cloneRecord(record)
 	store.requests[key] = record.RequestDigest
-	store.tokens[record.TokenDigest] = record.LeaseID
+	store.tokens[record.tokenDigest] = record.LeaseID
 	return CreateNew, nil
 }
 
@@ -55,7 +55,7 @@ func (store *MemoryStore) Claim(ctx context.Context, leaseID string, tokenDigest
 	if !exists {
 		return Record{}, brokerError(leasecontract.Denied, "lease_not_found")
 	}
-	if subtle.ConstantTimeCompare(record.TokenDigest[:], tokenDigest[:]) != 1 {
+	if subtle.ConstantTimeCompare(record.tokenDigest[:], tokenDigest[:]) != 1 {
 		return Record{}, brokerError(leasecontract.Denied, "capability_invalid")
 	}
 	if record.Revoked {

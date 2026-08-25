@@ -64,7 +64,7 @@ func (broker *Broker) Issue(ctx context.Context, request leasecontract.IssuanceR
 		return broker.recordIssue(ctx, request, authority, "", nil, resultErr, referenceDigest, now, time.Time{})
 	}
 	expires := now.Add(ttl)
-	record := Record{LeaseID: leaseID, TokenDigest: sha256.Sum256(token), RequestDigest: requestDigest,
+	record := Record{LeaseID: leaseID, tokenDigest: sha256.Sum256(token), RequestDigest: requestDigest,
 		Request: request, Authority: authority, IssuedAt: now, ExpiresAt: expires}
 	created, err := broker.store.Create(ctx, record)
 	if err != nil {

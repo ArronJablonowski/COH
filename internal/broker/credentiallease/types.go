@@ -43,7 +43,7 @@ const (
 
 type Record struct {
 	LeaseID       string
-	TokenDigest   [32]byte
+	tokenDigest   [32]byte
 	RequestDigest string
 	Request       leasecontract.IssuanceRequest
 	Authority     leasecontract.IssuanceAuthority
