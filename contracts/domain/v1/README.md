@@ -160,12 +160,12 @@ The following short tasks remain before CYB-36 can be reviewed for completion:
   `task`, `artifact_manifest`, `evidence`, `finding`, `claim`, and
   `timeline_event`, `query`, `action`, `approval`, `roe`, `model`, `skill`,
   `vulnerability`, and `risk`).
-- [ ] Add one canonical positive fixture for every kind.
-- [ ] Add malformed, duplicate-key, unknown-field, wrong-boundary, bad-time,
+- [x] Add one canonical positive fixture for every kind.
+- [x] Add malformed, duplicate-key, unknown-field, wrong-boundary, bad-time,
   bad-digest, oversized, cancellation, and unsupported-version denial fixtures.
-- [ ] Implement bounded Go validation and COH-CJ-1 canonical serialization.
-- [ ] Prove canonical determinism, idempotence, and source-input immutability.
-- [ ] Publish the compatibility matrix and contract-test report.
+- [x] Implement bounded Go validation and COH-CJ-1 canonical serialization.
+- [x] Prove canonical determinism, idempotence, and source-input immutability.
+- [x] Publish the compatibility matrix and contract-test report.
 - [ ] Run architecture, race, size, secret, license, and dependency gates.
 - [ ] Obtain dependency and human approval, then attach exact digests to CYB-36.
 
