@@ -4,6 +4,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export COH_NATIVE_STORAGE_ROOT="${COH_NATIVE_STORAGE_ROOT:-$(dirname "${repo_root}")}" 
 export COH_TOOLCHAIN_ROOT="${COH_TOOLCHAIN_ROOT:-$(dirname "${repo_root}")/COH-toolchains}"
+# shellcheck source=lib/go_ssd_env.sh
+source "${repo_root}/scripts/lib/go_ssd_env.sh"
+export PATH="${COH_GO_ROOT}/bin:/usr/local/bin:/usr/bin:/bin"
 
 artifact_root="${COH_E03_ARTIFACT_ROOT:-${COH_TOOLCHAIN_ROOT}/ci-artifacts/CYB-7}"
 mkdir -p "${artifact_root}"
