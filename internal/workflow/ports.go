@@ -20,11 +20,6 @@ type ActionAuthority interface {
 	Submit(context.Context, domain.ToolIntent) (domain.ActionReceipt, error)
 }
 
-// Repository persists operational metadata and immutable references only.
-type Repository interface {
-	SaveOperation(context.Context, domain.Operation) error
-}
-
 // Engine is the durable application boundary exposed to transports.
 type Engine interface {
 	Start(context.Context, domain.Operation) error
