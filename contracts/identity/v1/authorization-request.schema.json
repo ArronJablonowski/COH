@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/identity/v1/authorization-request.schema.json",
+  "title": "COH local authorization request v1",
+  "type": "object",
+  "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "payload_digest", "channel", "context", "permission", "action_tier"],
+  "properties": {
+    "schema_version": {"const": "coh.local-identity/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "request_id": {"$ref": "#/$defs/uuid_v7"},
+    "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
+    "payload_digest": {"$ref": "#/$defs/digest"},
+    "channel": {"enum": ["api", "cli"]},
+    "context": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id", "actor_id"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"}
+      },
+      "additionalProperties": false
+    },
+    "permission": {"enum": ["case.read", "case.write", "evidence.read", "evidence.write", "query.execute", "workflow.manage", "action.request", "approval.decide", "configuration.manage", "identity.manage", "audit.read", "service.invoke"]},
+    "action_tier": {"enum": ["", "T0", "T1", "T2", "T3", "T4"]}
+  },
+  "$defs": {
+    "uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}
