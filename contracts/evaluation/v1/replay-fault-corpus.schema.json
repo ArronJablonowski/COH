@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/evaluation/v1/replay-fault-corpus.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "corpus_version", "requirements", "trials_per_task", "thresholds", "tasks"],
+  "properties": {
+    "schema_version": {"const": "coh.replay-fault-corpus/v1"},
+    "corpus_version": {"const": "1.0.0"},
+    "requirements": {"const": ["FR-013", "FR-014", "EVAL-010", "EVAL-011", "EVAL-015"]},
+    "trials_per_task": {"type": "integer", "minimum": 5, "maximum": 100},
+    "thresholds": {
+      "type": "object", "additionalProperties": false,
+      "required": ["maximum_duplicate_confirmed_effects", "maximum_false_successes", "minimum_reconciliation_rate", "minimum_replay_rate", "minimum_outcome_grade_rate", "minimum_trajectory_grade_rate"],
+      "properties": {
+        "maximum_duplicate_confirmed_effects": {"const": 0},
+        "maximum_false_successes": {"const": 0},
+        "minimum_reconciliation_rate": {"const": 1},
+        "minimum_replay_rate": {"const": 1},
+        "minimum_outcome_grade_rate": {"const": 1},
+        "minimum_trajectory_grade_rate": {"const": 1}
+      }
+    },
+    "tasks": {"type": "array", "minItems": 31, "maxItems": 31, "items": {"$ref": "#/$defs/task"}}
+  },
+  "$defs": {
+    "task": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "boundary", "fault", "mode", "expected"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+        "boundary": {"type": "string", "pattern": "^(workflow|storage|outbox|action)\\.[a-z_]+$"},
+        "fault": {"enum": ["crash", "response_loss", "worker_loss", "timeout", "cancel", "denial", "reconcile_no_effect"]},
+        "mode": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,63}$"},
+        "expected": {"$ref": "#/$defs/expected"}
+      }
+    },
+    "expected": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "dispatches", "external_effects", "confirmed_effects", "requires_reconciliation", "replayed"],
+      "properties": {
+        "state": {"enum": ["running", "completed", "committed", "leased", "verified", "compensated", "uncertain", "denied", "cancelled"]},
+        "dispatches": {"type": "integer", "minimum": 0, "maximum": 1},
+        "external_effects": {"type": "integer", "minimum": 0, "maximum": 1},
+        "confirmed_effects": {"type": "integer", "minimum": 0, "maximum": 1},
+        "requires_reconciliation": {"type": "boolean"},
+        "replayed": {"const": true}
+      }
+    }
+  }
+}

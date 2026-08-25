@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/evaluation/v1/replay-environment.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "environment_version", "corpus_version", "go_version", "temporal_sdk", "temporal_api", "sqlite_driver", "postgres_driver", "postgres_image", "qualified_platform", "clock", "randomness"],
+  "properties": {
+    "schema_version": {"const": "coh.replay-environment/v1"},
+    "environment_version": {"const": "1.0.0"},
+    "corpus_version": {"const": "1.0.0"},
+    "go_version": {"const": "1.26.7"},
+    "temporal_sdk": {"const": "go.temporal.io/sdk@v1.45.0"},
+    "temporal_api": {"const": "go.temporal.io/api@v1.62.12"},
+    "sqlite_driver": {"const": "modernc.org/sqlite@v1.57.0"},
+    "postgres_driver": {"const": "github.com/jackc/pgx/v5@v5.10.0"},
+    "postgres_image": {"const": "postgres@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777"},
+    "qualified_platform": {"const": "darwin/arm64"},
+    "clock": {"const": "logical-trial-clock/v1"},
+    "randomness": {"const": "none"}
+  }
+}

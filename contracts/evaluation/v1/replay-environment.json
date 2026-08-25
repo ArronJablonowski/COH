@@ -1,0 +1,14 @@
+{
+  "schema_version": "coh.replay-environment/v1",
+  "environment_version": "1.0.0",
+  "corpus_version": "1.0.0",
+  "go_version": "1.26.7",
+  "temporal_sdk": "go.temporal.io/sdk@v1.45.0",
+  "temporal_api": "go.temporal.io/api@v1.62.12",
+  "sqlite_driver": "modernc.org/sqlite@v1.57.0",
+  "postgres_driver": "github.com/jackc/pgx/v5@v5.10.0",
+  "postgres_image": "postgres@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+  "qualified_platform": "darwin/arm64",
+  "clock": "logical-trial-clock/v1",
+  "randomness": "none"
+}
