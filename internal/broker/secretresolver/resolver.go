@@ -141,10 +141,16 @@ func decisionFor(request secretref.ResolutionRequest, err error, revision uint64
 }
 
 func validateRecord(record Record, value []byte) error {
-	if !validBackendName(record.Backend) || !validToken(record.EntryID) || record.Version == 0 || record.Revision == 0 ||
-		!validUUID(record.OrganizationID) || !validUUID(record.TenantID) || !validToken(record.CredentialClass) ||
-		len(value) == 0 || len(value) > maximumSecretBytes || !validCaseGrant(record) {
+	if err := validateRecordMetadata(record); err != nil || len(value) == 0 || len(value) > maximumSecretBytes {
 		return resolverError(secretref.Denied, "backend_record_invalid")
+	}
+	return nil
+}
+
+func validateRecordMetadata(record Record) error {
+	if !validBackendName(record.Backend) || !validToken(record.EntryID) || record.Version == 0 || record.Revision == 0 ||
+		!validUUID(record.OrganizationID) || !validUUID(record.TenantID) || !validToken(record.CredentialClass) || !validCaseGrant(record) {
+		return resolverError(secretref.InvalidInput, "backend_record_invalid")
 	}
 	return nil
 }
