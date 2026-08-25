@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -39,6 +40,40 @@ func TestWALRecoveryAndConsistentBackup(t *testing.T) {
 	if err := os.Mkdir(backupDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	command := exec.Command(os.Args[0], "-test.run=^TestSQLiteCrashWriter$")
+	command.Env = append(os.Environ(), "COH_SQLITE_CRASH_PATH="+path, "COH_SQLITE_CRASH_BACKUP_DIR="+backupDir)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("crash writer: %v\n%s", err, output)
+	}
+	fixture := storetest.NewFixture(t)
+	reopened, err := Open(context.Background(), Config{Path: path, BackupDirectory: backupDir, Clock: func() time.Time { return testNow.Add(time.Minute) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	guarded, err := workflow.GuardStorage(reopened)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayed, err := guarded.Transact(context.Background(), fixture.Create)
+	if err != nil || !replayed.Replayed || replayed.CommitSequence != 1 {
+		t.Fatalf("reopen replay = %+v, err = %v", replayed, err)
+	}
+	artifact, err := reopened.Backup(context.Background())
+	if err != nil || artifact.Digest == "" || artifact.Length == 0 {
+		t.Fatalf("backup = %+v, err = %v", artifact, err)
+	}
+	if _, err := os.Stat(artifact.Path); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSQLiteCrashWriter(t *testing.T) {
+	path := os.Getenv("COH_SQLITE_CRASH_PATH")
+	backupDir := os.Getenv("COH_SQLITE_CRASH_BACKUP_DIR")
+	if path == "" || backupDir == "" {
+		t.Skip("subprocess helper")
+	}
 	store, err := Open(context.Background(), Config{Path: path, BackupDirectory: backupDir, Clock: func() time.Time { return testNow }})
 	if err != nil {
 		t.Fatal(err)
@@ -47,34 +82,10 @@ func TestWALRecoveryAndConsistentBackup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture := storetest.NewFixture(t)
-	first, err := guarded.Transact(context.Background(), fixture.Create)
-	if err != nil {
+	if _, err := guarded.Transact(context.Background(), storetest.NewFixture(t).Create); err != nil {
 		t.Fatal(err)
 	}
-	artifact, err := store.Backup(context.Background())
-	if err != nil || artifact.Digest == "" || artifact.Length == 0 {
-		t.Fatalf("backup = %+v, err = %v", artifact, err)
-	}
-	if err := store.Close(); err != nil {
-		t.Fatal(err)
-	}
-	reopened, err := Open(context.Background(), Config{Path: path, BackupDirectory: backupDir, Clock: func() time.Time { return testNow.Add(time.Minute) }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = reopened.Close() })
-	guarded, err = workflow.GuardStorage(reopened)
-	if err != nil {
-		t.Fatal(err)
-	}
-	replayed, err := guarded.Transact(context.Background(), fixture.Create)
-	if err != nil || !replayed.Replayed || replayed.CommitSequence != first.CommitSequence {
-		t.Fatalf("reopen replay = %+v, err = %v", replayed, err)
-	}
-	if _, err := os.Stat(artifact.Path); err != nil {
-		t.Fatal(err)
-	}
+	os.Exit(0)
 }
 
 func TestOutboxRetryIsReplaySafeAndReclaimable(t *testing.T) {
@@ -129,6 +140,41 @@ func TestMetadataRollbackRequiresEmptyStore(t *testing.T) {
 	})
 	if workflow.StorageCode(err) != workflow.StorageConflict {
 		t.Fatalf("rollback code = %q, err = %v", workflow.StorageCode(err), err)
+	}
+}
+
+func TestMigrationRejectsTamperedBackup(t *testing.T) {
+	store := openTestStore(t)
+	guarded, err := workflow.GuardStorage(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backup, err := store.Backup(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.OpenFile(backup.Path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.WriteString("tamper"); err != nil {
+		file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	spec := store.migrations["metadata"]
+	_, err = guarded.Migrate(context.Background(), workflow.MigrationPlan{
+		ContractVersion: workflow.StorageContractVersion,
+		Component:       spec.component,
+		Version:         spec.version,
+		Checksum:        spec.checksum,
+		BackupDigest:    backup.Digest,
+		Direction:       workflow.MigrationRollback,
+	})
+	if workflow.StorageCode(err) != workflow.StorageDenied {
+		t.Fatalf("tampered backup code = %q, err = %v", workflow.StorageCode(err), err)
 	}
 }
 
