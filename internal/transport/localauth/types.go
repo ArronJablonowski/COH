@@ -34,19 +34,39 @@ type SessionStore interface {
 	RevokeSession(context.Context, string, time.Time) error
 }
 
+type ReplayStore interface {
+	CheckAndStore(context.Context, ReplayRecord) (ReplayResult, error)
+}
+
 type AuditSink interface {
 	AppendAuthenticationEvent(context.Context, AuthenticationEvent) error
+	AppendAuthorizationDecision(context.Context, localidentity.Decision) error
 }
 
 type Service struct {
 	Actors       ActorDirectory
 	Challenges   ChallengeStore
 	Sessions     SessionStore
+	Replay       ReplayStore
 	Audit        AuditSink
 	Random       io.Reader
 	Clock        Clock
 	ChallengeTTL time.Duration
 	SessionTTL   time.Duration
+}
+
+type ReplayResult string
+
+const (
+	ReplayNew      ReplayResult = "new"
+	ReplayExact    ReplayResult = "exact_replay"
+	ReplayConflict ReplayResult = "conflict"
+)
+
+type ReplayRecord struct {
+	SessionID      string
+	IdempotencyKey string
+	RequestDigest  string
 }
 
 type BeginRequest struct {

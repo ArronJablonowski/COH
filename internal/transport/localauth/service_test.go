@@ -107,8 +107,38 @@ func (memory *sessionMemory) RevokeSession(_ context.Context, digest string, rev
 }
 
 type auditMemory struct {
-	events []AuthenticationEvent
-	err    error
+	events    []AuthenticationEvent
+	decisions []localidentity.Decision
+	err       error
+}
+
+func (memory *auditMemory) AppendAuthorizationDecision(_ context.Context, decision localidentity.Decision) error {
+	if memory.err != nil {
+		return memory.err
+	}
+	memory.decisions = append(memory.decisions, decision)
+	return nil
+}
+
+type replayMemory struct {
+	records map[string]ReplayRecord
+	err     error
+}
+
+func (memory *replayMemory) CheckAndStore(_ context.Context, record ReplayRecord) (ReplayResult, error) {
+	if memory.err != nil {
+		return "", memory.err
+	}
+	key := record.SessionID + "\x00" + record.IdempotencyKey
+	previous, exists := memory.records[key]
+	if !exists {
+		memory.records[key] = record
+		return ReplayNew, nil
+	}
+	if previous.RequestDigest == record.RequestDigest {
+		return ReplayExact, nil
+	}
+	return ReplayConflict, nil
 }
 
 func (memory *auditMemory) AppendAuthenticationEvent(_ context.Context, event AuthenticationEvent) error {
@@ -299,6 +329,184 @@ func TestAuthenticationCancellationTimeoutAndRecovery(t *testing.T) {
 	}
 }
 
+func TestAuthorizeBindsSessionDetectsExactReplayAndTampering(t *testing.T) {
+	service, privateKey, _, _, sessions, audit, _ := authenticationFixture(t)
+	issued := issueTestSession(t, service, privateKey)
+	request := validAuthorizationRequest(localidentity.QueryExecute, "")
+	decision, err := service.Authorize(context.Background(), issued.Token, request)
+	if err != nil || decision.Outcome != "allowed" || decision.Replayed || decision.SessionID != issued.ID || len(audit.decisions) != 1 {
+		t.Fatalf("decision = %+v, audit = %+v, err = %v", decision, audit.decisions, err)
+	}
+	replayed, err := service.Authorize(context.Background(), issued.Token, request)
+	if err != nil || replayed.Outcome != "allowed" || !replayed.Replayed || replayed.DecisionDigest == decision.DecisionDigest || len(audit.decisions) != 2 {
+		t.Fatalf("replayed = %+v, audit = %+v, err = %v", replayed, audit.decisions, err)
+	}
+	request.PayloadDigest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	conflict, err := service.Authorize(context.Background(), issued.Token, request)
+	if localidentity.Code(err) != localidentity.Conflict || reason(err) != "idempotency_conflict" || conflict.Outcome != "denied" || len(audit.decisions) != 3 {
+		t.Fatalf("conflict = %+v, audit = %+v, err = %v", conflict, audit.decisions, err)
+	}
+	encoded, err := json.Marshal(audit.decisions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := sessions.records[tokenDigest(issued.Token)]
+	for _, secret := range []string{issued.Token, stored.TokenDigest} {
+		if strings.Contains(string(encoded), secret) {
+			t.Fatalf("authorization audit contains session credential: %s", encoded)
+		}
+	}
+}
+
+func TestAuthorizeEnforcesRequestRoleAndScope(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*localidentity.Request)
+		code   localidentity.ErrorCode
+		reason string
+	}{
+		{"missing-case", func(request *localidentity.Request) { request.Context.CaseID = "" }, localidentity.InvalidInput, "request_identity"},
+		{"cross-tenant", func(request *localidentity.Request) {
+			request.Context.TenantID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa"
+		}, localidentity.Denied, "case_scope_denied"},
+		{"cross-case", func(request *localidentity.Request) { request.Context.CaseID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa" }, localidentity.Denied, "case_scope_denied"},
+		{"cross-actor", func(request *localidentity.Request) { request.Context.ActorID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa" }, localidentity.Denied, "session_scope_mismatch"},
+		{"approval-escalation", func(request *localidentity.Request) {
+			request.Permission = localidentity.ApprovalDecide
+			request.ActionTier = localidentity.T3
+		}, localidentity.Denied, "role_permission_denied"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service, privateKey, _, _, _, audit, _ := authenticationFixture(t)
+			issued := issueTestSession(t, service, privateKey)
+			request := validAuthorizationRequest(localidentity.QueryExecute, "")
+			test.mutate(&request)
+			decision, err := service.Authorize(context.Background(), issued.Token, request)
+			if localidentity.Code(err) != test.code || reason(err) != test.reason || decision.Outcome == "allowed" || len(audit.decisions) != 1 {
+				t.Fatalf("decision = %+v, audit = %+v, err = %v", decision, audit.decisions, err)
+			}
+		})
+	}
+}
+
+func TestAuthorizeRechecksExpiryActorRevisionAndSessionRevocation(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(Service, *actorMemory, *fixedClock, IssuedSession) error
+		reason string
+	}{
+		{"expired", func(_ Service, _ *actorMemory, clock *fixedClock, _ IssuedSession) error {
+			clock.current = clock.current.Add(9 * time.Hour)
+			return nil
+		}, "session_expired"},
+		{"actor-revision", func(_ Service, actors *actorMemory, _ *fixedClock, _ IssuedSession) error {
+			actors.actor.Revision++
+			return nil
+		}, "actor_revoked"},
+		{"actor-revoked", func(_ Service, actors *actorMemory, _ *fixedClock, _ IssuedSession) error {
+			actors.actor.Active = false
+			return nil
+		}, "actor_revoked"},
+		{"session-revoked", func(service Service, _ *actorMemory, _ *fixedClock, issued IssuedSession) error {
+			return service.Revoke(context.Background(), issued.Token)
+		}, "session_revoked"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service, privateKey, actors, _, _, audit, clock := authenticationFixture(t)
+			issued := issueTestSession(t, service, privateKey)
+			if err := test.mutate(service, actors, clock, issued); err != nil {
+				t.Fatal(err)
+			}
+			decision, err := service.Authorize(context.Background(), issued.Token, validAuthorizationRequest(localidentity.CaseRead, ""))
+			if localidentity.Code(err) != localidentity.Denied || reason(err) != test.reason || decision.Outcome != "denied" || len(audit.decisions) != 1 {
+				t.Fatalf("decision = %+v, audit = %+v, err = %v", decision, audit.decisions, err)
+			}
+		})
+	}
+}
+
+func TestAuthorizeFailsClosedOnAuditAndReplayStoreFailure(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(Service, *auditMemory)
+		reason string
+	}{
+		{"audit", func(_ Service, audit *auditMemory) { audit.err = errors.New("private audit backend detail") }, "audit_unavailable"},
+		{"replay", func(service Service, _ *auditMemory) {
+			service.Replay.(*replayMemory).err = errors.New("private replay backend detail")
+		}, "replay_store_unavailable"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service, privateKey, _, _, _, audit, _ := authenticationFixture(t)
+			issued := issueTestSession(t, service, privateKey)
+			test.mutate(service, audit)
+			decision, err := service.Authorize(context.Background(), issued.Token, validAuthorizationRequest(localidentity.CaseRead, ""))
+			if localidentity.Code(err) != localidentity.Unavailable || reason(err) != test.reason || decision.Outcome != "unavailable" {
+				t.Fatalf("decision = %+v, err = %v", decision, err)
+			}
+		})
+	}
+}
+
+func TestAuthorizeRejectsMalformedAndTamperedSessionsWithoutCredentialDisclosure(t *testing.T) {
+	service, privateKey, _, _, sessions, audit, _ := authenticationFixture(t)
+	issued := issueTestSession(t, service, privateKey)
+	digest := tokenDigest(issued.Token)
+	record := sessions.records[digest]
+	record.OrganizationID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa"
+	sessions.records[digest] = record
+	decision, err := service.Authorize(context.Background(), issued.Token, validAuthorizationRequest(localidentity.CaseRead, ""))
+	if localidentity.Code(err) != localidentity.Denied || reason(err) != "session_scope_mismatch" || decision.Outcome != "denied" {
+		t.Fatalf("decision = %+v, err = %v", decision, err)
+	}
+	secret := "malformed-session-token-secret"
+	decision, err = service.Authorize(context.Background(), secret, validAuthorizationRequest(localidentity.CaseRead, ""))
+	if localidentity.Code(err) != localidentity.Denied || reason(err) != "session_invalid" {
+		t.Fatalf("decision = %+v, err = %v", decision, err)
+	}
+	encoded, marshalErr := json.Marshal(audit.decisions)
+	if marshalErr != nil {
+		t.Fatal(marshalErr)
+	}
+	if strings.Contains(string(encoded), secret) || strings.Contains(string(encoded), issued.Token) || strings.Contains(string(encoded), digest) {
+		t.Fatalf("audit contains session credential: %s", encoded)
+	}
+}
+
+func issueTestSession(t *testing.T, service Service, privateKey ed25519.PrivateKey) IssuedSession {
+	t.Helper()
+	challenge, err := service.Begin(context.Background(), BeginRequest{OrganizationID: testOrganizationID, ActorID: testActorID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, err := base64.RawURLEncoding.DecodeString(challenge.SigningMessage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signature := base64.RawURLEncoding.EncodeToString(ed25519.Sign(privateKey, message))
+	issued, err := service.Complete(context.Background(), CompleteRequest{ChallengeID: challenge.ID, Signature: signature})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return issued
+}
+
+func validAuthorizationRequest(permission localidentity.Permission, tier localidentity.ActionTier) localidentity.Request {
+	return localidentity.Request{
+		SchemaVersion: localidentity.SchemaVersion, ContractVersion: localidentity.ContractVersion,
+		RequestID: "0198d6c4-5555-7555-8555-555555555555", IdempotencyKey: "authorize-one",
+		PayloadDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Channel:       localidentity.API,
+		Context: localidentity.Context{
+			OrganizationID: testOrganizationID, TenantID: testTenantID, CaseID: testCaseID, ActorID: testActorID,
+		},
+		Permission: permission, ActionTier: tier,
+	}
+}
+
 func authenticationFixture(t *testing.T) (Service, ed25519.PrivateKey, *actorMemory, *challengeMemory, *sessionMemory, *auditMemory, *fixedClock) {
 	t.Helper()
 	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
@@ -322,6 +530,7 @@ func authenticationFixture(t *testing.T) (Service, ed25519.PrivateKey, *actorMem
 	}
 	return Service{
 		Actors: actors, Challenges: challenges, Sessions: sessions, Audit: audit,
+		Replay: &replayMemory{records: make(map[string]ReplayRecord)},
 		Random: bytes.NewReader(randomBytes), Clock: clock,
 	}, privateKey, actors, challenges, sessions, audit, clock
 }

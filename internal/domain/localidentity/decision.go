@@ -26,6 +26,23 @@ func finalizeDecision(decision Decision) Decision {
 	return decision
 }
 
+// NewDecision creates a digest-bound, redacted decision for a transport
+// failure that occurs before an actor record is available.
+func NewDecision(request Request, actorRevision uint64, outcome, reason string) Decision {
+	decision := decisionFor(Actor{Revision: actorRevision}, request)
+	decision.Outcome = outcome
+	decision.ReasonCode = reason
+	return finalizeDecision(decision)
+}
+
+// BindSession adds the non-secret session correlation identifier and replay
+// state to a decision, then recomputes its integrity digest.
+func BindSession(decision Decision, sessionID string, replayed bool) Decision {
+	decision.SessionID = sessionID
+	decision.Replayed = replayed
+	return finalizeDecision(decision)
+}
+
 func errorReason(err error) string {
 	if typed, ok := err.(*IdentityError); ok {
 		return typed.Reason

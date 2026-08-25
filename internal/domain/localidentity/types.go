@@ -106,5 +106,6 @@ type Decision struct {
 	Permission      Permission `json:"permission,omitempty"`
 	ActionTier      ActionTier `json:"action_tier,omitempty"`
 	ActorRevision   uint64     `json:"actor_revision,omitempty"`
+	SessionID       string     `json:"session_id,omitempty"`
 	Replayed        bool       `json:"replayed"`
 }
