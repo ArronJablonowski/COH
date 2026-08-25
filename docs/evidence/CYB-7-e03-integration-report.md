@@ -70,6 +70,20 @@ ledger. The result binds commit
 `03aecfceb85fd04844927267ec601b7eb3df8e64`, records a clean worktree, and
 reports all E03 criteria as passed.
 
+The integration-result digest is
+`sha256:072e814c9710dd8b0a6d0b0a302d67287691e8b8d464abcf6ce6b78943b0b114`.
+The aggregate artifact-ledger digest is
+`sha256:13ad2286e18bcdd6b3727385b4d642b4b83a934bef20a389d25780b14d655da3`.
+
+## Baseline evidence
+
+The clean report checkpoint `3f0c1c3dc428942752645d9021927d25e87b28f4`
+passed all 18 required baseline stages with
+`quality_gate_promotable=true`. The quality report digest is
+`f4bd11ea374a29bb28af122f97fb2d49ae6475563f164428cd8edb578e05e439`;
+its provenance records 319 source files, Go 1.26.7 on darwin/arm64, and
+`vcs_modified=false`.
+
 ## Residual scope
 
 - Real broker and connector dispatch/reconciliation qualification belongs to
