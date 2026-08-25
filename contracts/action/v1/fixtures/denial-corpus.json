@@ -1,0 +1,31 @@
+{
+  "schema": "coh.action-manifest-denials/v1",
+  "contract_version": "1.0.0",
+  "base": "valid/detection-publish.manifest.json",
+  "cases": [
+    {"name":"unsupported-schema","operation":"set","path":"/schema_version","value":"coh.action-manifest/v2","reason":"unsupported_contract"},
+    {"name":"unknown-field","operation":"set","path":"/password","value":"must-not-survive","reason":"manifest_decoding"},
+    {"name":"missing-organization","operation":"remove","path":"/organization_id","reason":"manifest_decoding"},
+    {"name":"missing-tenant","operation":"remove","path":"/tenant_id","reason":"manifest_decoding"},
+    {"name":"missing-case","operation":"remove","path":"/case_id","reason":"manifest_decoding"},
+    {"name":"missing-requestor","operation":"remove","path":"/requestor_actor_id","reason":"manifest_decoding"},
+    {"name":"unknown-tier","operation":"set","path":"/action_tier","value":"T5","reason":"manifest_action"},
+    {"name":"empty-targets","operation":"set","path":"/target_digests","value":[],"reason":"manifest_targets"},
+    {"name":"unsorted-targets","operation":"set","path":"/target_digests","value":["sha256:2222222222222222222222222222222222222222222222222222222222222222","sha256:1111111111111111111111111111111111111111111111111111111111111111"],"reason":"manifest_targets"},
+    {"name":"duplicate-target","operation":"set","path":"/target_digests","value":["sha256:1111111111111111111111111111111111111111111111111111111111111111","sha256:1111111111111111111111111111111111111111111111111111111111111111"],"reason":"manifest_targets"},
+    {"name":"target-excluded","operation":"set","path":"/exclusion_digests","value":["sha256:1111111111111111111111111111111111111111111111111111111111111111"],"reason":"manifest_targets"},
+    {"name":"raw-arguments","operation":"set","path":"/arguments","value":{"query":"secret"},"reason":"manifest_decoding"},
+    {"name":"bad-tool-version","operation":"set","path":"/tool/version","value":"latest","reason":"manifest_tool"},
+    {"name":"zero-policy-revision","operation":"set","path":"/policy_revision","value":0,"reason":"manifest_policy"},
+    {"name":"credential-none-with-reference","operation":"set","path":"/credential_class","value":"none","reason":"manifest_credential"},
+    {"name":"credential-without-reference","operation":"set","path":"/credential_reference_digest","value":null,"reason":"manifest_credential"},
+    {"name":"expiry-before-start","operation":"set","path":"/valid_until","value":"2026-08-25T22:00:00.000000000Z","reason":"manifest_time"},
+    {"name":"window-over-24-hours","operation":"set","path":"/valid_until","value":"2026-08-27T00:00:00.000000001Z","reason":"manifest_time"},
+    {"name":"zero-use-count","operation":"set","path":"/maximum_use_count","value":0,"reason":"manifest_use"},
+    {"name":"excessive-use-count","operation":"set","path":"/maximum_use_count","value":1001,"reason":"manifest_use"},
+    {"name":"t2-without-rollback","operation":"set","path":"/rollback_digest","value":null,"reason":"manifest_safety"},
+    {"name":"t4-without-roe","operation":"set","path":"/action_tier","value":"T4","reason":"manifest_safety"},
+    {"name":"bad-nonce","operation":"set","path":"/manifest_nonce","value":"short","reason":"manifest_nonce"},
+    {"name":"inline-secret-reference","operation":"set","path":"/credential_reference","value":"env://PASSWORD","reason":"manifest_decoding"}
+  ]
+}
