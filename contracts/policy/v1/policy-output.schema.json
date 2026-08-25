@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.local/contracts/policy/v1/policy-output.schema.json",
+  "title": "COH OPA policy output v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["allow", "reason_code", "approval_required"],
+  "properties": {
+    "allow": {"type": "boolean"},
+    "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "approval_required": {"type": "boolean"}
+  }
+}

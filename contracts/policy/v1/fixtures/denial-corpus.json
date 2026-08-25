@@ -1,0 +1,29 @@
+{
+  "schema_version": "coh.policy-denial-corpus/v1",
+  "cases": [
+    {"name":"unsigned_bundle","reason":"bundle_verification_failed"},
+    {"name":"tampered_file","reason":"bundle_verification_failed"},
+    {"name":"wrong_signer_key","reason":"bundle_verification_failed"},
+    {"name":"wrong_signature_domain","reason":"bundle_verification_failed"},
+    {"name":"stale_bundle_revision","reason":"bundle_revision_stale"},
+    {"name":"cross_tenant_replacement","reason":"bundle_scope_changed"},
+    {"name":"expired_bundle","reason":"bundle_not_current"},
+    {"name":"forbidden_builtin","reason":"bundle_compile_failed"},
+    {"name":"unknown_tool","reason":"unknown_tool"},
+    {"name":"unknown_target","reason":"unknown_target"},
+    {"name":"unknown_tenant","reason":"unknown_tenant"},
+    {"name":"unknown_data_route","reason":"unknown_data_route"},
+    {"name":"unknown_capability_field","reason":"unknown_capability_field"},
+    {"name":"unqualified_validator","reason":"validator_unqualified"},
+    {"name":"active_estop","reason":"emergency_stop_active"},
+    {"name":"revoked_actor","reason":"actor_revoked"},
+    {"name":"revoked_policy_signer","reason":"policy_signer_revoked"},
+    {"name":"stale_action_policy","reason":"policy_state_stale"},
+    {"name":"invalid_policy_output","reason":"policy_output_invalid"},
+    {"name":"undefined_policy_output","reason":"policy_undefined"},
+    {"name":"audit_failure","reason":"audit_unavailable"},
+    {"name":"cancellation","reason":"request_canceled"},
+    {"name":"timeout","reason":"request_timeout"},
+    {"name":"failed_replacement_recovery","reason":"last_known_good_retained"}
+  ]
+}
