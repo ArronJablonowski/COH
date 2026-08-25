@@ -2,7 +2,11 @@
 // broker-owned, short-lived credential leases.
 package credentiallease
 
-import "github.com/ArronJablonowski/COH/internal/domain/secretref"
+import (
+	"time"
+
+	"github.com/ArronJablonowski/COH/internal/domain/secretref"
+)
 
 const (
 	SchemaVersion     = "coh.credential-lease/v1"
@@ -30,4 +34,29 @@ type Audience struct {
 	Kind                    string `json:"kind"`
 	ID                      string `json:"id"`
 	TransportIdentityDigest string `json:"transport_identity_digest"`
+}
+
+// IssuanceAuthority is trusted input from authenticated broker boundaries. A
+// request cannot create or alter these facts.
+type IssuanceAuthority struct {
+	Context                     secretref.Context
+	Active                      bool
+	ActorRevision               uint64
+	AuthorizationAllowed        bool
+	AuthorizationDecisionDigest string
+	PolicyAllowed               bool
+	PolicyDecisionDigest        string
+	ApprovalRequired            bool
+	ApprovalAllowed             bool
+	ApprovalDecisionDigest      string
+	Audience                    AudienceAuthority
+}
+
+type AudienceAuthority struct {
+	Audience
+	Active     bool
+	Revision   uint64
+	Remote     bool
+	MutualTLS  bool
+	ObservedAt time.Time
 }

@@ -33,6 +33,28 @@ func ValidateIssuanceRequest(request IssuanceRequest) error {
 	return nil
 }
 
+func ValidateIssuanceAuthority(authority IssuanceAuthority) error {
+	if !validContext(authority.Context) || authority.ActorRevision == 0 ||
+		!validDigest(authority.AuthorizationDecisionDigest) || !validDigest(authority.PolicyDecisionDigest) {
+		return leaseError(InvalidInput, "authority_invalid", nil)
+	}
+	if authority.ApprovalRequired && !validDigest(authority.ApprovalDecisionDigest) {
+		return leaseError(InvalidInput, "authority_invalid", nil)
+	}
+	if !authority.ApprovalRequired && (authority.ApprovalAllowed || authority.ApprovalDecisionDigest != "") {
+		return leaseError(InvalidInput, "authority_invalid", nil)
+	}
+	if (authority.Audience.Kind != "connector" && authority.Audience.Kind != "runner") ||
+		!validToken(authority.Audience.ID) || !validDigest(authority.Audience.TransportIdentityDigest) ||
+		authority.Audience.Revision == 0 || authority.Audience.ObservedAt.IsZero() {
+		return leaseError(InvalidInput, "audience_authority_invalid", nil)
+	}
+	if authority.Audience.Remote && !authority.Audience.MutualTLS {
+		return leaseError(Denied, "mutual_tls_required", nil)
+	}
+	return nil
+}
+
 func validTargets(targets []string) bool {
 	if len(targets) == 0 || len(targets) > 64 || !slices.IsSorted(targets) {
 		return false
