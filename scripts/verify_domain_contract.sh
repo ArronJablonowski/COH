@@ -16,7 +16,12 @@ authority_valid="$contract/fixtures/authority-payloads.valid.json"
 capability_valid="$contract/fixtures/capability-risk-payloads.valid.json"
 denied="$contract/fixtures/denied"
 
-for command in jq diff mktemp; do
+fail() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+for command in go jq diff mktemp; do
   command -v "$command" >/dev/null 2>&1 || {
     printf 'error: required command is unavailable: %s\n' "$command" >&2
     exit 2
@@ -35,11 +40,6 @@ jq -e 'map(.kind) == ["model", "risk", "skill", "vulnerability"] and all(.[]; (.
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/coh-domain-contract.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
-
-fail() {
-  printf 'error: %s\n' "$*" >&2
-  exit 1
-}
 
 jq -e '
   .schema == "coh.domain.registry/v1"
@@ -121,6 +121,9 @@ jq -e --argjson kinds "$kinds" "$envelope_filter" "$valid" >/dev/null ||
 
 denied_count=0
 for fixture in "$denied"/*.json; do
+  if [[ "$(basename "$fixture")" == "duplicate-key.json" ]]; then
+    continue
+  fi
   if jq -e --argjson kinds "$kinds" "$envelope_filter" "$fixture" >/dev/null; then
     fail "denial fixture was accepted: ${fixture#$root/}"
   fi
@@ -128,5 +131,9 @@ for fixture in "$denied"/*.json; do
 done
 [[ "$denied_count" == 3 ]] || fail "expected 3 denial fixtures, found $denied_count"
 
-printf 'domain-contract summary: registry=16 schema-kinds=16 payloads=16 valid=1 denied=%d failures=0\n' \
-  "$denied_count"
+# jq applies last-key-wins semantics, so duplicate-key denial must be exercised
+# by the token-aware production decoder rather than by the jq shape check.
+go test ./internal/helper/domaincontract -run 'TestValidateEnvelope(DenialFixtures|AdditionalDenials|Cancellation)$' -count=1 >/dev/null ||
+  fail 'executable envelope denial tests failed'
+
+printf 'domain-contract summary: registry=16 schema-kinds=16 payloads=16 valid=1 fixtures-denied=4 executable-denials=7 failures=0\n'
