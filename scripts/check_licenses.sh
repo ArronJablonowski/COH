@@ -30,7 +30,13 @@ fi
 
 module_count=0
 while read -r module directory; do
-  [[ -n "${directory}" ]] || directory="${repo_root}"
+	if [[ -z "${directory}" ]]; then
+		if [[ "${module}" != "github.com/ArronJablonowski/COH" ]]; then
+			echo "Module source is unavailable for ${module}" >&2
+			exit 2
+		fi
+		directory="${repo_root}"
+	fi
   license_file=""
   for candidate in LICENSE LICENSE.txt LICENSE.md COPYING; do
     if [[ -f "${directory}/${candidate}" ]]; then license_file="${directory}/${candidate}"; break; fi
@@ -40,10 +46,10 @@ while read -r module directory; do
     exit 2
   fi
   digest="$("${COH_QUALITYGATE_BIN:?COH_QUALITYGATE_BIN is required}" -mode digest -input "${license_file}")"
-  if ! awk -v id="${module}" -v hash="${digest}" '
-    $1 == "module" && $2 == id && $3 == "Apache-2.0" && $4 == hash && $5 == "repository" { found=1 }
-    END { exit !found }
-  ' "${rule_list}"; then
+	if ! awk -v id="${module}" -v hash="${digest}" '
+		$1 == "module" && $2 == id && $3 ~ /^(Apache-2.0|BSD-3-Clause|MIT|MPL-2.0)$/ && $4 == hash && $5 == "repository" { found=1 }
+		END { exit !found }
+	' "${rule_list}"; then
     echo "Unapproved module license or digest for ${module}" >&2
     exit 2
   fi
@@ -54,6 +60,32 @@ allowed_modules="$(awk '$1 == "module" { count++ } END { print count+0 }' "${rul
 if (( module_count == 0 || module_count != allowed_modules )); then
   echo "Module license inventory does not exactly match its allowlist" >&2
   exit 2
+fi
+
+sqlite_directory="$(awk '$1 == "modernc.org/sqlite" { print $2 }' "${module_list}")"
+module_notice_count=0
+while read -r kind identity license digest source; do
+	[[ "${kind}" == "module-notice" ]] || continue
+	case "${identity}:${license}:${source}" in
+		modernc.org/sqlite@LICENSE-SQLITE:Public-Domain:repository) filename="LICENSE-SQLITE" ;;
+		modernc.org/sqlite@LICENSE-SQLITE_VEC:MIT:repository) filename="LICENSE-SQLITE_VEC" ;;
+		*) echo "Unapproved module notice: ${identity}" >&2; exit 2 ;;
+	esac
+	if [[ -z "${sqlite_directory}" || ! -f "${sqlite_directory}/${filename}" ]]; then
+		echo "Module notice is unavailable: ${identity}" >&2
+		exit 2
+	fi
+	actual="$("${COH_QUALITYGATE_BIN:?COH_QUALITYGATE_BIN is required}" -mode digest -input "${sqlite_directory}/${filename}")"
+	if [[ "${actual}" != "${digest}" ]]; then
+		echo "Module notice digest mismatch: ${identity}" >&2
+		exit 2
+	fi
+	module_notice_count=$((module_notice_count + 1))
+done < "${rule_list}"
+
+if (( module_notice_count != 2 )); then
+	echo "SQLite module notice inventory must be exact" >&2
+	exit 2
 fi
 
 artifact_count=0
@@ -77,4 +109,4 @@ if (( artifact_count != 2 )); then
   exit 2
 fi
 
-echo "license summary: modules=${module_count} shipped_inputs=${artifact_count} denied=0"
+echo "license summary: modules=${module_count} module_notices=${module_notice_count} shipped_inputs=${artifact_count} denied=0"
