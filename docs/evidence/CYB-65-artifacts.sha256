@@ -1,0 +1,13 @@
+70b848412b5b2381bb465050a18060dd1f00ad87c1999403dc992aa2f5429708  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/run-budget.9mpwjt/run-budget.log
+9eb3b3044f9e3c3058dafd152fa3ee3be0d380cfd339ea7bd498b813673cd2aa  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/run-budget-trace.I9UHl0/adversarial-recovery.log
+5005978488bab1c44db1455429c283b5cfaf9bffa7c4452ccab9e5c5cddd1598  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.nMp7oi/quality-report.json
+a0908c37387e2c5a6fb59417b0ba92f40eb37f688b25337e43364d2c6c3ae01f  embedded:quality-report
+7e4c1d5074e7f20171ed5e596cef80b8f5ec1659f460a624b51a079aee3c14e8  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.nMp7oi/unit.log
+72b60acfa10c6aa6254558598d4d98ad3e696c8be85f1d1e257a98e9482b80f7  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.nMp7oi/race.log
+c9632412354789c8ae066a5add22fc89c1cd8107aa11eadcb931d006d8881540  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.nMp7oi/architecture-report.json
+e1e46422a83f6dd0ce2ba0360a4efb3d406d8808c462ccf42c9979cdc690b2c1  docs/evidence/CYB-65-run-task-budgets-report.md
+1aa5eb9241817e798297c48889c9ef780a9f545709f42258695cdc0f7e7526c3  contracts/workflow/v1/run-budget.schema.json
+cde50a92aca9421bc53616e29da6bd8d968782deed061a30b34ef1cce2b738bd  contracts/workflow/v1/fixtures/run-budget-plan.json
+89d257da30b391f04dc429e801107bd5eeed1f435458052adc71cef9aa358b65  contracts/workflow/v1/fixtures/run-budget-ledger.json
+af509162d74dfefc7338caa9c50e05a615ba913f6f5f4293bebb940289e09351  docs/design/run-task-budget-enforcement.md
+77d74f887f77bda14b2b95081ba9dfdb77324968fb0e49c3aef17c05da17f116  scripts/verify_run_budgets.sh
