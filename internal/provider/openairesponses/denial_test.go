@@ -98,12 +98,17 @@ func TestHTTPStatusMappingIsTypedAndRedacted(t *testing.T) {
 		retryable bool
 	}{
 		{http.StatusBadRequest, providercontract.InvalidInput, false},
+		{http.StatusRequestEntityTooLarge, providercontract.InvalidInput, false},
+		{http.StatusUnprocessableEntity, providercontract.InvalidInput, false},
 		{http.StatusUnauthorized, providercontract.Denied, false},
+		{http.StatusForbidden, providercontract.Denied, false},
 		{http.StatusNotFound, providercontract.Unsupported, false},
 		{http.StatusRequestTimeout, providercontract.Timeout, true},
+		{http.StatusGatewayTimeout, providercontract.Timeout, true},
 		{http.StatusConflict, providercontract.Conflict, false},
 		{http.StatusTooManyRequests, providercontract.Unavailable, true},
 		{http.StatusServiceUnavailable, providercontract.Unavailable, true},
+		{http.StatusTeapot, providercontract.Unavailable, false},
 	}
 	for _, test := range tests {
 		rig := newTestRig(t, "completed-response.json")
