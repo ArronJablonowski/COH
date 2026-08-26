@@ -156,42 +156,11 @@ func authorizationToWire(value AuthorizationRequest) authorizationWire {
 		clonePointer(value.CurrentProvenanceDigest)}
 }
 
-func authorizationFromWire(value authorizationWire) (AuthorizationRequest, error) {
-	command, err := commandFromWire(value.Command)
-	if err != nil {
-		return AuthorizationRequest{}, err
-	}
-	retainUntil, err := timeFromWire(value.CurrentRetainUntil)
-	if err != nil {
-		return AuthorizationRequest{}, err
-	}
-	return AuthorizationRequest{SchemaVersion: value.SchemaVersion, ContractVersion: value.ContractVersion,
-		AuthorizationDigest: value.AuthorizationDigest, IntentDigest: value.IntentDigest, Command: command,
-		CurrentState: clonePointer(value.CurrentState), CurrentClassification: clonePointer(value.CurrentClassification),
-		CurrentAssigneeActorID: clonePointer(value.CurrentAssigneeActorID), CurrentLegalHold: clonePointer(value.CurrentLegalHold),
-		CurrentRetainUntil: retainUntil, CurrentProvenanceDigest: clonePointer(value.CurrentProvenanceDigest)}, nil
-}
-
 func decisionToWire(value Decision) decisionWire {
 	return decisionWire{value.SchemaVersion, value.ContractVersion, value.DecisionID, value.DecisionDigest,
 		value.AuthorizationDigest, value.IntentDigest, value.Operation, caseToWire(value.Case), value.ActorID,
 		value.ActorRevision, value.ExpectedRevision, value.PolicyDigest, value.RevocationDigest, value.Outcome,
 		value.ReasonCode, formatTime(value.IssuedAt), formatTime(value.ExpiresAt), value.Revision}
-}
-
-func decisionFromWire(value decisionWire) (Decision, error) {
-	issuedAt, err := parseTime(value.IssuedAt)
-	if err != nil {
-		return Decision{}, err
-	}
-	expiresAt, err := parseTime(value.ExpiresAt)
-	if err != nil {
-		return Decision{}, err
-	}
-	return Decision{value.SchemaVersion, value.ContractVersion, value.DecisionID, value.DecisionDigest,
-		value.AuthorizationDigest, value.IntentDigest, value.Operation, caseFromWire(value.Case), value.ActorID,
-		value.ActorRevision, value.ExpectedRevision, value.PolicyDigest, value.RevocationDigest, value.Outcome,
-		value.ReasonCode, issuedAt, expiresAt, value.Revision}, nil
 }
 
 func recordToWire(value Record) recordWire {

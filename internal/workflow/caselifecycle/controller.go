@@ -84,7 +84,11 @@ func (controller *Controller) Execute(ctx context.Context, command Command) (Res
 	stored, replayed, err := controller.store.Commit(opCtx, command.IdempotencyKey, intent,
 		command.ExpectedRevision, next, receipt)
 	if err != nil {
-		return Result{}, mapDependency(opCtx, "case_commit_unavailable", err)
+		mapped := mapDependency(opCtx, "case_commit_unavailable", err)
+		if CodeOf(mapped) == Conflict {
+			return Result{}, controller.deny(ctx, command, intent, decision, "concurrent_conflict", now, command.ExpectedRevision)
+		}
+		return Result{}, mapped
 	}
 	if err = validateStoredReceipt(stored, command, intent, idempotency); err != nil {
 		return Result{}, err

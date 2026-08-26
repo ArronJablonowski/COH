@@ -64,7 +64,7 @@ func (controller *Controller) deny(ctx context.Context, command Command, intent 
 	if reason == "case_not_found" {
 		code = NotFound
 	}
-	if reason == "stale_revision" || reason == "case_already_exists" {
+	if reason == "stale_revision" || reason == "case_already_exists" || reason == "concurrent_conflict" {
 		code = Conflict
 	}
 	return newError(code, reason, false, nil)

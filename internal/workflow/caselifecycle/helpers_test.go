@@ -101,6 +101,12 @@ type testAuthority struct {
 	calls   []AuthorizationRequest
 }
 
+type authorityFunc func(context.Context, AuthorizationRequest) (Decision, error)
+
+func (function authorityFunc) AuthorizeCase(ctx context.Context, request AuthorizationRequest) (Decision, error) {
+	return function(ctx, request)
+}
+
 func (authority *testAuthority) AuthorizeCase(_ context.Context, request AuthorizationRequest) (Decision, error) {
 	authority.mu.Lock()
 	defer authority.mu.Unlock()
