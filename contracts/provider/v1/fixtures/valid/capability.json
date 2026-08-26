@@ -1,0 +1,48 @@
+{
+  "schema_version": "coh.provider-capability/v1",
+  "contract_version": "1.0.0",
+  "snapshot_id": "0198e300-1000-7000-8000-000000000001",
+  "observed_at": "2026-08-26T05:00:00.000000000Z",
+  "valid_until": "2026-08-27T05:00:00.000000000Z",
+  "provider": {
+    "provider_kind": "ollama",
+    "adapter_version": "1.0.0",
+    "endpoint_identity_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "data_route": "local",
+    "requested_model": "example/model",
+    "actual_model": "example/model",
+    "model_revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "runtime_name": "ollama",
+    "runtime_version": "1.2.3",
+    "runtime_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "tokenizer_name": "example-tokenizer",
+    "tokenizer_version": "1.0.0",
+    "tokenizer_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "chat_template_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "tool_parser_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "reasoning_parser_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "context_limit": 32768,
+    "sampling_profile_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "hardware_profile_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "state_mode": "stateless",
+    "policy_revision": 7
+  },
+  "features": {
+    "message_roles": ["assistant", "developer", "system", "tool", "user"],
+    "content_kinds": ["input_json", "output_json", "reasoning_ref", "text", "tool_call", "tool_result"],
+    "tool_calls": true,
+    "structured_output": true,
+    "streaming": true,
+    "cancellation": true,
+    "usage": true,
+    "state_modes": ["stateless"]
+  },
+  "limits": {
+    "maximum_input_tokens": 24576,
+    "maximum_output_tokens": 8192,
+    "maximum_messages": 512,
+    "maximum_tools": 32,
+    "maximum_parallel_tool_calls": 4,
+    "maximum_stream_seconds": 600
+  }
+}

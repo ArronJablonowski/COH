@@ -1,0 +1,49 @@
+{
+  "schema_version": "coh.provider-qualification/v1",
+  "contract_version": "1.0.0",
+  "qualification_id": "0198e300-1000-7000-8000-000000000002",
+  "issued_at": "2026-08-26T05:05:00.000000000Z",
+  "expires_at": "2026-09-25T05:05:00.000000000Z",
+  "provider": {
+    "provider_kind": "ollama",
+    "adapter_version": "1.0.0",
+    "endpoint_identity_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "data_route": "local",
+    "requested_model": "example/model",
+    "actual_model": "example/model",
+    "model_revision": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "runtime_name": "ollama",
+    "runtime_version": "1.2.3",
+    "runtime_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "tokenizer_name": "example-tokenizer",
+    "tokenizer_version": "1.0.0",
+    "tokenizer_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "chat_template_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "tool_parser_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "reasoning_parser_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "context_limit": 32768,
+    "sampling_profile_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "hardware_profile_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "state_mode": "stateless",
+    "policy_revision": 7
+  },
+  "capability_digest": "sha256:0d58b09b1f641d043cf02e8c0b1cd130ab6886ca2d3695475cc9e07b3932f6bb",
+  "release_matrix": {
+    "profile": "native-macos-arm64",
+    "os": "darwin",
+    "architecture": "arm64",
+    "deployment_mode": "native",
+    "network_mode": "restricted_connected"
+  },
+  "cases": [
+    {"kind": "cancellation", "fixture_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "outcome": "passed", "trace_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "duration_milliseconds": 125},
+    {"kind": "capability", "fixture_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "outcome": "passed", "trace_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "duration_milliseconds": 25},
+    {"kind": "identity_provenance", "fixture_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "outcome": "passed", "trace_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333", "duration_milliseconds": 40},
+    {"kind": "policy_route", "fixture_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "outcome": "passed", "trace_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444", "duration_milliseconds": 30},
+    {"kind": "structured_output", "fixture_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "outcome": "passed", "trace_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555", "duration_milliseconds": 80},
+    {"kind": "tool_call", "fixture_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "outcome": "passed", "trace_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666", "duration_milliseconds": 90}
+  ],
+  "aggregate_outcome": "passed",
+  "suite_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "qualifier_identity_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+}
