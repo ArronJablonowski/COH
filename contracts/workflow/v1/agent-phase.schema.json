@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/workflow/v1/agent-phase.schema.json",
+  "title": "COH typed agent phase records v1",
+  "$defs": {
+    "uuid_v7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9][.][0-9]{9}Z$"
+    },
+    "digest_set": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/digest"}
+    },
+    "retry_policy": {
+      "type": "object",
+      "required": ["maximum_phase_attempts", "maximum_review_cycles"],
+      "properties": {
+        "maximum_phase_attempts": {"type": "integer", "minimum": 1, "maximum": 8},
+        "maximum_review_cycles": {"type": "integer", "minimum": 1, "maximum": 8}
+      },
+      "additionalProperties": false
+    },
+    "claim": {
+      "type": "object",
+      "required": [
+        "claim_id", "statement_digest", "evidence_refs", "counterevidence_refs",
+        "confidence_basis_points", "unknown_digests", "recommended_next_step_digests"
+      ],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/uuid_v7"},
+        "statement_digest": {"$ref": "#/$defs/digest"},
+        "evidence_refs": {"$ref": "#/$defs/nonempty_digest_set"},
+        "counterevidence_refs": {"$ref": "#/$defs/digest_set"},
+        "confidence_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "unknown_digests": {"$ref": "#/$defs/digest_set"},
+        "recommended_next_step_digests": {"$ref": "#/$defs/nonempty_digest_set"}
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "finding_id", "summary_digest", "status", "severity", "evidence_refs",
+        "counterevidence_refs", "confidence_basis_points", "unknown_digests",
+        "recommended_next_step_digests"
+      ],
+      "properties": {
+        "finding_id": {"$ref": "#/$defs/uuid_v7"},
+        "summary_digest": {"$ref": "#/$defs/digest"},
+        "status": {"enum": ["observed", "suspected", "confirmed", "rejected"]},
+        "severity": {"enum": ["informational", "low", "medium", "high", "critical"]},
+        "evidence_refs": {"$ref": "#/$defs/nonempty_digest_set"},
+        "counterevidence_refs": {"$ref": "#/$defs/digest_set"},
+        "confidence_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "unknown_digests": {"$ref": "#/$defs/digest_set"},
+        "recommended_next_step_digests": {"$ref": "#/$defs/nonempty_digest_set"}
+      },
+      "additionalProperties": false
+    },
+    "nonempty_digest_set": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/digest"}
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "contract_version", "phase", "trace_id", "cycle", "input_refs",
+        "input_set_digest", "prior_output_digest", "retry_policy", "deadline"
+      ],
+      "properties": {
+        "contract_version": {"const": "coh.agent-phase/v1"},
+        "phase": {"enum": ["plan", "act", "observe", "review"]},
+        "trace_id": {"$ref": "#/$defs/uuid_v7"},
+        "cycle": {"type": "integer", "minimum": 1, "maximum": 8},
+        "input_refs": {"$ref": "#/$defs/digest_set"},
+        "input_set_digest": {"$ref": "#/$defs/digest"},
+        "prior_output_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "retry_policy": {"$ref": "#/$defs/retry_policy"},
+        "deadline": {"$ref": "#/$defs/timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"phase": {"const": "plan"}, "cycle": {"const": 1}}, "required": ["phase", "cycle"]},
+          "then": {"properties": {"prior_output_digest": {"const": ""}}}
+        },
+        {
+          "if": {"properties": {"phase": {"enum": ["act", "observe", "review"]}}, "required": ["phase"]},
+          "then": {"properties": {"prior_output_digest": {"$ref": "#/$defs/digest"}}}
+        },
+        {
+          "if": {"properties": {"phase": {"const": "plan"}, "cycle": {"minimum": 2}}, "required": ["phase", "cycle"]},
+          "then": {"properties": {"prior_output_digest": {"$ref": "#/$defs/digest"}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "output": {
+      "type": "object",
+      "required": [
+        "contract_version", "phase", "trace_id", "cycle", "input_set_digest",
+        "artifact_digest", "intent_digest", "receipt_digest", "evidence_refs",
+        "completeness", "negative_result", "claims", "findings", "review_disposition"
+      ],
+      "properties": {
+        "contract_version": {"const": "coh.agent-phase/v1"},
+        "phase": {"enum": ["plan", "act", "observe", "review"]},
+        "trace_id": {"$ref": "#/$defs/uuid_v7"},
+        "cycle": {"type": "integer", "minimum": 1, "maximum": 8},
+        "input_set_digest": {"$ref": "#/$defs/digest"},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "receipt_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "evidence_refs": {"$ref": "#/$defs/digest_set"},
+        "completeness": {"enum": ["", "complete", "partial", "empty", "uncertain"]},
+        "negative_result": {"type": "boolean"},
+        "claims": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/claim"}},
+        "findings": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/finding"}},
+        "review_disposition": {"enum": ["", "accepted", "revise"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"phase": {"const": "plan"}}, "required": ["phase"]},
+          "then": {
+            "properties": {
+              "intent_digest": {"$ref": "#/$defs/digest"},
+              "receipt_digest": {"const": ""},
+              "evidence_refs": {"maxItems": 0},
+              "completeness": {"const": ""},
+              "negative_result": {"const": false},
+              "claims": {"maxItems": 0},
+              "findings": {"maxItems": 0},
+              "review_disposition": {"const": ""}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"phase": {"const": "act"}}, "required": ["phase"]},
+          "then": {
+            "properties": {
+              "intent_digest": {"$ref": "#/$defs/digest"},
+              "receipt_digest": {"$ref": "#/$defs/digest"},
+              "evidence_refs": {"minItems": 1},
+              "completeness": {"const": "complete"},
+              "negative_result": {"const": false},
+              "claims": {"maxItems": 0},
+              "findings": {"maxItems": 0},
+              "review_disposition": {"const": ""}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"phase": {"const": "observe"}}, "required": ["phase"]},
+          "then": {
+            "properties": {
+              "intent_digest": {"const": ""},
+              "receipt_digest": {"const": ""},
+              "evidence_refs": {"minItems": 1},
+              "completeness": {"enum": ["complete", "partial", "empty", "uncertain"]},
+              "claims": {"maxItems": 0},
+              "findings": {"maxItems": 0},
+              "review_disposition": {"const": ""}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"phase": {"const": "review"}}, "required": ["phase"]},
+          "then": {
+            "properties": {
+              "intent_digest": {"const": ""},
+              "receipt_digest": {"const": ""},
+              "evidence_refs": {"minItems": 1},
+              "completeness": {"enum": ["complete", "partial", "empty", "uncertain"]},
+              "findings": {"minItems": 1},
+              "review_disposition": {"enum": ["accepted", "revise"]}
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [{"$ref": "#/$defs/input"}, {"$ref": "#/$defs/output"}]
+}

@@ -20,3 +20,17 @@ and has a retained Temporal replay fixture. Incompatible logic requires a new
 workflow definition and migration/replay evidence.
 
 This contract implements CYB-60 / COH-E08-01 for FR-011, FR-012, and FR-014.
+
+## Typed agent phases
+
+`agent-phase.schema.json` freezes the CYB-68 / COH-E08-02 input and output
+records for `plan → act → observe → review`. Every record binds the trace,
+cycle, exact input set, immutable output artifact, and bounded retry policy.
+Plan output binds one action intent. Act output binds the broker receipt and
+evidence. Observe records completeness and negative-result state. Review
+returns typed claims/findings with evidence, counterevidence, confidence,
+unknowns, recommended next steps, and an accepted/revise disposition.
+
+The coordinator stores only these identities and references through the
+durable agent loop. Raw prompts, claim text, findings, evidence bytes, and
+provider/tool payloads remain behind immutable artifact references.

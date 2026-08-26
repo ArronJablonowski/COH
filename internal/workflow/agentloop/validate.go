@@ -89,6 +89,20 @@ func validateSchedule(request ScheduleRequest, now time.Time) error {
 	return nil
 }
 
+func validateTerminate(request TerminateRequest) error {
+	if !validateOpaque(request.IdempotencyKey, 256) || !validateCase(request.Case) ||
+		!uuidV7Pattern.MatchString(request.RunID) || !uuidV7Pattern.MatchString(request.StepID) ||
+		!digestPattern.MatchString(request.ReasonDigest) {
+		return newError(InvalidInput, "terminate", "terminate_request_invalid", false, nil)
+	}
+	switch request.Outcome {
+	case TerminalFailed, TerminalDenied, TerminalCanceled, TerminalTimeout, TerminalUncertain:
+		return nil
+	default:
+		return newError(InvalidInput, "terminate", "terminate_outcome_invalid", false, nil)
+	}
+}
+
 func validateRun(value Run) error {
 	if value.ContractVersion != ContractVersion || !uuidV7Pattern.MatchString(value.RunID) || !validateCase(value.Case) || !uuidV7Pattern.MatchString(value.ActorID) || value.WorkflowVersion != WorkflowVersion || !digestPattern.MatchString(value.PolicyDigest) || !tokenPattern.MatchString(value.ProviderRoute) || !uuidV7Pattern.MatchString(value.CurrentStepID) || value.Sequence == 0 || !validateReferences(value.InputRefs) || !validateReferences(value.OutputRefs) || !digestPattern.MatchString(value.ProvenanceDigest) || !validTimes(value.CreatedAt, value.UpdatedAt) || value.Revision == 0 {
 		return newError(Denied, "state", "run_record_invalid", false, nil)
@@ -196,7 +210,7 @@ func legalStepTransition(prior, next Step) bool {
 	}
 	switch prior.Status {
 	case StepPending:
-		return next.Attempt == prior.Attempt && oneOfStep(next.Status, StepRunning, StepDispatching, StepTimeout)
+		return next.Attempt == prior.Attempt && oneOfStep(next.Status, StepRunning, StepDispatching, StepFailed, StepDenied, StepCanceled, StepTimeout)
 	case StepRunning:
 		if next.Status == StepRunning {
 			return next.Attempt == prior.Attempt+1
@@ -205,7 +219,7 @@ func legalStepTransition(prior, next Step) bool {
 	case StepDispatching:
 		return next.Attempt == prior.Attempt && oneOfStep(next.Status, StepSucceeded, StepFailed, StepDenied, StepCanceled, StepTimeout, StepUncertain)
 	case StepSucceeded:
-		return next.Status == StepSucceeded && next.Attempt == prior.Attempt
+		return next.Attempt == prior.Attempt && oneOfStep(next.Status, StepSucceeded, StepFailed, StepDenied, StepCanceled, StepTimeout)
 	default:
 		return false
 	}

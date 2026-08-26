@@ -2,6 +2,7 @@ package agentloop
 
 import (
 	"context"
+	"errors"
 	"sort"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
@@ -14,8 +15,10 @@ func planningFailure(ctx context.Context, err error) (StepStatus, RunStatus, err
 	if ctx.Err() == context.DeadlineExceeded {
 		return StepTimeout, RunTimeout, contextError("activity", context.DeadlineExceeded)
 	}
-	if Code(err) == Denied {
-		return StepDenied, RunDenied, err
+	var classified interface{ ActivityOutcome() string }
+	if Code(err) == Denied || errors.As(err, &classified) &&
+		(classified.ActivityOutcome() == "denied" || classified.ActivityOutcome() == "invalid_input") {
+		return StepDenied, RunDenied, newError(Denied, "activity", "activity_output_denied", false, nil)
 	}
 	return StepFailed, RunFailed, newError(Unavailable, "activity", "planning_unavailable", true, nil)
 }
@@ -49,6 +52,21 @@ func receiptStatuses(outcome string) (StepStatus, RunStatus) {
 		return StepTimeout, RunTimeout
 	case "failed":
 		return StepFailed, RunFailed
+	default:
+		return StepUncertain, RunUncertain
+	}
+}
+
+func terminalStatuses(outcome TerminalOutcome) (StepStatus, RunStatus) {
+	switch outcome {
+	case TerminalFailed:
+		return StepFailed, RunFailed
+	case TerminalDenied:
+		return StepDenied, RunDenied
+	case TerminalCanceled:
+		return StepCanceled, RunCanceled
+	case TerminalTimeout:
+		return StepTimeout, RunTimeout
 	default:
 		return StepUncertain, RunUncertain
 	}

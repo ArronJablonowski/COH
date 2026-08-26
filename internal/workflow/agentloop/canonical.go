@@ -61,6 +61,12 @@ func toolIntentDigest(intent domain.ToolIntent) (string, error) {
 	}{intent.OperationID, intent.Case, intent.Tool, intent.Action, intent.TargetDigest, intent.ArgumentDigest})
 }
 
+// ToolIntentDigest returns the exact digest consumed by authorized-action
+// steps so upstream typed planners can bind a plan to one broker intent.
+func ToolIntentDigest(intent domain.ToolIntent) (string, error) {
+	return toolIntentDigest(intent)
+}
+
 func actionReceiptDigest(receipt domain.ActionReceipt) (string, error) {
 	return digestValue(receiptDomain, struct {
 		IntentDigest string             `json:"intent_digest"`
@@ -72,6 +78,9 @@ func actionReceiptDigest(receipt domain.ActionReceipt) (string, error) {
 func decodeExact(input []byte, output any) error {
 	if len(input) == 0 || len(input) > 1<<20 {
 		return newError(Denied, "decode", "record_size_invalid", false, nil)
+	}
+	if _, err := domaincontract.DecodeUnique(input); err != nil {
+		return newError(Denied, "decode", "record_duplicate_or_malformed", false, nil)
 	}
 	decoder := json.NewDecoder(bytes.NewReader(input))
 	decoder.DisallowUnknownFields()

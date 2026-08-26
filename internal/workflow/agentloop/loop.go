@@ -206,6 +206,41 @@ func (loop *Loop) Resume(ctx context.Context, request ResumeRequest) (Snapshot, 
 	return loop.Execute(ctx, ExecuteRequest{IdempotencyKey: request.IdempotencyKey, Case: request.Case, RunID: request.RunID, StepID: current.Step.StepID, Intent: request.Intent})
 }
 
+// Terminate durably records a caller-detected terminal condition without
+// exposing an activity. A dispatching action can only become uncertain.
+func (loop *Loop) Terminate(ctx context.Context, request TerminateRequest) (Snapshot, error) {
+	if loop == nil {
+		return Snapshot{}, newError(InvalidInput, "terminate", "loop_required", false, nil)
+	}
+	if err := validateContext(ctx, "terminate"); err != nil {
+		return Snapshot{}, err
+	}
+	if err := validateTerminate(request); err != nil {
+		return Snapshot{}, err
+	}
+	current, err := loop.load(ctx, request.Case, request.RunID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	if current.Step.StepID != request.StepID || current.Run.Case != request.Case {
+		return Snapshot{}, newError(Denied, "terminate", "scope_or_step_mismatch", false, nil)
+	}
+	if terminalRun(current.Run.Status) {
+		current.Replayed = true
+		return current, nil
+	}
+	if current.Step.Status == StepDispatching && request.Outcome != TerminalUncertain {
+		return Snapshot{}, newError(Denied, "terminate", "dispatch_outcome_requires_uncertainty", false, nil)
+	}
+	stepStatus, runStatus := terminalStatuses(request.Outcome)
+	operation := "terminated_" + string(request.Outcome) + "_" + request.ReasonDigest
+	var outputs []string
+	if current.Step.Status == StepSucceeded {
+		outputs = current.Step.OutputRefs
+	}
+	return loop.finish(ctx, request.IdempotencyKey, current, stepStatus, runStatus, outputs, "", operation)
+}
+
 func (loop *Loop) executePlanning(ctx context.Context, key string, active Snapshot) (Snapshot, error) {
 	result, err := loop.activities.Plan(ctx, PlanningRequest{Operation: domain.Operation{ID: active.Step.StepID, Case: active.Run.Case, Kind: "agent_plan", Version: WorkflowDefinition}})
 	if err != nil {

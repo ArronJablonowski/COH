@@ -138,6 +138,25 @@ type ResumeRequest struct {
 	Intent         *domain.ToolIntent
 }
 
+type TerminalOutcome string
+
+const (
+	TerminalFailed    TerminalOutcome = "failed"
+	TerminalDenied    TerminalOutcome = "denied"
+	TerminalCanceled  TerminalOutcome = "canceled"
+	TerminalTimeout   TerminalOutcome = "timeout"
+	TerminalUncertain TerminalOutcome = "uncertain"
+)
+
+type TerminateRequest struct {
+	IdempotencyKey string
+	Case           domain.CaseRef
+	RunID          string
+	StepID         string
+	Outcome        TerminalOutcome
+	ReasonDigest   string
+}
+
 type StateStore interface {
 	Create(context.Context, string, Snapshot) (Snapshot, error)
 	Load(context.Context, domain.CaseRef, string) (Snapshot, error)
