@@ -1,0 +1,7 @@
+6d04c27494b75cdfbc565b0ddc494c9e8ff02e5efc97ba6b7b2aac05b0f5db0c  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/agent-loop.j2aND2/agent-loop.log
+33a97758ff05bb2362d210ad47fa736ab00dfac825878350832b0fcb43eb2411  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/agent-loop.j2aND2/recovery-trace.log
+d423b96f3ca286ea6b177484a07934a9985b2e910e5355a97674bccb7c5bfff0  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.UTfXde/quality-report.json
+cb6333303b85d9d266dab4a982ac77b1baf72d40d991c6b0df67f08118bf2b69  embedded:quality-report
+193cd0d7ae014c3a3d7daaf87c06798ff300e42b0929e1eae576d2300c4ea5db  docs/evidence/CYB-60-agent-loop-report.md
+f5ef4075aa8b8b5da3dd497a0afc5164f88922d0533eefe752eade8707ae7523  contracts/workflow/v1/agent-loop.schema.json
+028ba6ab2e0f96b928a7410fc8f7f0bb30d876d24248a762d1021ca0b9ae821d  internal/workflow/temporaladapter/testdata/coh-agent-loop-v1-history.json
