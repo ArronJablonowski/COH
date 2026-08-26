@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	providercontract "github.com/ArronJablonowski/COH/internal/domain/providercontract"
 )
@@ -29,6 +30,9 @@ func TestInvokePreservesOrderedItemsStateUsageAndRequestInvariants(t *testing.T)
 		t.Fatal(err)
 	}
 	assertOutboundRequest(t, rig.http)
+	if remaining := time.Until(rig.http.deadline); remaining < 599*time.Second || remaining > 600*time.Second {
+		t.Fatalf("effective deadline remaining=%s", remaining)
+	}
 }
 
 func TestInvokeMapsStrictStructuredOutput(t *testing.T) {

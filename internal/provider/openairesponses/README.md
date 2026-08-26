@@ -25,6 +25,13 @@ objects never cross the adapter boundary; callers provide and receive validated
 - Unknown fields, item kinds, content kinds, statuses, model drift, route drift,
   malformed JSON, sequence disorder, oversized bodies, and partial transport
   reads fail closed.
+- A pinned token counter enforces input and total-context limits before
+  dispatch; response usage is checked against the same capability and request.
+  Stream duration is capped by both the request deadline and the qualified
+  `maximum_stream_seconds` value.
+- `NewSecureHTTPClient` disables redirects and ambient proxies, pins the TLS
+  server name, and requires TLS 1.2 or newer. Injected test transports must
+  report the same final method, URL, and TLS identity.
 
 OpenAI function calls are returned to the workflow as typed intents only. The
 adapter never executes a function and exposes no action-capable dependency.

@@ -13,7 +13,7 @@ import (
 type StreamEmitter func(providercontract.ValidatedStreamEvent) error
 
 func (adapter *Adapter) Stream(ctx context.Context, request providercontract.ValidatedRequest, emit StreamEmitter) error {
-	requestValue, deadline, err := adapter.validateDispatch(ctx, request)
+	requestValue, timeout, err := adapter.validateDispatch(ctx, request)
 	if err != nil {
 		return err
 	}
@@ -25,7 +25,7 @@ func (adapter *Adapter) Stream(ctx context.Context, request providercontract.Val
 		return err
 	}
 	translation.wire.Stream = true
-	streamContext, cancel := context.WithDeadline(ctx, deadline)
+	streamContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	response, err := adapter.startRequest(streamContext, translation.wire, true)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	providercontract "github.com/ArronJablonowski/COH/internal/domain/providercontract"
 )
@@ -24,6 +25,10 @@ func TestInvokeFailsClosedOnVendorShapeIdentityAndToolDrift(t *testing.T) {
 		{"call ID oversized", func(value map[string]any) { output(value, 2)["call_id"] = strings.Repeat("x", 129) }, providercontract.InvalidInput},
 		{"tool not allowed", func(value map[string]any) { output(value, 2)["name"] = "unapproved_tool" }, providercontract.Denied},
 		{"background status", func(value map[string]any) { value["status"] = "in_progress" }, providercontract.Conflict},
+		{"usage exceeds request", func(value map[string]any) {
+			usage := value["usage"].(map[string]any)
+			usage["output_tokens"], usage["total_tokens"] = float64(2048), float64(2058)
+		}, providercontract.Denied},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -69,6 +74,21 @@ func TestInvokeEnforcesTransportCredentialAndQualificationBoundaries(t *testing.
 			t.Fatalf("err=%v", err)
 		}
 	})
+	t.Run("context ceiling", func(t *testing.T) {
+		rig := newTestRig(t, "completed-response.json")
+		rig.adapter.config.Tokens = tokenCounterStub{count: 32768}
+		if _, err := rig.adapter.Invoke(context.Background(), rig.request); Code(err) != providercontract.Denied ||
+			Reason(err) != "context_limit" {
+			t.Fatalf("err=%v", err)
+		}
+	})
+	t.Run("token counter unavailable", func(t *testing.T) {
+		rig := newTestRig(t, "completed-response.json")
+		rig.adapter.config.Tokens = tokenCounterStub{err: errors.New("counter offline")}
+		if _, err := rig.adapter.Invoke(context.Background(), rig.request); Code(err) != providercontract.Unavailable || !Retryable(err) {
+			t.Fatalf("err=%v", err)
+		}
+	})
 }
 
 func TestHTTPStatusMappingIsTypedAndRedacted(t *testing.T) {
@@ -109,6 +129,26 @@ func TestConfigurationRejectsRouteAndProviderDrift(t *testing.T) {
 		if _, err := New(config); err == nil {
 			t.Fatalf("case %d accepted", index)
 		}
+	}
+}
+
+func TestSecureHTTPClientDisablesRedirectsAndAmbientProxy(t *testing.T) {
+	client, err := NewSecureHTTPClient(time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok || transport.Proxy != nil || transport.TLSClientConfig == nil ||
+		transport.TLSClientConfig.MinVersion < tls.VersionTLS12 || transport.TLSClientConfig.ServerName != "api.openai.com" {
+		t.Fatalf("transport=%+v", transport)
+	}
+	request, _ := http.NewRequest(http.MethodPost, ResponsesEndpoint, nil)
+	redirect, _ := http.NewRequest(http.MethodPost, "https://other.invalid/v1/responses", nil)
+	if err := client.CheckRedirect(redirect, []*http.Request{request}); !errors.Is(err, http.ErrUseLastResponse) {
+		t.Fatalf("redirect err=%v", err)
+	}
+	if _, err := NewSecureHTTPClient(0); err == nil {
+		t.Fatal("zero timeout accepted")
 	}
 }
 

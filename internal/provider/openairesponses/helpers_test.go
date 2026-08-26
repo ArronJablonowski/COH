@@ -39,6 +39,15 @@ func (stub schemaResolverStub) Resolve(_ context.Context, digest string) (Schema
 	return SchemaDocument{Digest: digest, JSON: append(json.RawMessage(nil), stub.documents[digest]...)}, nil
 }
 
+type tokenCounterStub struct {
+	count uint64
+	err   error
+}
+
+func (stub tokenCounterStub) Count(context.Context, providercontract.ValidatedRequest) (uint64, error) {
+	return stub.count, stub.err
+}
+
 type reasoningStoreStub struct {
 	mu      sync.Mutex
 	records map[string][]byte
@@ -66,11 +75,13 @@ type httpStub struct {
 	request              *http.Request
 	requestBody          []byte
 	authorizationPresent bool
+	deadline             time.Time
 }
 
 func (stub *httpStub) Do(request *http.Request) (*http.Response, error) {
 	stub.request = request
 	stub.authorizationPresent = request.Header.Get("Authorization") != ""
+	stub.deadline, _ = request.Context().Deadline()
 	if request.Body != nil {
 		stub.requestBody, _ = io.ReadAll(request.Body)
 	}
@@ -85,7 +96,7 @@ func (stub *httpStub) Do(request *http.Request) (*http.Response, error) {
 	if state == nil {
 		state = &tls.ConnectionState{Version: tls.VersionTLS13, HandshakeComplete: true, ServerName: "api.openai.com"}
 	}
-	return &http.Response{StatusCode: stub.status, Body: io.NopCloser(bytes.NewReader(stub.body)),
+	return &http.Response{StatusCode: stub.status, Body: io.NopCloser(bytes.NewReader(stub.body)), Request: request,
 		Header: http.Header{"Content-Type": []string{contentType}}, TLS: state}, nil
 }
 
@@ -122,7 +133,8 @@ func newTestRig(t *testing.T, fixture string) testRig {
 	httpClient := &httpStub{status: http.StatusOK, body: readFixture(t, fixture)}
 	config := Config{Endpoint: ResponsesEndpoint, CredentialReference: "openai.primary",
 		Credentials: credentialResolverStub{value: []byte(strings.Repeat("x", 32))}, Capability: capability,
-		Qualifications: registry, Schemas: schemas, Reasoning: reasoning, HTTP: httpClient, Clock: func() time.Time { return clock }}
+		Qualifications: registry, Schemas: schemas, Reasoning: reasoning, Tokens: tokenCounterStub{count: 100},
+		HTTP: httpClient, Clock: func() time.Time { return clock }}
 	adapter, err := New(config)
 	if err != nil {
 		t.Fatal(err)

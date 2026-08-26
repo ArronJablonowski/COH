@@ -9,9 +9,23 @@ import (
 	"mime"
 	"net/http"
 	"strings"
+	"time"
 
 	providercontract "github.com/ArronJablonowski/COH/internal/domain/providercontract"
 )
+
+func NewSecureHTTPClient(timeout time.Duration) (*http.Client, error) {
+	if timeout <= 0 || timeout > 24*time.Hour {
+		return nil, newError(providercontract.InvalidInput, "http_timeout", false)
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	transport.ForceAttemptHTTP2 = true
+	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, ServerName: "api.openai.com"}
+	client := &http.Client{Transport: transport, Timeout: timeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	return client, nil
+}
 
 func (adapter *Adapter) post(ctx context.Context, payload createRequest) ([]byte, error) {
 	response, err := adapter.startRequest(ctx, payload, false)
@@ -65,7 +79,8 @@ func (adapter *Adapter) startRequest(ctx context.Context, payload createRequest,
 		return nil, newError(providercontract.Unavailable, "transport_response_missing", true)
 	}
 	if response.TLS == nil || !response.TLS.HandshakeComplete || response.TLS.Version < tls.VersionTLS12 ||
-		response.TLS.ServerName != "api.openai.com" {
+		response.TLS.ServerName != "api.openai.com" || response.Request == nil ||
+		response.Request.Method != http.MethodPost || response.Request.URL.String() != adapter.config.Endpoint {
 		response.Body.Close()
 		return nil, newError(providercontract.Denied, "transport_identity_invalid", false)
 	}

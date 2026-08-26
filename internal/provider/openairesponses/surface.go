@@ -32,6 +32,7 @@ type Config struct {
 	Qualifications      *providercontract.QualificationRegistry
 	Schemas             SchemaResolver
 	Reasoning           ReasoningStore
+	Tokens              TokenCounter
 	HTTP                HTTPDoer
 	Clock               func() time.Time
 }
@@ -68,6 +69,10 @@ type SchemaResolver interface {
 	Resolve(context.Context, string) (SchemaDocument, error)
 }
 
+type TokenCounter interface {
+	Count(context.Context, providercontract.ValidatedRequest) (uint64, error)
+}
+
 // ReasoningStore retains only allowlisted encrypted reasoning items. The
 // adapter verifies Digest before accepting a resolved item on a later turn.
 type ReasoningStore interface {
@@ -83,7 +88,7 @@ func EndpointIdentityDigest(endpoint string) string {
 func validateConfig(config Config) error {
 	if config.Endpoint != ResponsesEndpoint || !referencePattern.MatchString(config.CredentialReference) ||
 		config.Credentials == nil || config.Capability.Digest() == "" || config.Qualifications == nil || config.Schemas == nil ||
-		config.Reasoning == nil || config.HTTP == nil || config.Clock == nil {
+		config.Reasoning == nil || config.Tokens == nil || config.HTTP == nil || config.Clock == nil {
 		return newError(providercontract.InvalidInput, "adapter_configuration", false)
 	}
 	parsed, err := url.Parse(config.Endpoint)

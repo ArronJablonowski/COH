@@ -20,7 +20,7 @@ type mappedItems struct {
 }
 
 func (adapter *Adapter) Invoke(ctx context.Context, request providercontract.ValidatedRequest) (providercontract.ValidatedResponse, error) {
-	requestValue, deadline, err := adapter.validateDispatch(ctx, request)
+	requestValue, timeout, err := adapter.validateDispatch(ctx, request)
 	if err != nil {
 		return providercontract.ValidatedResponse{}, err
 	}
@@ -28,7 +28,7 @@ func (adapter *Adapter) Invoke(ctx context.Context, request providercontract.Val
 	if err != nil {
 		return providercontract.ValidatedResponse{}, err
 	}
-	requestContext, cancel := context.WithDeadline(ctx, deadline)
+	requestContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	body, err := adapter.post(requestContext, translation.wire)
 	if err != nil {
@@ -94,6 +94,13 @@ func (adapter *Adapter) validateResponseSurface(request providercontract.Inferen
 	}
 	if response.MaxOutputTokens != nil && *response.MaxOutputTokens != request.MaximumOutputTokens {
 		return newError(providercontract.Denied, "vendor_output_limit_drift", false)
+	}
+	if response.Usage != nil {
+		limits := adapter.config.Capability.Value().Limits
+		if response.Usage.InputTokens > limits.MaximumInputTokens || response.Usage.OutputTokens > request.MaximumOutputTokens ||
+			response.Usage.TotalTokens > request.Provider.ContextLimit {
+			return newError(providercontract.Denied, "vendor_usage_limit", false)
+		}
 	}
 	switch response.Status {
 	case "completed", "failed", "incomplete", "cancelled":
