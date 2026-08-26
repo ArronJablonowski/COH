@@ -1,0 +1,56 @@
+event: response.created
+data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_coh_stream_001","object":"response","created_at":1787724000,"status":"in_progress","background":false,"completed_at":null,"error":null,"incomplete_details":null,"max_output_tokens":1024,"model":"gpt-5.6","output":[],"parallel_tool_calls":false,"previous_response_id":null,"store":false,"truncation":"disabled"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":0,"item":{"id":"rs_coh_stream_001","type":"reasoning","status":"in_progress","encrypted_content":"","summary":[]},"sequence_number":1}
+
+event: response.reasoning_summary_part.added
+data: {"type":"response.reasoning_summary_part.added","item_id":"rs_coh_stream_001","output_index":0,"summary_index":0,"part":{"type":"summary_text","text":""},"sequence_number":2}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","item_id":"rs_coh_stream_001","output_index":0,"summary_index":0,"delta":"Prepared the stream.","sequence_number":3}
+
+event: response.reasoning_summary_text.done
+data: {"type":"response.reasoning_summary_text.done","item_id":"rs_coh_stream_001","output_index":0,"summary_index":0,"text":"Prepared the stream.","sequence_number":4}
+
+event: response.reasoning_summary_part.done
+data: {"type":"response.reasoning_summary_part.done","item_id":"rs_coh_stream_001","output_index":0,"summary_index":0,"part":{"type":"summary_text","text":"Prepared the stream."},"sequence_number":5}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","output_index":0,"item":{"id":"rs_coh_stream_001","type":"reasoning","status":"completed","encrypted_content":"opaque-reasoning-stream-001","summary":[{"type":"summary_text","text":"Prepared the stream."}]},"sequence_number":6}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":1,"item":{"id":"msg_coh_stream_001","type":"message","role":"assistant","status":"in_progress","content":[]},"sequence_number":7}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","item_id":"msg_coh_stream_001","output_index":1,"content_index":0,"part":{"type":"output_text","text":"","annotations":[]},"sequence_number":8}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","item_id":"msg_coh_stream_001","output_index":1,"content_index":0,"delta":"Ready.","logprobs":[],"sequence_number":9}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","item_id":"msg_coh_stream_001","output_index":1,"content_index":0,"text":"Ready.","logprobs":[],"sequence_number":10}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","item_id":"msg_coh_stream_001","output_index":1,"content_index":0,"part":{"type":"output_text","text":"Ready.","annotations":[]},"sequence_number":11}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","output_index":1,"item":{"id":"msg_coh_stream_001","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Ready.","annotations":[]}]},"sequence_number":12}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":2,"item":{"id":"fc_coh_stream_001","type":"function_call","call_id":"call_coh_stream_001","name":"query_host","arguments":"","status":"in_progress"},"sequence_number":13}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","item_id":"fc_coh_stream_001","output_index":2,"delta":"{\"host\":\"example.invalid\"}","sequence_number":14}
+
+event: response.function_call_arguments.done
+data: {"type":"response.function_call_arguments.done","item_id":"fc_coh_stream_001","output_index":2,"name":"query_host","arguments":"{\"host\":\"example.invalid\"}","sequence_number":15}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","output_index":2,"item":{"id":"fc_coh_stream_001","type":"function_call","call_id":"call_coh_stream_001","name":"query_host","arguments":"{\"host\":\"example.invalid\"}","status":"completed"},"sequence_number":16}
+
+event: response.completed
+data: {"type":"response.completed","sequence_number":17,"response":{"id":"resp_coh_stream_001","object":"response","created_at":1787724000,"status":"completed","background":false,"completed_at":1787724001,"error":null,"incomplete_details":null,"max_output_tokens":1024,"model":"gpt-5.6","output":[{"id":"rs_coh_stream_001","type":"reasoning","status":"completed","encrypted_content":"opaque-reasoning-stream-001","summary":[{"type":"summary_text","text":"Prepared the stream."}]},{"id":"msg_coh_stream_001","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Ready.","annotations":[]}]},{"id":"fc_coh_stream_001","type":"function_call","call_id":"call_coh_stream_001","name":"query_host","arguments":"{\"host\":\"example.invalid\"}","status":"completed"}],"parallel_tool_calls":false,"previous_response_id":null,"store":false,"truncation":"disabled","usage":{"input_tokens":10,"output_tokens":7,"total_tokens":17,"input_tokens_details":{"cached_tokens":2},"output_tokens_details":{"reasoning_tokens":3}}}}
+
+data: [DONE]
+
