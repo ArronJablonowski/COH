@@ -1,0 +1,17 @@
+{
+  "schema_version":"coh.provider-capability/v1",
+  "contract_version":"1.0.0",
+  "snapshot_id":"0199a213-81c0-7800-8aa1-bbab2a035a50",
+  "observed_at":"2026-08-26T15:00:00.000000000Z",
+  "valid_until":"2026-08-27T15:00:00.000000000Z",
+  "provider":{
+    "provider_kind":"codex_runtime","adapter_version":"1.0.0","endpoint_identity_digest":"sha256:424794df1111d424527229ab15553c24794c9d01d390d0df4c89621abb18e24f","data_route":"approved_external",
+    "requested_model":"gpt-5.6-terra","actual_model":"gpt-5.6-terra","model_revision":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runtime_name":"codex-app-server","runtime_version":"0.145.0","runtime_digest":"sha256:1da3f4e0e96028b8a771814293c3033dafd1971f943f6c7e79b0897fe705f590",
+    "tokenizer_name":"openai-managed","tokenizer_version":"1.0.0","tokenizer_digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "chat_template_digest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","tool_parser_digest":"sha256:6bf0913ed82654b82e4cc5e71cd7c8d308f46d9f8d18bb48615a912b6f8217ac","reasoning_parser_digest":"sha256:1109fe244232290ee94451d62b671e42e8c7e49573515d68af2563e0237536b6",
+    "context_limit":400000,"sampling_profile_digest":"sha256:617375727f71fa5c3f71b45f9ab8b9a09cbd56990147f82d8de62e0a4ce6a209","hardware_profile_digest":"sha256:9999999999999999999999999999999999999999999999999999999999999999","state_mode":"stateless","policy_revision":7
+  },
+  "features":{"message_roles":["assistant","system","tool","user"],"content_kinds":["input_json","output_json","reasoning_ref","text","tool_call","tool_result"],"tool_calls":true,"structured_output":true,"streaming":true,"cancellation":true,"usage":true,"state_modes":["stateless"]},
+  "limits":{"maximum_input_tokens":300000,"maximum_output_tokens":64000,"maximum_messages":512,"maximum_tools":32,"maximum_parallel_tool_calls":4,"maximum_stream_seconds":900}
+}
