@@ -11,6 +11,7 @@ import (
 )
 
 func TestPublishedIngestionSchemaIsStrictAndVersioned(t *testing.T) {
+	definitions := schemaDefinitions(t)
 	_, source, _, _ := runtime.Caller(0)
 	path := filepath.Join(filepath.Dir(source), "..", "..", "..", "contracts", "evidence", "v1",
 		"immutable-cas-ingestion.schema.json")
@@ -29,10 +30,6 @@ func TestPublishedIngestionSchemaIsStrictAndVersioned(t *testing.T) {
 	if !ok || len(oneOf) != 6 {
 		t.Fatalf("published record count=%d", len(oneOf))
 	}
-	definitions, ok := schema["$defs"].(map[string]any)
-	if !ok {
-		t.Fatal("schema definitions missing")
-	}
 	for _, name := range []string{"case", "artifact", "observed_time", "source_range", "source", "component",
 		"transport", "command", "authorization_request", "decision", "artifact_manifest", "encrypted_object",
 		"published_object", "receipt"} {
@@ -50,6 +47,26 @@ func TestPublishedIngestionSchemaIsStrictAndVersioned(t *testing.T) {
 	assertSchemaEnum(t, definitions, "transport_mode", []string{"in_process", "mtls"})
 	assertSchemaEnum(t, definitions, "source_kind", []string{"upload", "connector", "query", "tool", "model", "derived", "import"})
 	assertSchemaEnum(t, definitions, "component_kind", []string{"tool", "query", "model"})
+}
+
+func schemaDefinitions(t *testing.T) map[string]any {
+	t.Helper()
+	_, source, _, _ := runtime.Caller(0)
+	path := filepath.Join(filepath.Dir(source), "..", "..", "..", "contracts", "evidence", "v1",
+		"immutable-cas-ingestion.schema.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema map[string]any
+	if err = json.Unmarshal(data, &schema); err != nil {
+		t.Fatal(err)
+	}
+	definitions, ok := schema["$defs"].(map[string]any)
+	if !ok {
+		t.Fatal("schema definitions missing")
+	}
+	return definitions
 }
 
 func TestIngestionPortsAndRecordsExposeNoExecutionOrSecretSurface(t *testing.T) {

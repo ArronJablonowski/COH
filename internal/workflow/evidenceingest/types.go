@@ -233,6 +233,7 @@ type Receipt struct {
 	ActorRevision            uint64
 	IntentDigest             string
 	IdempotencyDigest        string
+	AuthorizationDigest      string
 	DecisionDigest           string
 	RevocationDigest         string
 	TransportDigest          string

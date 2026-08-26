@@ -243,7 +243,7 @@
     },
     "receipt": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "request_id", "case", "actor_id", "actor_revision", "intent_digest", "idempotency_digest", "decision_digest", "revocation_digest", "transport_digest", "artifact", "manifest", "encrypted_artifact", "encrypted_manifest", "manifest_provenance_digest", "audit_event_digest", "created_at", "receipt_digest"],
+      "required": ["schema_version", "contract_version", "request_id", "case", "actor_id", "actor_revision", "intent_digest", "idempotency_digest", "authorization_digest", "decision_digest", "revocation_digest", "transport_digest", "artifact", "manifest", "encrypted_artifact", "encrypted_manifest", "manifest_provenance_digest", "audit_event_digest", "created_at", "receipt_digest"],
       "properties": {
         "schema_version": {"const": "coh.evidence-ingest-receipt/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -253,6 +253,7 @@
         "actor_revision": {"type": "integer", "minimum": 1},
         "intent_digest": {"$ref": "#/$defs/digest"},
         "idempotency_digest": {"$ref": "#/$defs/digest"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
         "decision_digest": {"$ref": "#/$defs/digest"},
         "revocation_digest": {"$ref": "#/$defs/digest"},
         "transport_digest": {"$ref": "#/$defs/digest"},
