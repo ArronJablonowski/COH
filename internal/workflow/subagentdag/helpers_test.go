@@ -11,7 +11,9 @@ import (
 	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
 
-var testNow = time.Date(2026, 8, 26, 22, 30, 0, 0, time.UTC)
+// Keep operation deadlines ahead of the real wall clock because production
+// execution contexts use them directly even when the controller clock is fake.
+var testNow = time.Now().UTC().Add(time.Hour).Truncate(time.Second)
 
 const (
 	testOrg   = "0199a213-1001-7001-8001-000000000001"
