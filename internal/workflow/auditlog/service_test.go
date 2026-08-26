@@ -268,6 +268,27 @@ func TestCheckpointTargetUsesEarlierMandatoryTrigger(t *testing.T) {
 	}
 }
 
+func TestCanceledAndTimedOutAppendPublishNothing(t *testing.T) {
+	store := newMemoryStore()
+	authority := newTestAuthority()
+	clock := &testClock{now: time.Date(2026, 8, 26, 1, 0, 0, 0, time.UTC)}
+	service, _ := New(store, authority, authority, clock, &testIDs{})
+	event := testEvent("0198d6c4-0001-7001-8001-000000000001", formatTime(clock.now))
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := service.Append(canceled, event); err != ErrUnavailable {
+		t.Fatalf("canceled append err=%v", err)
+	}
+	timedOut, stop := context.WithDeadline(context.Background(), clock.now.Add(-time.Second))
+	defer stop()
+	if _, err := service.Append(timedOut, event); err != ErrUnavailable {
+		t.Fatalf("timed-out append err=%v", err)
+	}
+	if len(store.records) != 0 {
+		t.Fatal("canceled or timed-out append published a record")
+	}
+}
+
 func testEvent(id, occurredAt string) tamperaudit.Event {
 	return tamperaudit.Event{SchemaVersion: tamperaudit.EventSchemaVersion, ContractVersion: tamperaudit.ContractVersion,
 		EventID: id, OrganizationID: "0198d6c4-1111-7111-8111-111111111111",

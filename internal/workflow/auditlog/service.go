@@ -25,8 +25,11 @@ func (service *Service) Append(ctx context.Context, event tamperaudit.Event) (Ap
 	if service == nil || service.store == nil || tamperaudit.ValidateEvent(event) != nil {
 		return AppendResult{}, ErrInvalidInput
 	}
+	if ctx == nil || ctx.Err() != nil {
+		return AppendResult{}, ErrUnavailable
+	}
 	now := service.clock.Now().UTC()
-	if ctx == nil || now.IsZero() || now.Before(mustTime(event.OccurredAt)) {
+	if now.IsZero() || event.OccurredAt != "" && now.Before(mustTime(event.OccurredAt)) {
 		return AppendResult{}, ErrInvalidInput
 	}
 	for attempt := 0; attempt < maximumAppendAttempts; attempt++ {
