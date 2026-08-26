@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/provider/v1/stream-event.schema.json",
+  "title": "COH provider stream event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "contract_version", "request_id", "attempt_id",
+    "sequence", "observed_at", "kind"
+  ],
+  "properties": {
+    "schema_version": {"const": "coh.provider-stream-event/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "request_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+    "attempt_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+    "sequence": {"type": "integer", "minimum": 0},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "kind": {"enum": ["text_delta", "item", "usage_delta", "completed", "error"]},
+    "text_delta": {"type": "string", "minLength": 1, "maxLength": 1048576},
+    "item": {"$ref": "inference-request.schema.json#/$defs/content_item"},
+    "usage_delta": {"$ref": "#/$defs/usage_delta"},
+    "response": {"$ref": "inference-response.schema.json"},
+    "error": {"$ref": "inference-response.schema.json#/$defs/error"}
+  },
+  "oneOf": [
+    {"properties": {"kind": {"const": "text_delta"}}, "required": ["text_delta"], "not": {"anyOf": [{"required": ["item"]}, {"required": ["usage_delta"]}, {"required": ["response"]}, {"required": ["error"]}]}},
+    {"properties": {"kind": {"const": "item"}}, "required": ["item"], "not": {"anyOf": [{"required": ["text_delta"]}, {"required": ["usage_delta"]}, {"required": ["response"]}, {"required": ["error"]}]}},
+    {"properties": {"kind": {"const": "usage_delta"}}, "required": ["usage_delta"], "not": {"anyOf": [{"required": ["text_delta"]}, {"required": ["item"]}, {"required": ["response"]}, {"required": ["error"]}]}},
+    {"properties": {"kind": {"const": "completed"}}, "required": ["response"], "not": {"anyOf": [{"required": ["text_delta"]}, {"required": ["item"]}, {"required": ["usage_delta"]}, {"required": ["error"]}]}},
+    {"properties": {"kind": {"const": "error"}}, "required": ["error"], "not": {"anyOf": [{"required": ["text_delta"]}, {"required": ["item"]}, {"required": ["usage_delta"]}, {"required": ["response"]}]}}
+  ],
+  "$defs": {
+    "usage_delta": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "cached_input_tokens", "reasoning_tokens"],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "cached_input_tokens": {"type": "integer", "minimum": 0},
+        "reasoning_tokens": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

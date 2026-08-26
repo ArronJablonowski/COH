@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/provider/v1/inference-response.schema.json",
+  "title": "COH provider inference response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "contract_version", "response_id", "request_id",
+    "attempt_id", "provider", "capability_digest", "qualification_id",
+    "outcome", "items", "usage", "state", "started_at", "completed_at",
+    "provenance_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "coh.provider-response/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "response_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+    "request_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+    "attempt_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+    "provider": {"$ref": "capability.schema.json#/$defs/provider_identity"},
+    "capability_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+    "qualification_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+    "outcome": {"enum": ["succeeded", "denied", "canceled", "timeout", "failed", "uncertain"]},
+    "items": {"type": "array", "maxItems": 16384, "items": {"$ref": "inference-request.schema.json#/$defs/content_item"}},
+    "usage": {"$ref": "#/$defs/usage"},
+    "state": {"$ref": "inference-request.schema.json#/$defs/state"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "provenance_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+    "error": {"$ref": "#/$defs/error"}
+  },
+  "allOf": [
+    {"if": {"properties": {"outcome": {"const": "succeeded"}}}, "then": {"not": {"required": ["error"]}}},
+    {"if": {"properties": {"outcome": {"enum": ["denied", "canceled", "timeout", "failed", "uncertain"]}}}, "then": {"required": ["error"]}}
+  ],
+  "$defs": {
+    "usage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "total_tokens", "cached_input_tokens", "reasoning_tokens"],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "total_tokens": {"type": "integer", "minimum": 0},
+        "cached_input_tokens": {"type": "integer", "minimum": 0},
+        "reasoning_tokens": {"type": "integer", "minimum": 0}
+      }
+    },
+    "error": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "reason", "message", "retryable"],
+      "properties": {
+        "code": {"enum": ["invalid_input", "denied", "unsupported", "canceled", "timeout", "unavailable", "conflict", "internal"]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z][a-z0-9_.-]*$"},
+        "message": {"type": "string", "maxLength": 512},
+        "retryable": {"type": "boolean"}
+      }
+    }
+  }
+}

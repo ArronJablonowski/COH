@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/provider/v1/qualification-record.schema.json",
+  "title": "COH provider qualification record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "contract_version", "qualification_id", "issued_at",
+    "expires_at", "provider", "capability_digest", "release_matrix",
+    "cases", "aggregate_outcome", "suite_digest", "qualifier_identity_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "coh.provider-qualification/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "qualification_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "provider": {"$ref": "capability.schema.json#/$defs/provider_identity"},
+    "capability_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+    "release_matrix": {"$ref": "#/$defs/release_matrix"},
+    "cases": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"$ref": "#/$defs/case"}
+    },
+    "aggregate_outcome": {"enum": ["passed", "failed"]},
+    "suite_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+    "qualifier_identity_digest": {"$ref": "capability.schema.json#/$defs/digest"}
+  },
+  "$defs": {
+    "release_matrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "os", "architecture", "deployment_mode", "network_mode"],
+      "properties": {
+        "profile": {"type": "string", "minLength": 1, "maxLength": 128},
+        "os": {"enum": ["darwin", "linux"]},
+        "architecture": {"enum": ["arm64", "amd64"]},
+        "deployment_mode": {"enum": ["native", "compose", "dedicated"]},
+        "network_mode": {"enum": ["connected", "restricted_connected", "air_gapped"]}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "fixture_digest", "outcome", "trace_digest", "duration_milliseconds"],
+      "properties": {
+        "kind": {"enum": ["capability", "structured_output", "tool_call", "cancellation", "identity_provenance", "policy_route"]},
+        "fixture_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+        "outcome": {"enum": ["passed", "failed"]},
+        "trace_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+        "duration_milliseconds": {"type": "integer", "minimum": 0, "maximum": 3600000}
+      }
+    }
+  }
+}
