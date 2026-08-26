@@ -1,0 +1,25 @@
+{
+  "schema_version": "coh.redacted-provider-error-trace/v1",
+  "issue": "CYB-62",
+  "verified_checkpoint": "7869196399bad594205d8d1a8140d3b3859f0935",
+  "redaction": {
+    "authorization_header_retained": false,
+    "credential_retained": false,
+    "vendor_body_retained": false,
+    "vendor_message_retained": false
+  },
+  "cases": [
+    {"input":"http_400_413_422","code":"invalid_input","reason":"vendor_rejected_request","retryable":false},
+    {"input":"http_401_403","code":"denied","reason":"vendor_authentication_denied","retryable":false},
+    {"input":"http_404","code":"unsupported","reason":"vendor_resource_not_found","retryable":false},
+    {"input":"http_408_504","code":"timeout","reason":"vendor_timeout","retryable":true},
+    {"input":"http_409","code":"conflict","reason":"vendor_conflict","retryable":false},
+    {"input":"http_429","code":"unavailable","reason":"vendor_rate_limited","retryable":true},
+    {"input":"http_5xx","code":"unavailable","reason":"vendor_unavailable","retryable":true},
+    {"input":"http_unexpected","code":"unavailable","reason":"vendor_status_unexpected","retryable":false},
+    {"input":"credential_resolver_failure","code":"unavailable","reason":"credential_resolution_failed","retryable":false},
+    {"input":"stream_transport_outage","code":"unavailable","reason":"vendor_unavailable","retryable":true,"terminal_event":true},
+    {"input":"stream_deadline","code":"timeout","reason":"request_timeout","retryable":false,"terminal_event":true},
+    {"input":"stream_missing_terminal","code":"unavailable","reason":"stream_terminal_missing","retryable":true,"terminal_event":true}
+  ]
+}
