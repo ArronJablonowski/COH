@@ -5,10 +5,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
+	lifecycle "github.com/ArronJablonowski/COH/internal/domain/approvallifecycle"
 	"github.com/ArronJablonowski/COH/internal/helper/domaincontract"
 	"github.com/ArronJablonowski/COH/internal/workflow"
 )
@@ -88,6 +90,34 @@ func Run(t *testing.T, factory Factory) {
 		deliveries, err = store.ClaimOutbox(context.Background(), fixture.Claim)
 		if err != nil || len(deliveries) != 0 {
 			t.Fatalf("settled claim = %+v, err = %v", deliveries, err)
+		}
+	})
+
+	t.Run("approval-lifecycle-cas-and-outbox", func(t *testing.T) {
+		store := newStore(t, factory, fixture)
+		requested := ApprovalRecord(t, lifecycle.Requested, 1, 0, "0198d6c4-6666-7666-8666-666666666666")
+		granted := ApprovalRecord(t, lifecycle.Granted, 2, 0, "0198d6c4-7777-7777-8777-777777777777")
+		create := workflow.Transaction{ContractVersion: workflow.StorageContractVersion, IdempotencyKey: "approval-request",
+			Mutations: []workflow.Mutation{{Kind: workflow.MutationPut, Key: requested.Key, Record: &requested}},
+			Outbox: []workflow.OutboxMessage{{ID: "0198d6c4-6666-7666-8666-666666666666", Case: requested.Key.Case,
+				Topic: "approval.request", PayloadRef: "record:approval:" + requested.Key.ID + ":1", PayloadDigest: requested.Digest}}}
+		update := workflow.Transaction{ContractVersion: workflow.StorageContractVersion, IdempotencyKey: "approval-grant",
+			Mutations: []workflow.Mutation{{Kind: workflow.MutationPut, Key: granted.Key, ExpectedRevision: 1, Record: &granted}},
+			Outbox: []workflow.OutboxMessage{{ID: "0198d6c4-7777-7777-8777-777777777777", Case: granted.Key.Case,
+				Topic: "approval.grant", PayloadRef: "record:approval:" + granted.Key.ID + ":2", PayloadDigest: granted.Digest}}}
+		transact(t, store, create)
+		transact(t, store, update)
+		if _, err := store.Transact(context.Background(), update); err != nil {
+			t.Fatalf("exact grant replay: %v", err)
+		}
+		changed := cloneTransaction(update)
+		changed.IdempotencyKey = "approval-stale-grant"
+		if _, err := store.Transact(context.Background(), changed); workflow.StorageCode(err) != workflow.StorageConflict {
+			t.Fatalf("stale lifecycle write code=%q err=%v", workflow.StorageCode(err), err)
+		}
+		stored, err := store.Get(context.Background(), granted.Key)
+		if err != nil || stored.Revision != 2 || stored.Digest != granted.Digest {
+			t.Fatalf("stored lifecycle=%+v err=%v", stored, err)
 		}
 	})
 
@@ -172,6 +202,45 @@ func Record(t *testing.T, revision uint64, state string) workflow.MetadataRecord
 		Key:    workflow.RecordKey{Case: domain.CaseRef{OrganizationID: OrganizationID, TenantID: TenantID, CaseID: CaseID}, Kind: "case", ID: CaseID},
 		Schema: "coh.domain/v1", Revision: revision, Canonical: canonical, Digest: DigestBytes(canonical),
 	}
+}
+
+func ApprovalRecord(t *testing.T, state lifecycle.State, revision uint64, useCount uint32, eventID string) workflow.MetadataRecord {
+	t.Helper()
+	grants := []lifecycle.Grant{}
+	lastActor := "0198d6c4-2222-7222-8222-222222222222"
+	reason := "approval_requested"
+	if state == lifecycle.Granted || state == lifecycle.Consumed {
+		lastActor = "0198d6c4-5555-7555-8555-555555555555"
+		reason = "approval_granted"
+		grants = []lifecycle.Grant{{ActorID: lastActor, ActorRevision: 5, GrantedAt: "2026-08-25T18:01:00.000000000Z"}}
+	}
+	record := lifecycle.Record{SchemaVersion: lifecycle.SchemaVersion, ContractVersion: lifecycle.ContractVersion,
+		ApprovalID: "0198d6c4-9999-7999-8999-999999999999", OrganizationID: OrganizationID, TenantID: TenantID, CaseID: CaseID,
+		FingerprintDigest: Digest("fingerprint"), ManifestDigest: Digest("manifest"), PolicyDecisionDigest: Digest("decision"),
+		RequestorActorID: "0198d6c4-2222-7222-8222-222222222222", RequestorRevision: 3,
+		ActionOwnerActorID: "0198d6c4-3333-7333-8333-333333333333", State: state, Revision: revision,
+		RequestedAt: "2026-08-25T18:00:00.000000000Z", ValidFrom: "2026-08-25T18:00:00.000000000Z",
+		ValidUntil: "2026-08-25T19:00:00.000000000Z", RequiredGrantCount: 1, Grants: grants,
+		MaximumUseCount: 1, UseCount: useCount, ReasonCode: reason, LastActorID: lastActor, LastActorRevision: 5,
+		LastOperationDigest: Digest("operation-" + uintText(revision)), LastEventID: eventID,
+		UpdatedAt: "2026-08-25T18:01:00.000000000Z"}
+	data, err := lifecycle.CanonicalRecord(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := json.Marshal(map[string]any{"schema": "coh.domain/v1", "kind": "approval", "id": record.ApprovalID,
+		"organization_id": OrganizationID, "tenant_id": TenantID, "case_id": CaseID, "revision": revision,
+		"created_at": record.RequestedAt, "data": json.RawMessage(data)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := domaincontract.Canonicalize(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return workflow.MetadataRecord{Key: workflow.RecordKey{Case: domain.CaseRef{OrganizationID: OrganizationID, TenantID: TenantID, CaseID: CaseID},
+		Kind: "approval", ID: record.ApprovalID}, Schema: "coh.domain/v1", Revision: revision,
+		Canonical: canonical, Digest: DigestBytes(canonical)}
 }
 
 func Digest(value string) string { return DigestBytes([]byte(value)) }

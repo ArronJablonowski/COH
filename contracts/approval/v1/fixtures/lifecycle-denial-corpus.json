@@ -1,0 +1,32 @@
+{
+  "schema_version": "coh.approval-lifecycle-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name":"unsupported-contract","reason":"unsupported_contract"},
+    {"name":"invalid-approval-id","reason":"command_invalid"},
+    {"name":"malformed-fingerprint-digest","reason":"invalid_digest"},
+    {"name":"actor-scope-mismatch","reason":"actor_scope_mismatch"},
+    {"name":"requestor-binding-mismatch","reason":"requestor_binding"},
+    {"name":"actor-revoked","reason":"actor_revoked"},
+    {"name":"permission-denied","reason":"permission_denied"},
+    {"name":"self-approval","reason":"self_approval"},
+    {"name":"duplicate-approver","reason":"invalid_grants"},
+    {"name":"fingerprint-authority-revoked","reason":"fingerprint_authority"},
+    {"name":"fingerprint-binding-tamper","reason":"fingerprint_authority"},
+    {"name":"approval-not-yet-valid","reason":"approval_not_current"},
+    {"name":"approval-expired","reason":"approval_not_current"},
+    {"name":"stale-revision","reason":"stale_revision"},
+    {"name":"changed-idempotency-retry","reason":"approval_exists"},
+    {"name":"binding-changed","reason":"approval_binding_changed"},
+    {"name":"grant-after-reject","reason":"terminal_state"},
+    {"name":"grant-after-expire","reason":"terminal_state"},
+    {"name":"grant-after-revoke","reason":"terminal_state"},
+    {"name":"consume-before-grant","reason":"transition_denied"},
+    {"name":"consume-after-limit","reason":"terminal_state"},
+    {"name":"wrong-action-owner","reason":"action_owner_mismatch"},
+    {"name":"expiration-not-due","reason":"expiration_not_due"},
+    {"name":"audit-unavailable","reason":"audit_unavailable"},
+    {"name":"request-canceled","reason":"request_canceled"},
+    {"name":"request-timeout","reason":"request_timeout"}
+  ]
+}

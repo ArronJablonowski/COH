@@ -60,6 +60,37 @@ func ValidateRecord(record Record) error {
 	return nil
 }
 
+func ValidateEvent(event Event) error {
+	if event.SchemaVersion != SchemaVersion || event.ContractVersion != ContractVersion || !uuidPattern.MatchString(event.EventID) {
+		return NewError(InvalidInput, "invalid_event")
+	}
+	switch event.Operation {
+	case "request", "grant", "reject", "expire", "consume", "revoke":
+	default:
+		return NewError(InvalidInput, "invalid_event")
+	}
+	switch event.Outcome {
+	case "allowed", "denied", "invalid", "canceled", "timeout", "unavailable":
+	default:
+		return NewError(InvalidInput, "invalid_event")
+	}
+	if !tokenPattern.MatchString(event.ReasonCode) {
+		return NewError(InvalidInput, "invalid_event")
+	}
+	if _, err := parseTimestamp(event.OccurredAt); err != nil {
+		return NewError(InvalidInput, "invalid_event")
+	}
+	for _, value := range []string{event.ApprovalID, event.OrganizationID, event.TenantID, event.CaseID, event.ActorID} {
+		if value != "" && !uuidPattern.MatchString(value) {
+			return NewError(InvalidInput, "invalid_event")
+		}
+	}
+	if event.FingerprintDigest != "" && !digestPattern.MatchString(event.FingerprintDigest) || event.ActorID == "" && event.ActorRevision != 0 {
+		return NewError(InvalidInput, "invalid_event")
+	}
+	return nil
+}
+
 func validState(state State) bool {
 	switch state {
 	case Requested, Granted, Rejected, Expired, Consumed, Revoked:
