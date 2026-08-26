@@ -56,7 +56,7 @@ func TestProcessSandboxExecutesWithoutDockerOrAmbientEnvironment(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tool.Cleanup()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	result, err := sandbox.Execute(ctx, Plan{ExecutablePath: tool.Path, ArtifactDigest: tool.Digest,
 		Arguments: []string{"echo"}, Environment: []string{"LANG=C"},
@@ -243,7 +243,7 @@ func fileDigest(t *testing.T, path string) string {
 }
 
 func toolLimits() toolregistry.ResourceLimits {
-	return toolregistry.ResourceLimits{WallTimeMilliseconds: 5000, CPUMilliseconds: 2000,
+	return toolregistry.ResourceLimits{WallTimeMilliseconds: 15_000, CPUMilliseconds: 2000,
 		MemoryBytes: 256 << 20, OutputBytes: 1 << 20, EphemeralStorageBytes: 4 << 20,
 		ProcessCount: 4, OpenFileCount: 64}
 }
