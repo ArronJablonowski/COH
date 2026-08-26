@@ -8,6 +8,7 @@ import (
 	"io"
 	"time"
 
+	stopcontract "github.com/ArronJablonowski/COH/internal/domain/estop"
 	workercontract "github.com/ArronJablonowski/COH/internal/domain/remoteworker"
 )
 
@@ -15,17 +16,30 @@ type systemClock struct{}
 
 func (systemClock) Now() time.Time { return time.Now().UTC() }
 
-func New(store Store, audit AuditSink) (*Broker, error) {
-	return NewWithDependencies(store, audit, systemClock{}, rand.Reader,
+func New(store Store, audit AuditSink, stop StopGuard) (*Broker, error) {
+	return NewWithDependencies(store, audit, stop, systemClock{}, rand.Reader,
 		time.Duration(workercontract.MaximumLeaseTTLSeconds)*time.Second)
 }
 
-func NewWithDependencies(store Store, audit AuditSink, clock Clock, random io.Reader, maximumTTL time.Duration) (*Broker, error) {
-	if store == nil || audit == nil || clock == nil || random == nil || maximumTTL <= 0 ||
+func NewWithDependencies(store Store, audit AuditSink, stop StopGuard, clock Clock, random io.Reader, maximumTTL time.Duration) (*Broker, error) {
+	if store == nil || audit == nil || stop == nil || clock == nil || random == nil || maximumTTL <= 0 ||
 		maximumTTL > time.Duration(workercontract.MaximumLeaseTTLSeconds)*time.Second {
 		return nil, brokerError(workercontract.InvalidInput, "broker_configuration_invalid")
 	}
-	return &Broker{store: store, audit: audit, clock: clock, random: random, maxTTL: maximumTTL}, nil
+	return &Broker{store: store, audit: audit, stop: stop, clock: clock, random: random, maxTTL: maximumTTL}, nil
+}
+
+func mapStopError(err error) error {
+	switch stopcontract.Code(err) {
+	case stopcontract.Denied:
+		return brokerError(workercontract.Denied, "emergency_stop_active")
+	case stopcontract.Canceled:
+		return brokerError(workercontract.Canceled, "stop_check_canceled")
+	case stopcontract.Timeout:
+		return brokerError(workercontract.Timeout, "stop_check_timeout")
+	default:
+		return brokerError(workercontract.Unavailable, "stop_state_unavailable")
+	}
 }
 
 func (broker *Broker) Enroll(ctx context.Context, request workercontract.EnrollmentRequest, authority workercontract.EnrollmentAuthority) (workercontract.WorkerRecord, workercontract.Decision, error) {

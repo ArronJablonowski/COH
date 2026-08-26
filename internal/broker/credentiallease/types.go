@@ -23,6 +23,10 @@ type AuditSink interface {
 	AppendCredentialLeaseDecision(context.Context, leasecontract.Decision) error
 }
 
+type StopGuard interface {
+	Allow(context.Context, string, string, string) error
+}
+
 type Store interface {
 	Create(context.Context, Record) (CreateResult, error)
 	Claim(context.Context, string, [32]byte, time.Time) (Record, error)
@@ -58,6 +62,7 @@ type Broker struct {
 	store    Store
 	audit    AuditSink
 	resolver SecretResolver
+	stop     StopGuard
 	clock    Clock
 	random   io.Reader
 	maxTTL   time.Duration

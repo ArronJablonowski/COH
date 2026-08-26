@@ -13,6 +13,7 @@ import (
 
 	"github.com/ArronJablonowski/COH/internal/broker/secretresolver"
 	leasecontract "github.com/ArronJablonowski/COH/internal/domain/credentiallease"
+	stopcontract "github.com/ArronJablonowski/COH/internal/domain/estop"
 	"github.com/ArronJablonowski/COH/internal/domain/secretref"
 )
 
@@ -169,11 +170,37 @@ func TestIssueCancellationIsFailClosedAndAudited(t *testing.T) {
 	}
 }
 
+func TestIssueChecksAuthoritativeStopBeforeCreatingCapability(t *testing.T) {
+	broker, store, _, request, authority := issueFixture(t)
+	guard := &mutableStopGuard{err: stopcontract.NewError(stopcontract.Denied, "emergency_stop_active")}
+	broker.stop = guard
+
+	handle, decision, err := broker.Issue(context.Background(), request, authority)
+	if handle != nil || leasecontract.Code(err) != leasecontract.Denied || reason(err) != "emergency_stop_active" ||
+		decision.Outcome != "denied" || len(store.records) != 0 {
+		t.Fatalf("handle = %+v, decision = %+v, records = %d, err = %v", handle, decision, len(store.records), err)
+	}
+	want := [3]string{request.Context.OrganizationID, request.Context.TenantID, request.Context.CaseID}
+	if len(guard.calls) != 1 || guard.calls[0] != want {
+		t.Fatalf("stop checks = %#v, want %#v", guard.calls, want)
+	}
+}
+
+func TestIssueFailsClosedWhenStopStateUnavailable(t *testing.T) {
+	broker, store, _, request, authority := issueFixture(t)
+	broker.stop = &mutableStopGuard{err: errors.New("private stop store failure")}
+	handle, decision, err := broker.Issue(context.Background(), request, authority)
+	if handle != nil || leasecontract.Code(err) != leasecontract.Unavailable || reason(err) != "stop_state_unavailable" ||
+		decision.Outcome != "unavailable" || len(store.records) != 0 || strings.Contains(err.Error(), "private stop") {
+		t.Fatalf("handle = %+v, decision = %+v, records = %d, err = %v", handle, decision, len(store.records), err)
+	}
+}
+
 func TestConcurrentIssueHasSingleWinner(t *testing.T) {
 	store := NewMemoryStore()
 	audit := &auditStub{}
 	request, authority := validIssueInput()
-	broker, err := NewWithDependencies(store, audit, &resolverStub{}, fixedClock{now: authority.Audience.ObservedAt.Add(time.Second)}, rand.Reader, 5*time.Minute)
+	broker, err := NewWithDependencies(store, audit, &resolverStub{}, allowStopGuard{}, fixedClock{now: authority.Audience.ObservedAt.Add(time.Second)}, rand.Reader, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +235,7 @@ func issueFixture(t *testing.T) (*Broker, *MemoryStore, *auditStub, leasecontrac
 	audit := &auditStub{}
 	random := bytes.NewReader(bytes.Repeat([]byte{0x42}, 4096))
 	clock := fixedClock{now: time.Date(2026, 8, 25, 22, 0, 0, 0, time.UTC)}
-	broker, err := NewWithDependencies(store, audit, &resolverStub{}, clock, random, 5*time.Minute)
+	broker, err := NewWithDependencies(store, audit, &resolverStub{}, allowStopGuard{}, clock, random, 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

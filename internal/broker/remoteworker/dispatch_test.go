@@ -2,11 +2,14 @@ package remoteworker
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	stopcontract "github.com/ArronJablonowski/COH/internal/domain/estop"
 	workercontract "github.com/ArronJablonowski/COH/internal/domain/remoteworker"
 )
 
@@ -39,6 +42,56 @@ func TestIssueAndDispatchSingleUse(t *testing.T) {
 	}
 	if len(audit.decisions) != 4 { // enrollment, issuance, pre-dispatch, completion
 		t.Fatalf("audit decisions=%d", len(audit.decisions))
+	}
+}
+
+func TestLeaseIssueChecksAuthoritativeStopBeforeCreatingCapability(t *testing.T) {
+	broker, store, _, clock := setupBroker(t)
+	record, enrollmentAuthority, _ := enrollWorker(t, broker, clock)
+	request, authority := leaseFixture(record, enrollmentAuthority.Transport, clock.Now())
+	guard := &mutableStopGuard{err: stopcontract.NewError(stopcontract.Denied, "emergency_stop_active")}
+	broker.stop = guard
+
+	handle, decision, err := broker.Issue(context.Background(), request, authority)
+	if handle != nil || workercontract.Code(err) != workercontract.Denied || workercontract.Reason(err) != "emergency_stop_active" ||
+		decision.Outcome != "denied" || len(store.leases) != 0 {
+		t.Fatalf("handle=%+v decision=%+v leases=%d err=%v", handle, decision, len(store.leases), err)
+	}
+	want := [3]string{request.Scope.OrganizationID, request.Scope.TenantID, request.Scope.CaseID}
+	if len(guard.calls) != 1 || guard.calls[0] != want {
+		t.Fatalf("stop checks=%#v want=%#v", guard.calls, want)
+	}
+}
+
+func TestLeaseIssueFailsClosedWhenStopStateUnavailable(t *testing.T) {
+	broker, store, _, clock := setupBroker(t)
+	record, enrollmentAuthority, _ := enrollWorker(t, broker, clock)
+	request, authority := leaseFixture(record, enrollmentAuthority.Transport, clock.Now())
+	broker.stop = &mutableStopGuard{err: errors.New("private stop store failure")}
+	handle, decision, err := broker.Issue(context.Background(), request, authority)
+	if handle != nil || workercontract.Code(err) != workercontract.Unavailable || workercontract.Reason(err) != "stop_state_unavailable" ||
+		decision.Outcome != "unavailable" || len(store.leases) != 0 || strings.Contains(err.Error(), "private stop") {
+		t.Fatalf("handle=%+v decision=%+v leases=%d err=%v", handle, decision, len(store.leases), err)
+	}
+}
+
+func TestDispatchConsumesOutstandingCapabilityWhenStopActivates(t *testing.T) {
+	broker, store, _, clock := setupBroker(t)
+	record, enrollmentAuthority, _ := enrollWorker(t, broker, clock)
+	request, authority := leaseFixture(record, enrollmentAuthority.Transport, clock.Now())
+	handle, _, err := broker.Issue(context.Background(), request, authority)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guard := &mutableStopGuard{}
+	broker.stop = guard
+	guard.set(stopcontract.NewError(stopcontract.Denied, "emergency_stop_active"))
+	called := false
+	decision, err := broker.Use(context.Background(), handle, dispatchFixture(handle.LeaseID, request.Scope), authority,
+		func(context.Context, workercontract.DispatchEnvelope) error { called = true; return nil })
+	if workercontract.Code(err) != workercontract.Denied || workercontract.Reason(err) != "emergency_stop_active" ||
+		decision.Outcome != "denied" || called || !handle.dead || !store.leases[handle.LeaseID].Consumed {
+		t.Fatalf("decision=%+v called=%v dead=%v lease=%+v err=%v", decision, called, handle.dead, store.leases[handle.LeaseID], err)
 	}
 }
 
@@ -188,7 +241,7 @@ func TestLeaseEntropyAndStoreFailure(t *testing.T) {
 	baseBroker, memory, audit, clock := setupBroker(t)
 	record, enrollmentAuthority, _ := enrollWorker(t, baseBroker, clock)
 	request, authority := leaseFixture(record, enrollmentAuthority.Transport, clock.Now())
-	entropyBroker, err := NewWithDependencies(memory, audit, clock, errorReader{}, time.Minute)
+	entropyBroker, err := NewWithDependencies(memory, audit, allowStopGuard{}, clock, errorReader{}, time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +250,7 @@ func TestLeaseEntropyAndStoreFailure(t *testing.T) {
 		t.Fatalf("entropy handle=%v err=%v", handle, issueErr)
 	}
 	store := &failingStore{MemoryStore: memory, failLeaseCreate: true}
-	storeBroker, err := NewWithDependencies(store, audit, clock, &repeatReader{value: 33}, time.Minute)
+	storeBroker, err := NewWithDependencies(store, audit, allowStopGuard{}, clock, &repeatReader{value: 33}, time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

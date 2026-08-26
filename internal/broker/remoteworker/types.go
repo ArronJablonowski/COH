@@ -19,6 +19,10 @@ type AuditSink interface {
 	AppendRemoteWorkerDecision(context.Context, workercontract.Decision) error
 }
 
+type StopGuard interface {
+	Allow(context.Context, string, string, string) error
+}
+
 type EnrollmentResult string
 
 const (
@@ -69,6 +73,7 @@ type Store interface {
 type Broker struct {
 	store  Store
 	audit  AuditSink
+	stop   StopGuard
 	clock  Clock
 	random io.Reader
 	maxTTL time.Duration

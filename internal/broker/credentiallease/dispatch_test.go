@@ -11,6 +11,7 @@ import (
 
 	"github.com/ArronJablonowski/COH/internal/broker/secretresolver"
 	leasecontract "github.com/ArronJablonowski/COH/internal/domain/credentiallease"
+	stopcontract "github.com/ArronJablonowski/COH/internal/domain/estop"
 	"github.com/ArronJablonowski/COH/internal/domain/secretref"
 )
 
@@ -97,6 +98,28 @@ func TestDispatchRejectsReplayBeforeResolution(t *testing.T) {
 	}
 	if len(fixture.secretAudit.decisions) != 1 {
 		t.Fatalf("secret resolutions = %d", len(fixture.secretAudit.decisions))
+	}
+}
+
+func TestDispatchConsumesOutstandingCapabilityWhenStopActivates(t *testing.T) {
+	fixture := newDispatchFixture(t)
+	guard := &mutableStopGuard{}
+	fixture.broker.stop = guard
+	guard.set(stopcontract.NewError(stopcontract.Denied, "emergency_stop_active"))
+	request, authority := fixture.dispatchInput()
+	called := false
+
+	decision, err := fixture.broker.Use(context.Background(), fixture.handle, request, authority, func([]byte) error {
+		called = true
+		return nil
+	})
+	if leasecontract.Code(err) != leasecontract.Denied || reason(err) != "emergency_stop_active" ||
+		decision.Outcome != "denied" || called || !fixture.handle.dead || len(fixture.secretAudit.decisions) != 0 {
+		t.Fatalf("decision = %+v, called = %t, dead = %t, secret decisions = %d, err = %v",
+			decision, called, fixture.handle.dead, len(fixture.secretAudit.decisions), err)
+	}
+	if !fixture.store.records[fixture.handle.LeaseID].Consumed {
+		t.Fatalf("outstanding lease was not consumed: %+v", fixture.store.records[fixture.handle.LeaseID])
 	}
 }
 
@@ -338,7 +361,7 @@ func newDispatchFixture(t *testing.T) *dispatchFixture {
 		t.Fatal(err)
 	}
 	clock := &mutableClock{now: authority.Audience.ObservedAt.Add(time.Second)}
-	broker, err := NewWithDependencies(store, leaseAudit, resolver, clock, bytes.NewReader(bytes.Repeat([]byte{0x42}, 4096)), 5*time.Minute)
+	broker, err := NewWithDependencies(store, leaseAudit, resolver, allowStopGuard{}, clock, bytes.NewReader(bytes.Repeat([]byte{0x42}, 4096)), 5*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

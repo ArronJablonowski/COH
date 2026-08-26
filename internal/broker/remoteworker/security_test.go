@@ -48,7 +48,7 @@ func TestLeaseReplayTamperExpiryAndRecovery(t *testing.T) {
 
 	// A new broker using the same durable-store interface preserves consumed
 	// state. Reconstructing a broker never recreates capability bytes.
-	recovered, err := NewWithDependencies(store, audit, clock, &repeatReader{value: 90}, time.Minute)
+	recovered, err := NewWithDependencies(store, audit, allowStopGuard{}, clock, &repeatReader{value: 90}, time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

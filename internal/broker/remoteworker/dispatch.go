@@ -13,7 +13,7 @@ func (broker *Broker) Use(ctx context.Context, handle *Handle, request workercon
 	if broker != nil && broker.clock != nil {
 		now = broker.clock.Now().UTC()
 	}
-	if broker == nil || broker.store == nil || broker.audit == nil || broker.clock == nil {
+	if broker == nil || broker.store == nil || broker.audit == nil || broker.stop == nil || broker.clock == nil {
 		err := brokerError(workercontract.Unavailable, "broker_unavailable")
 		return dispatchDecision(LeaseRecord{}, request, authority, leaseID(handle), err, now, "runner_dispatch"), err
 	}
@@ -37,6 +37,10 @@ func (broker *Broker) Use(ctx context.Context, handle *Handle, request workercon
 		return broker.recordDispatch(ctx, record, request, authority, handle.LeaseID, normalizeStoreError(ctx, err), now, "runner_dispatch")
 	}
 	handle.Destroy()
+	bound := record.Request.Scope
+	if err := broker.stop.Allow(ctx, bound.OrganizationID, bound.TenantID, bound.CaseID); err != nil {
+		return broker.recordDispatch(ctx, record, request, authority, record.LeaseID, mapStopError(err), now, "runner_dispatch")
+	}
 	if err = broker.validateDispatch(ctx, record, request, authority, now); err != nil {
 		return broker.recordDispatch(ctx, record, request, authority, record.LeaseID, err, now, "runner_dispatch")
 	}

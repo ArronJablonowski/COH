@@ -17,7 +17,7 @@ func (broker *Broker) Issue(ctx context.Context, request workercontract.LeaseReq
 	if broker != nil && broker.clock != nil {
 		now = broker.clock.Now().UTC()
 	}
-	if broker == nil || broker.store == nil || broker.audit == nil || broker.clock == nil || broker.random == nil {
+	if broker == nil || broker.store == nil || broker.audit == nil || broker.stop == nil || broker.clock == nil || broker.random == nil {
 		err := brokerError(workercontract.Unavailable, "broker_unavailable")
 		return nil, leaseDecision(request, authority, "", err, now, time.Time{}), err
 	}
@@ -29,6 +29,9 @@ func (broker *Broker) Issue(ctx context.Context, request workercontract.LeaseReq
 	}
 	if err := validateLeaseAuthority(request, authority, now); err != nil {
 		return broker.recordIssue(ctx, request, authority, "", nil, err, now, time.Time{})
+	}
+	if err := broker.stop.Allow(ctx, request.Scope.OrganizationID, request.Scope.TenantID, request.Scope.CaseID); err != nil {
+		return broker.recordIssue(ctx, request, authority, "", nil, mapStopError(err), now, time.Time{})
 	}
 	current, err := broker.store.CurrentWorker(ctx, authority.Worker.Scope, authority.Worker.WorkerID)
 	if err != nil {

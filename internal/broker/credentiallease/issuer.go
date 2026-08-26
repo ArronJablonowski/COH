@@ -9,6 +9,7 @@ import (
 	"time"
 
 	leasecontract "github.com/ArronJablonowski/COH/internal/domain/credentiallease"
+	stopcontract "github.com/ArronJablonowski/COH/internal/domain/estop"
 	"github.com/ArronJablonowski/COH/internal/domain/secretref"
 )
 
@@ -18,20 +19,20 @@ const maximumAuthorityAge = 30 * time.Second
 
 func (systemClock) Now() time.Time { return time.Now().UTC() }
 
-func New(store Store, audit AuditSink, resolver SecretResolver) (*Broker, error) {
-	return NewWithDependencies(store, audit, resolver, systemClock{}, rand.Reader, time.Duration(leasecontract.MaximumTTLSeconds)*time.Second)
+func New(store Store, audit AuditSink, resolver SecretResolver, stop StopGuard) (*Broker, error) {
+	return NewWithDependencies(store, audit, resolver, stop, systemClock{}, rand.Reader, time.Duration(leasecontract.MaximumTTLSeconds)*time.Second)
 }
 
-func NewWithDependencies(store Store, audit AuditSink, resolver SecretResolver, clock Clock, random io.Reader, maximumTTL time.Duration) (*Broker, error) {
-	if store == nil || audit == nil || resolver == nil || clock == nil || random == nil || maximumTTL <= 0 ||
+func NewWithDependencies(store Store, audit AuditSink, resolver SecretResolver, stop StopGuard, clock Clock, random io.Reader, maximumTTL time.Duration) (*Broker, error) {
+	if store == nil || audit == nil || resolver == nil || stop == nil || clock == nil || random == nil || maximumTTL <= 0 ||
 		maximumTTL > time.Duration(leasecontract.MaximumTTLSeconds)*time.Second {
 		return nil, brokerError(leasecontract.InvalidInput, "broker_configuration_invalid")
 	}
-	return &Broker{store: store, audit: audit, resolver: resolver, clock: clock, random: random, maxTTL: maximumTTL}, nil
+	return &Broker{store: store, audit: audit, resolver: resolver, stop: stop, clock: clock, random: random, maxTTL: maximumTTL}, nil
 }
 
 func (broker *Broker) Issue(ctx context.Context, request leasecontract.IssuanceRequest, authority leasecontract.IssuanceAuthority) (*Handle, leasecontract.Decision, error) {
-	if broker == nil || broker.store == nil || broker.audit == nil || broker.clock == nil || broker.random == nil {
+	if broker == nil || broker.store == nil || broker.audit == nil || broker.stop == nil || broker.clock == nil || broker.random == nil {
 		err := brokerError(leasecontract.Unavailable, "broker_unavailable")
 		return nil, issuanceDecision(request, authority, "", err, "", time.Time{}, time.Time{}), err
 	}
@@ -44,6 +45,9 @@ func (broker *Broker) Issue(ctx context.Context, request leasecontract.IssuanceR
 	}
 	if err := validateAuthority(request, authority, now); err != nil {
 		return broker.recordIssue(ctx, request, authority, "", nil, err, "", now, time.Time{})
+	}
+	if err := broker.stop.Allow(ctx, request.Context.OrganizationID, request.Context.TenantID, request.Context.CaseID); err != nil {
+		return broker.recordIssue(ctx, request, authority, "", nil, mapStopError(err), "", now, time.Time{})
 	}
 	requestDigest, _ := leasecontract.RequestDigest(request)
 	referenceDigest, _ := secretref.ReferenceDigest(request.Reference)
@@ -86,6 +90,19 @@ func (broker *Broker) Issue(ctx context.Context, request leasecontract.IssuanceR
 	}
 	handle := &Handle{LeaseID: leaseID, token: token}
 	return broker.recordIssue(ctx, request, authority, leaseID, handle, nil, referenceDigest, now, expires)
+}
+
+func mapStopError(err error) error {
+	switch stopcontract.Code(err) {
+	case stopcontract.Denied:
+		return brokerError(leasecontract.Denied, "emergency_stop_active")
+	case stopcontract.Canceled:
+		return brokerError(leasecontract.Canceled, "stop_check_canceled")
+	case stopcontract.Timeout:
+		return brokerError(leasecontract.Timeout, "stop_check_timeout")
+	default:
+		return brokerError(leasecontract.Unavailable, "stop_state_unavailable")
+	}
 }
 
 func validateAuthority(request leasecontract.IssuanceRequest, authority leasecontract.IssuanceAuthority, now time.Time) error {

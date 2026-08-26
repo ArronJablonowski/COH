@@ -19,7 +19,7 @@ func (broker *Broker) Use(ctx context.Context, handle *Handle, request leasecont
 	if broker != nil && broker.clock != nil {
 		now = broker.clock.Now().UTC()
 	}
-	if broker == nil || broker.store == nil || broker.audit == nil || broker.resolver == nil || broker.clock == nil {
+	if broker == nil || broker.store == nil || broker.audit == nil || broker.resolver == nil || broker.stop == nil || broker.clock == nil {
 		err := brokerError(leasecontract.Unavailable, "broker_unavailable")
 		return dispatchDecision(Record{}, request, authority, leaseID(handle), err, "", now), err
 	}
@@ -43,6 +43,10 @@ func (broker *Broker) Use(ctx context.Context, handle *Handle, request leasecont
 		return broker.recordDispatch(ctx, record, request, authority, handle.LeaseID, resultErr, "", now)
 	}
 	handle.Destroy()
+	bound := record.Request.Context
+	if err := broker.stop.Allow(ctx, bound.OrganizationID, bound.TenantID, bound.CaseID); err != nil {
+		return broker.recordDispatch(ctx, record, request, authority, record.LeaseID, mapStopError(err), "", now)
+	}
 	if err := validateDispatch(record, request, authority, now); err != nil {
 		return broker.recordDispatch(ctx, record, request, authority, record.LeaseID, err, "", now)
 	}

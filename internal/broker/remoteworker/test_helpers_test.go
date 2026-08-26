@@ -50,6 +50,29 @@ type fakeAudit struct {
 	fail      bool
 }
 
+type allowStopGuard struct{}
+
+func (allowStopGuard) Allow(context.Context, string, string, string) error { return nil }
+
+type mutableStopGuard struct {
+	mu    sync.Mutex
+	err   error
+	calls [][3]string
+}
+
+func (guard *mutableStopGuard) Allow(_ context.Context, organizationID, tenantID, caseID string) error {
+	guard.mu.Lock()
+	defer guard.mu.Unlock()
+	guard.calls = append(guard.calls, [3]string{organizationID, tenantID, caseID})
+	return guard.err
+}
+
+func (guard *mutableStopGuard) set(err error) {
+	guard.mu.Lock()
+	defer guard.mu.Unlock()
+	guard.err = err
+}
+
 func (audit *fakeAudit) AppendRemoteWorkerDecision(_ context.Context, decision workercontract.Decision) error {
 	audit.mu.Lock()
 	defer audit.mu.Unlock()
@@ -65,7 +88,7 @@ func setupBroker(t *testing.T) (*Broker, *MemoryStore, *fakeAudit, *fakeClock) {
 	clock := &fakeClock{now: time.Date(2026, 8, 26, 4, 0, 0, 0, time.UTC)}
 	audit := &fakeAudit{}
 	store := NewMemoryStore()
-	broker, err := NewWithDependencies(store, audit, clock, &repeatReader{value: 7}, time.Minute)
+	broker, err := NewWithDependencies(store, audit, allowStopGuard{}, clock, &repeatReader{value: 7}, time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
