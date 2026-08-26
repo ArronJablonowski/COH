@@ -78,6 +78,8 @@ type Broker struct {
 	clock  Clock
 	random io.Reader
 	maxTTL time.Duration
+	jobsMu sync.Mutex
+	jobs   map[string]*activeJob
 }
 
 type Handle struct {

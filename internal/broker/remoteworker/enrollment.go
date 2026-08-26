@@ -26,7 +26,8 @@ func NewWithDependencies(store Store, audit AuditSink, stop StopGuard, clock Clo
 		maximumTTL > time.Duration(workercontract.MaximumLeaseTTLSeconds)*time.Second {
 		return nil, brokerError(workercontract.InvalidInput, "broker_configuration_invalid")
 	}
-	return &Broker{store: store, audit: audit, stop: stop, clock: clock, random: random, maxTTL: maximumTTL}, nil
+	return &Broker{store: store, audit: audit, stop: stop, clock: clock, random: random, maxTTL: maximumTTL,
+		jobs: make(map[string]*activeJob)}, nil
 }
 
 func mapStopError(err error) error {

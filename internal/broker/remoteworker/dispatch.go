@@ -48,6 +48,13 @@ func (broker *Broker) Use(ctx context.Context, handle *Handle, request workercon
 	if err != nil {
 		return decision, err
 	}
+	jobCtx, cancelJob := context.WithCancel(ctx)
+	job := broker.registerJob(record, cancelJob)
+	defer job.finish()
+	if err := broker.stop.Allow(jobCtx, bound.OrganizationID, bound.TenantID, bound.CaseID); err != nil {
+		cancelJob()
+		return broker.recordDispatch(ctx, record, request, authority, record.LeaseID, mapStopError(err), broker.clock.Now().UTC(), "runner_dispatch_completion")
+	}
 	envelope := workercontract.DispatchEnvelope{LeaseID: record.LeaseID, Scope: cloneLease(record).Request.Scope,
 		WorkerID: record.Request.WorkerID, WorkerRevision: record.Authority.Worker.Revision,
 		CertificateRevision: record.Authority.Worker.CertificateRevision, AttestationDigest: record.Authority.Worker.AttestationDigest,
@@ -56,18 +63,21 @@ func (broker *Broker) Use(ctx context.Context, handle *Handle, request workercon
 		AuthorizationDecisionDigest: record.Authority.AuthorizationDecisionDigest,
 		PolicyDecisionDigest:        record.Authority.PolicyDecisionDigest, ApprovalDecisionDigest: record.Authority.ApprovalDecisionDigest,
 		IssuedAt: record.IssuedAt, ExpiresAt: record.ExpiresAt}
-	callbackErr := callback(ctx, envelope)
+	callbackErr := callback(jobCtx, envelope)
 	completionNow := broker.clock.Now().UTC()
 	if callbackErr != nil {
 		resultErr := brokerError(workercontract.Unavailable, "runner_callback_failed")
-		if err = contextError(ctx); err != nil {
+		if err = contextError(jobCtx); err != nil {
 			resultErr = err
 		}
-		_, auditErr := broker.recordDispatch(ctx, record, request, authority, record.LeaseID, resultErr, completionNow, "runner_dispatch_completion")
+		completion, auditErr := broker.recordDispatch(ctx, record, request, authority, record.LeaseID, resultErr, completionNow, "runner_dispatch_completion")
 		if auditErr != nil && workercontract.Reason(auditErr) == "audit_unavailable" {
-			return decision, auditErr
+			return completion, auditErr
 		}
-		return decision, resultErr
+		return completion, resultErr
+	}
+	if stopErr := broker.stop.Allow(context.WithoutCancel(ctx), bound.OrganizationID, bound.TenantID, bound.CaseID); stopErr != nil {
+		return broker.recordDispatch(ctx, record, request, authority, record.LeaseID, mapStopError(stopErr), completionNow, "runner_dispatch_completion")
 	}
 	completion, err := broker.recordDispatch(ctx, record, request, authority, record.LeaseID, nil, completionNow, "runner_dispatch_completion")
 	if err != nil {
