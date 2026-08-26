@@ -1,9 +1,8 @@
-// Approval lifecycle types remain private to the sole broker authority.
+// Package broker keeps approval lifecycle authority private to the sole action boundary.
 package broker
 
 import (
 	"context"
-	"crypto/rand"
 	"io"
 	"time"
 
@@ -60,14 +59,6 @@ type approvalService struct {
 	audit    approvalAuditSink
 	clock    approvalClock
 	random   io.Reader
-}
-
-type approvalSystemClock struct{}
-
-func (approvalSystemClock) Now() time.Time { return time.Now().UTC() }
-
-func newApprovalService(store workflow.MetadataStore, verifier approvalFingerprintVerifier, audit approvalAuditSink) (*approvalService, error) {
-	return newApprovalServiceWithDependencies(store, verifier, audit, approvalSystemClock{}, rand.Reader)
 }
 
 func newApprovalServiceWithDependencies(store workflow.MetadataStore, verifier approvalFingerprintVerifier, audit approvalAuditSink, clock approvalClock, random io.Reader) (*approvalService, error) {
