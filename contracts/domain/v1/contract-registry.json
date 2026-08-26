@@ -25,7 +25,7 @@
   },
   "implemented_kind_schemas": {
     "action": "authority-payloads.schema.json#/$defs/action",
-    "approval": "authority-payloads.schema.json#/$defs/approval",
+    "approval": "approval-lifecycle.schema.json#/$defs/approval",
     "artifact_manifest": "workflow-payloads.schema.json#/$defs/artifact_manifest",
     "case": "workflow-payloads.schema.json#/$defs/case",
     "claim": "evidence-analysis-payloads.schema.json#/$defs/claim",

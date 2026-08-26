@@ -1,10 +1,11 @@
-# COH approval fingerprint contract v1
+# COH approval contract v1
 
 | Field | Value |
 |---|---|
-| Issue | COH-E05-03 / CYB-50 |
-| Requirements | SEC-006, SEC-009, EVAL-005 |
+| Issues | COH-E05-03 / CYB-50; COH-E05-04 / CYB-51 |
+| Requirements | SEC-006, SEC-008, SEC-009, SEC-040, EVAL-005 |
 | Fingerprint | `coh.approval-fingerprint/v1` / `1.0.0` |
+| Lifecycle | `coh.approval-lifecycle/v1` / `1.0.0` |
 | Hash | SHA-256 |
 
 ## Purpose
@@ -65,3 +66,25 @@ Creation and verification are broker-owned operations with mandatory redacted
 audit. Audit failure yields no usable success result. Cancellation or timeout
 before completion fails closed; a fresh call may recompute the same
 fingerprint because the operation has no hidden mutable state.
+
+## Lifecycle record
+
+CYB-51 persists a `coh.approval-lifecycle/v1` record inside the registered
+`coh.domain/v1` `approval` envelope. The payload schema is
+[`approval-lifecycle.schema.json`](../../domain/v1/approval-lifecycle.schema.json),
+and the executable transition contract is documented in
+[`approval-lifecycle-state-machine.md`](approval-lifecycle-state-machine.md).
+
+The record binds the approval identifier and exact fingerprint/manifest/policy
+decision digests to organization, tenant, case, requestor identity revision,
+validity window, approval threshold, and maximum use count. Each transition
+records its optimistic revision and fresh acting identity revision. Grant
+history is append-only and contains distinct actor identities.
+
+The domain registry mapping from the earlier provisional approval payload to
+this lifecycle payload is the CYB-51 policy/audit schema migration. Existing
+SQLite and PostgreSQL stores require no DDL migration because their generic
+versioned record and transactional outbox schemas already support the
+registered `approval` kind. A deployment must apply the contract reader/writer
+change before writing lifecycle records; no reader may reinterpret the legacy
+provisional payload as an active grant.

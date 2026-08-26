@@ -1,0 +1,101 @@
+package approvallifecycle
+
+import (
+	"regexp"
+	"time"
+)
+
+const timestampLayout = "2006-01-02T15:04:05.000000000Z"
+
+var (
+	uuidPattern   = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	tokenPattern  = regexp.MustCompile(`^[a-z][a-z0-9_.-]{0,127}$`)
+)
+
+func ValidateRecord(record Record) error {
+	if record.SchemaVersion != SchemaVersion || record.ContractVersion != ContractVersion {
+		return NewError(InvalidInput, "unsupported_contract")
+	}
+	for _, value := range []string{record.ApprovalID, record.OrganizationID, record.TenantID, record.CaseID, record.RequestorActorID, record.ActionOwnerActorID, record.LastActorID, record.LastEventID} {
+		if !uuidPattern.MatchString(value) {
+			return NewError(InvalidInput, "invalid_identity")
+		}
+	}
+	for _, value := range []string{record.FingerprintDigest, record.ManifestDigest, record.PolicyDecisionDigest, record.LastOperationDigest} {
+		if !digestPattern.MatchString(value) {
+			return NewError(InvalidInput, "invalid_digest")
+		}
+	}
+	requestedAt, requestedErr := parseTimestamp(record.RequestedAt)
+	validFrom, fromErr := parseTimestamp(record.ValidFrom)
+	validUntil, untilErr := parseTimestamp(record.ValidUntil)
+	updatedAt, updatedErr := parseTimestamp(record.UpdatedAt)
+	if requestedErr != nil || fromErr != nil || untilErr != nil || updatedErr != nil ||
+		validUntil.Before(validFrom) || validUntil.Equal(validFrom) || requestedAt.After(updatedAt) {
+		return NewError(InvalidInput, "invalid_time_window")
+	}
+	if record.Revision == 0 || record.RequestorRevision == 0 || record.LastActorRevision == 0 || record.RequiredGrantCount == 0 || record.RequiredGrantCount > 16 ||
+		record.MaximumUseCount == 0 || record.MaximumUseCount > 1000 || record.UseCount > record.MaximumUseCount {
+		return NewError(InvalidInput, "invalid_counter")
+	}
+	if len(record.Grants) > int(record.RequiredGrantCount) || duplicateGrant(record.Grants) {
+		return NewError(InvalidInput, "invalid_grants")
+	}
+	for _, grant := range record.Grants {
+		grantedAt, err := parseTimestamp(grant.GrantedAt)
+		if !uuidPattern.MatchString(grant.ActorID) || grant.ActorRevision == 0 || err != nil || grantedAt.Before(requestedAt) || grantedAt.After(updatedAt) {
+			return NewError(InvalidInput, "invalid_grant")
+		}
+		if grant.ActorID == record.RequestorActorID {
+			return NewError(Denied, "self_approval")
+		}
+	}
+	if !validState(record.State) || !validStateShape(record) {
+		return NewError(InvalidInput, "invalid_state")
+	}
+	if !tokenPattern.MatchString(record.ReasonCode) {
+		return NewError(InvalidInput, "invalid_reason_code")
+	}
+	return nil
+}
+
+func validState(state State) bool {
+	switch state {
+	case Requested, Granted, Rejected, Expired, Consumed, Revoked:
+		return true
+	default:
+		return false
+	}
+}
+
+func validStateShape(record Record) bool {
+	grantCount := len(record.Grants)
+	switch record.State {
+	case Requested:
+		return grantCount < int(record.RequiredGrantCount) && record.UseCount == 0
+	case Granted:
+		return grantCount == int(record.RequiredGrantCount) && record.UseCount < record.MaximumUseCount
+	case Consumed:
+		return grantCount == int(record.RequiredGrantCount) && record.UseCount == record.MaximumUseCount
+	case Rejected, Expired:
+		return record.UseCount == 0
+	case Revoked:
+		return record.UseCount < record.MaximumUseCount
+	default:
+		return false
+	}
+}
+
+func duplicateGrant(grants []Grant) bool {
+	seen := make(map[string]struct{}, len(grants))
+	for _, grant := range grants {
+		if _, exists := seen[grant.ActorID]; exists {
+			return true
+		}
+		seen[grant.ActorID] = struct{}{}
+	}
+	return false
+}
+
+func parseTimestamp(value string) (time.Time, error) { return time.Parse(timestampLayout, value) }

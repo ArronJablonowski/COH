@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/domain/v1/approval-lifecycle.schema.json",
+  "title": "COH approval lifecycle payload schema v1",
+  "$defs": {
+    "approval": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "approval_id", "organization_id", "tenant_id", "case_id", "fingerprint_digest", "manifest_digest", "policy_decision_digest", "requestor_actor_id", "requestor_revision", "action_owner_actor_id", "state", "revision", "requested_at", "valid_from", "valid_until", "required_grant_count", "grants", "maximum_use_count", "use_count", "reason_code", "last_actor_id", "last_actor_revision", "last_operation_digest", "last_event_id", "updated_at"],
+      "properties": {
+        "schema_version": {"enum": ["coh.approval-lifecycle/v1"]},
+        "contract_version": {"enum": ["1.0.0"]},
+        "approval_id": {"$ref": "#/$defs/uuid_v7"},
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"},
+        "fingerprint_digest": {"$ref": "#/$defs/digest"},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "policy_decision_digest": {"$ref": "#/$defs/digest"},
+        "requestor_actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "requestor_revision": {"type": "integer", "minimum": 1},
+        "action_owner_actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "state": {"enum": ["requested", "granted", "rejected", "expired", "consumed", "revoked"]},
+        "revision": {"type": "integer", "minimum": 1},
+        "requested_at": {"$ref": "#/$defs/timestamp"},
+        "valid_from": {"$ref": "#/$defs/timestamp"},
+        "valid_until": {"$ref": "#/$defs/timestamp"},
+        "required_grant_count": {"type": "integer", "minimum": 1, "maximum": 16},
+        "grants": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/grant"}},
+        "maximum_use_count": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "use_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "reason_code": {"$ref": "#/$defs/token"},
+        "last_actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "last_actor_revision": {"type": "integer", "minimum": 1},
+        "last_operation_digest": {"$ref": "#/$defs/digest"},
+        "last_event_id": {"$ref": "#/$defs/uuid_v7"},
+        "updated_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "grant": {
+      "type": "object",
+      "required": ["actor_id", "actor_revision", "granted_at"],
+      "properties": {
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1},
+        "granted_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9][.][0-9]{9}Z$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"}
+  }
+}

@@ -16,3 +16,16 @@
 No v1 reader fills a missing binding from ambient context, accepts a raw
 digest asserted by a workflow/model, weakens canonicalization, or treats a
 matching fingerprint as an approval grant.
+
+## Lifecycle compatibility
+
+| Stored or requested state | v1 result | Required action |
+|---|---|---|
+| Provisional pre-CYB-51 approval payload | Never active authority | Re-request under `coh.approval-lifecycle/v1` |
+| Exact idempotency replay | Original commit result | Return the already committed revision |
+| Same idempotency key with changed input | Conflict | Use a new key only for a new intended operation |
+| Stale expected revision | Conflict | Reload and re-authorize from fresh state |
+| Changed fingerprint, scope, requestor, validity, threshold, or use binding | Deny | Create a new signed action, policy decision, fingerprint, and request |
+| Duplicate or self grant | Deny and audit | Obtain a distinct eligible approver |
+| Expired, rejected, consumed, or revoked record | Terminal denial | Create a new approval request from fresh authority |
+| Unknown field, state, operation, or contract version | Deny | Use an explicitly qualified reader/version |
