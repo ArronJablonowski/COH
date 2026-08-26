@@ -112,6 +112,40 @@ func (store *RepositoryStore) LoadVersion(ctx context.Context, organizationID, t
 	return cloneVersion(version), true, nil
 }
 
+func (store *RepositoryStore) LoadCatalog(ctx context.Context, organizationID,
+	tenantID string) (CatalogSnapshot, error) {
+	if err := contextError(ctx); err != nil {
+		return CatalogSnapshot{}, err
+	}
+	if !validUUID(organizationID) || !validUUID(tenantID) {
+		return CatalogSnapshot{}, newError(InvalidInput, "catalog_key_invalid", false, nil)
+	}
+	key := catalogKey(organizationID, tenantID, catalogRecordID(organizationID, tenantID))
+	record, err := store.repository.Get(ctx, key)
+	if err != nil {
+		if workflowbase.StorageCode(err) == workflowbase.StorageNotFound {
+			empty := CatalogSnapshot{SchemaVersion: CatalogSchemaVersion, ContractVersion: ContractVersion,
+				OrganizationID: organizationID, TenantID: tenantID, Entries: []PromotedSkillRef{}}
+			empty.SnapshotDigest, _ = catalogSnapshotDigest(empty)
+			return empty, nil
+		}
+		return CatalogSnapshot{}, mapStorageError("catalog_load", err)
+	}
+	var envelope recordEnvelope[CatalogSnapshot]
+	if err := decodeExact(record.Canonical, &envelope); err != nil {
+		return CatalogSnapshot{}, newError(Denied, "catalog_record_invalid", false, err)
+	}
+	value := envelope.Data
+	if envelope.Schema != recordSchema || envelope.Kind != "skill" || envelope.ID != key.ID ||
+		envelope.OrganizationID != organizationID || envelope.TenantID != tenantID ||
+		envelope.CaseID != nil || envelope.Revision != record.Revision ||
+		envelope.CreatedAt != formatTime(value.UpdatedAt) ||
+		validateCatalogSnapshot(value) != nil || value.Revision != record.Revision {
+		return CatalogSnapshot{}, newError(Denied, "catalog_record_invalid", false, nil)
+	}
+	return cloneCatalogSnapshot(value), nil
+}
+
 func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey string, expected *State,
 	next State, version *Version) (State, bool, error) {
 	if err := contextError(ctx); err != nil {
@@ -131,9 +165,20 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey string,
 	if expected != nil {
 		expectedRevision = expected.Revision
 	}
+	catalog, err := store.nextCatalog(ctx, next)
+	if err != nil {
+		return State{}, false, err
+	}
+	catalogRecord, err := encodeCatalogRecord(catalog)
+	if err != nil {
+		return State{}, false, err
+	}
 	mutations := []workflowbase.Mutation{{
 		Kind: workflowbase.MutationPut, Key: stateRecord.Key,
 		ExpectedRevision: expectedRevision, Record: &stateRecord,
+	}, {
+		Kind: workflowbase.MutationPut, Key: catalogRecord.Key,
+		ExpectedRevision: catalog.Revision - 1, Record: &catalogRecord,
 	}}
 	if version != nil {
 		if validateVersion(*version) != nil || version.OrganizationID != next.OrganizationID ||
@@ -169,6 +214,36 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey string,
 	return cloneState(next), false, nil
 }
 
+func (store *RepositoryStore) nextCatalog(ctx context.Context, next State) (CatalogSnapshot, error) {
+	current, err := store.LoadCatalog(ctx, next.OrganizationID, next.TenantID)
+	if err != nil {
+		return CatalogSnapshot{}, err
+	}
+	entries := append([]PromotedSkillRef(nil), current.Entries...)
+	index := sort.Search(len(entries), func(index int) bool { return entries[index].SkillName >= next.SkillName })
+	if index < len(entries) && entries[index].SkillName == next.SkillName {
+		entries = append(entries[:index], entries[index+1:]...)
+	}
+	if next.Status == Promoted {
+		entry := PromotedSkillRef{SkillName: next.SkillName, ManifestDigest: next.CurrentManifestDigest,
+			StateRevision: next.Revision, ProvenanceDigest: next.ProvenanceDigest}
+		entries = append(entries, PromotedSkillRef{})
+		copy(entries[index+1:], entries[index:])
+		entries[index] = entry
+	}
+	if len(entries) > MaximumCatalogEntries {
+		return CatalogSnapshot{}, newError(Denied, "catalog_capacity_exceeded", false, nil)
+	}
+	value := CatalogSnapshot{SchemaVersion: CatalogSchemaVersion, ContractVersion: ContractVersion,
+		OrganizationID: next.OrganizationID, TenantID: next.TenantID, Entries: entries,
+		UpdatedAt: next.UpdatedAt, Revision: current.Revision + 1}
+	value.SnapshotDigest, err = catalogSnapshotDigest(value)
+	if err != nil || validateCatalogSnapshot(value) != nil {
+		return CatalogSnapshot{}, newError(Denied, "catalog_next_invalid", false, err)
+	}
+	return value, nil
+}
+
 func encodeStateRecord(value State) (workflowbase.MetadataRecord, error) {
 	id := stateRecordID(value.OrganizationID, value.TenantID, value.SkillName)
 	envelope := recordEnvelope[State]{Schema: recordSchema, Kind: "skill", ID: id,
@@ -185,6 +260,17 @@ func encodeVersionRecord(value Version) (workflowbase.MetadataRecord, error) {
 		OrganizationID: value.OrganizationID, TenantID: value.TenantID, Revision: 1,
 		CreatedAt: formatTime(value.CreatedAt), Data: payload}
 	return metadataRecord(catalogKey(value.OrganizationID, value.TenantID, id), 1, envelope)
+}
+
+func encodeCatalogRecord(value CatalogSnapshot) (workflowbase.MetadataRecord, error) {
+	if err := validateCatalogSnapshot(value); err != nil {
+		return workflowbase.MetadataRecord{}, err
+	}
+	id := catalogRecordID(value.OrganizationID, value.TenantID)
+	envelope := recordEnvelope[CatalogSnapshot]{Schema: recordSchema, Kind: "skill", ID: id,
+		OrganizationID: value.OrganizationID, TenantID: value.TenantID, Revision: value.Revision,
+		CreatedAt: formatTime(value.UpdatedAt), Data: value}
+	return metadataRecord(catalogKey(value.OrganizationID, value.TenantID, id), value.Revision, envelope)
 }
 
 func metadataRecord(key workflowbase.RecordKey, revision uint64, value any) (workflowbase.MetadataRecord, error) {
@@ -240,6 +326,10 @@ func versionRecordID(organizationID, tenantID, digest string) string {
 	return deterministicUUID("COH-SKILL-REGISTRY-VERSION-ID-V1\x00", organizationID+"\x00"+tenantID+"\x00"+digest)
 }
 
+func catalogRecordID(organizationID, tenantID string) string {
+	return deterministicUUID("COH-SKILL-REGISTRY-CATALOG-ID-V1\x00", organizationID+"\x00"+tenantID)
+}
+
 func deterministicUUID(domainName, input string) string {
 	sum := sha256.Sum256([]byte(domainName + input))
 	sum[6] = sum[6]&0x0f | 0x70
@@ -280,3 +370,4 @@ func mapStorageError(operation string, err error) error {
 }
 
 var _ Store = (*RepositoryStore)(nil)
+var _ Catalog = (*RepositoryStore)(nil)

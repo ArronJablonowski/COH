@@ -57,3 +57,32 @@ provenance digest.
 All object fields are required. Go decoders reject duplicate, unknown,
 missing, trailing, oversized, malformed, unsupported-version, noncanonical
 timestamp, unsorted-set, or semantically invalid input.
+
+## Progressive discovery
+
+`skill-discovery.schema.json` freezes COH-E09-02 / FR-042. Discovery is three
+separate default-deny operations: compact search, exact detail expansion, and
+resolution of one exact signed resource to an immutable artifact reference.
+Every request binds request and idempotency identity, organization, tenant,
+case, task, actor, policy digest, required permission, and deadline.
+
+The compact page contains only skill name, semantic version, current manifest
+digest, and registry provenance. It never contains content or resource
+metadata. Its opaque cursor binds the query, scope, policy, permission, and
+durable promoted-catalog snapshot. A changed snapshot makes the cursor stale.
+
+Details require the exact manifest digest returned by compact search and cause
+the signed registry to recheck current promotion, validity, publisher and
+reviewer authority, policy scope, permission, and provenance. Resource
+resolution repeats those checks and accepts one exact resource name and digest.
+The detail request must bind a durable case/task-scoped compact result containing
+that manifest; resource resolution must bind a durable detail result containing
+that descriptor. A caller cannot skip or substitute either parent phase.
+The retriever can return only a matching immutable `ArtifactRef`; discovery has
+no HTTP, shell, filesystem-write, connector, executor, model, or generic
+callback capability.
+
+Each phase has its own recomputed decision digest and durable idempotency
+record. Exact replay returns an owned copy of the prior result. Same-key changed
+replay, manifest or resource drift, stale catalog state, malformed authority,
+cancellation, timeout, or storage ambiguity fails closed.

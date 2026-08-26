@@ -88,6 +88,14 @@ func TestSkillRegistrySurvivesSQLiteCloseAndReopen(t *testing.T) {
 	if err != nil || !found || !bytes.Equal(version.Envelope, envelope) {
 		t.Fatalf("immutable envelope did not survive restart: %#v %v", version, err)
 	}
+	catalog, err := repository.LoadCatalog(context.Background(), skillOrg, skillTenant)
+	if err != nil || catalog.Revision != 1 || len(catalog.Entries) != 1 ||
+		catalog.Entries[0].SkillName != "timeline_builder" ||
+		catalog.Entries[0].ManifestDigest != manifestDigest ||
+		catalog.Entries[0].StateRevision != state.Revision ||
+		catalog.Entries[0].ProvenanceDigest != state.ProvenanceDigest {
+		t.Fatalf("promoted catalog did not survive restart: %#v %v", catalog, err)
+	}
 
 	resolve := skillregistry.ResolveRequest{
 		SchemaVersion: skillregistry.ResolveSchemaVersion, ContractVersion: skillregistry.ContractVersion,
@@ -116,6 +124,14 @@ func TestSkillRegistrySurvivesSQLiteCloseAndReopen(t *testing.T) {
 	replayed, err := registry.Change(context.Background(), request)
 	if err != nil || replayed.ProvenanceDigest != state.ProvenanceDigest {
 		t.Fatalf("durable replay did not recover exactly: %#v %v", replayed, err)
+	}
+	revoked, err := registry.Change(context.Background(), fixture.revocation(t, manifestDigest, state.Revision))
+	if err != nil || revoked.Status != skillregistry.Revoked {
+		t.Fatalf("revocation failed: %#v %v", revoked, err)
+	}
+	catalog, err = repository.LoadCatalog(context.Background(), skillOrg, skillTenant)
+	if err != nil || catalog.Revision != 2 || len(catalog.Entries) != 0 {
+		t.Fatalf("revoked skill remained discoverable: %#v %v", catalog, err)
 	}
 }
 
@@ -208,6 +224,41 @@ func (fixture skillFixture) promotion(t *testing.T, envelope []byte,
 		SignedCommand: signedBytes, SignedManifest: envelope, Signer: fixture.owner,
 		Publisher: fixture.publisher, Reviewers: []skillregistry.SigningAuthority{fixture.reviewer},
 		Review: fixture.review, Policy: policy}
+}
+
+func (fixture skillFixture) revocation(t *testing.T, manifestDigest string,
+	revision uint64) skillregistry.ChangeRequest {
+	t.Helper()
+	command := skillregistry.ChangeCommand{
+		SchemaVersion: skillregistry.CommandSchemaVersion, ContractVersion: skillregistry.ContractVersion,
+		CommandID: skillUUID("revoke-command"), Action: skillregistry.Revoke,
+		OrganizationID: skillOrg, TenantID: skillTenant, CaseID: skillCase, TaskID: skillTask,
+		ActorID: skillOwner, SkillName: "timeline_builder", TargetManifestDigest: manifestDigest,
+		ExpectedCurrentDigest: manifestDigest, ExpectedRevision: revision,
+		ReasonDigest: skillDigest("revoke-reason"), CreatedAt: fixture.now.Add(-time.Minute),
+		Deadline: fixture.now.Add(time.Hour),
+	}
+	payload, commandDigest, err := skillregistry.CanonicalChangeCommand(command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signed := skillregistry.SignedChange{SchemaVersion: skillregistry.SignedCommandVersion,
+		ContractVersion: skillregistry.ContractVersion, Command: command, CommandDigest: commandDigest,
+		Signature: fixture.signature(fixture.owner, fixture.ownerPrivate, skillregistry.CommandDomain, payload)}
+	signedBytes, err := skillregistry.CanonicalSignedChange(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := skillregistry.PolicyDecision{SchemaVersion: skillregistry.PolicySchemaVersion,
+		ContractVersion: skillregistry.ContractVersion, DecisionID: skillUUID("revoke-policy"),
+		PolicyDigest: skillDigest("policy-source"), OrganizationID: skillOrg, TenantID: skillTenant,
+		CaseID: skillCase, TaskID: skillTask, ActorID: skillOwner, Action: skillregistry.Revoke,
+		SkillName: command.SkillName, ManifestDigest: manifestDigest, Outcome: "allow", Revision: 1,
+		IssuedAt: fixture.now.Add(-time.Minute), ExpiresAt: fixture.now.Add(time.Hour)}
+	policy.DecisionDigest, _ = skillregistry.DigestPolicyDecision(policy)
+	return skillregistry.ChangeRequest{IdempotencyKey: "sqlite-skill-revocation",
+		SignedCommand: signedBytes, Signer: fixture.owner, Publisher: fixture.publisher,
+		Reviewers: []skillregistry.SigningAuthority{fixture.reviewer}, Review: fixture.review, Policy: policy}
 }
 
 func (fixture skillFixture) signature(authority skillregistry.SigningAuthority,

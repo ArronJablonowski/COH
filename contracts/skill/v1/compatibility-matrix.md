@@ -14,6 +14,11 @@
 | Widen permission or scope | Authority widening | New reviewed version and exact policy/access decisions |
 | Reuse an idempotency key with changed input | Incompatible replay | Denied without changing durable state |
 | Return raw content, paths, URLs, credentials, or execution handles | Incompatible security boundary | Use a separately reviewed retrieval/execution control |
+| Add or remove a promoted skill | Compatible catalog change | New snapshot digest; outstanding discovery cursors become stale |
+| Change compact search scope, query, permission, policy, page size, or cursor | New discovery intent | New idempotency key and recomputed phase decision |
+| Expand details for a different manifest than compact search returned | Incompatible authority change | Denied; repeat compact search and authorize the exact current digest |
+| Resolve a different resource name or digest | Incompatible authority change | Denied; authorize one exact descriptor from current signed details |
+| Replay discovery after revocation or catalog drift | Compatible narrowing | Current authority and registry are rechecked; stale result is denied |
 
 No compatibility is inferred from matching names, semver text, prior
 promotion, successful JSON decoding, or a signature without current authority.

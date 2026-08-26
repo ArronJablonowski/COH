@@ -17,6 +17,7 @@ const (
 	PolicySchemaVersion   = "coh.skill-policy-decision/v1"
 	ResolveSchemaVersion  = "coh.skill-resolution-request/v1"
 	AccessSchemaVersion   = "coh.skill-access-decision/v1"
+	CatalogSchemaVersion  = "coh.promoted-skill-catalog/v1"
 	ContractVersion       = "1.0.0"
 	SignatureAlgorithm    = "ed25519"
 	ManifestDomain        = "COH-SIGNED-SKILL-MANIFEST-V1\x00"
@@ -26,6 +27,7 @@ const (
 	MaximumValidity       = 366 * 24 * time.Hour
 	MaximumResources      = 128
 	MaximumPermissions    = 64
+	MaximumCatalogEntries = 4096
 )
 
 type Resource struct {
@@ -259,6 +261,29 @@ type ResolvedSkill struct {
 	ProvenanceDigest string
 }
 
+// PromotedSkillRef is the compact, non-authoritative projection kept in the
+// durable registry catalog. Consumers must re-resolve the exact manifest
+// through Registry before returning it to an agent.
+type PromotedSkillRef struct {
+	SkillName        string `json:"skill_name"`
+	ManifestDigest   string `json:"manifest_digest"`
+	StateRevision    uint64 `json:"state_revision"`
+	ProvenanceDigest string `json:"provenance_digest"`
+}
+
+// CatalogSnapshot is updated atomically with registry state. It contains no
+// manifest details, resource metadata, content, paths, URLs, or capabilities.
+type CatalogSnapshot struct {
+	SchemaVersion   string             `json:"schema_version"`
+	ContractVersion string             `json:"contract_version"`
+	OrganizationID  string             `json:"organization_id"`
+	TenantID        string             `json:"tenant_id"`
+	Entries         []PromotedSkillRef `json:"entries"`
+	SnapshotDigest  string             `json:"snapshot_digest"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	Revision        uint64             `json:"revision"`
+}
+
 type AuditAction string
 
 const Resolve AuditAction = "resolve"
@@ -301,4 +326,10 @@ type Clock interface{ Now() time.Time }
 type Registry interface {
 	Change(context.Context, ChangeRequest) (State, error)
 	Resolve(context.Context, ResolveRequest, AccessDecision, ResolutionAuthority) (ResolvedSkill, error)
+}
+
+// Catalog exposes only the durable compact projection needed to discover
+// candidate names. Exact availability remains owned by Registry.Resolve.
+type Catalog interface {
+	LoadCatalog(context.Context, string, string) (CatalogSnapshot, error)
 }

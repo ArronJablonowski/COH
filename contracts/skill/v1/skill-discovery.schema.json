@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/skill/v1/skill-discovery.schema.json",
+  "title": "COH progressive skill discovery v1",
+  "oneOf": [
+    { "$ref": "#/$defs/search_request" },
+    { "$ref": "#/$defs/detail_request" },
+    { "$ref": "#/$defs/resource_request" },
+    { "$ref": "#/$defs/decision" },
+    { "$ref": "#/$defs/search_result" },
+    { "$ref": "#/$defs/detail_result" },
+    { "$ref": "#/$defs/resource_result" },
+    { "$ref": "#/$defs/record" },
+    { "$ref": "#/$defs/catalog_snapshot" }
+  ],
+  "$defs": {
+    "search_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "case", "task_id", "actor_id", "policy_digest", "required_permission", "query", "limit", "cursor", "expected_snapshot_digest", "deadline"],
+      "properties": {
+        "schema_version": { "const": "coh.skill-discovery-search/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "idempotency_key": { "$ref": "#/$defs/opaque" },
+        "case": { "$ref": "#/$defs/case" },
+        "task_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "required_permission": { "$ref": "#/$defs/token" },
+        "query": { "type": "string", "maxLength": 128 },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "cursor": { "$ref": "#/$defs/optional_digest" },
+        "expected_snapshot_digest": { "$ref": "#/$defs/optional_digest" },
+        "deadline": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "detail_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "case", "task_id", "actor_id", "policy_digest", "required_permission", "skill_name", "expected_manifest_digest", "search_idempotency_key", "expected_search_result_digest", "deadline"],
+      "properties": {
+        "schema_version": { "const": "coh.skill-discovery-detail/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "idempotency_key": { "$ref": "#/$defs/opaque" },
+        "case": { "$ref": "#/$defs/case" },
+        "task_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "required_permission": { "$ref": "#/$defs/token" },
+        "skill_name": { "$ref": "#/$defs/token" },
+        "expected_manifest_digest": { "$ref": "#/$defs/digest" },
+        "search_idempotency_key": { "$ref": "#/$defs/opaque" },
+        "expected_search_result_digest": { "$ref": "#/$defs/digest" },
+        "deadline": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "resource_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "case", "task_id", "actor_id", "policy_digest", "required_permission", "skill_name", "expected_manifest_digest", "resource_name", "resource_digest", "detail_idempotency_key", "expected_detail_result_digest", "deadline"],
+      "properties": {
+        "schema_version": { "const": "coh.skill-discovery-resource/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "idempotency_key": { "$ref": "#/$defs/opaque" },
+        "case": { "$ref": "#/$defs/case" },
+        "task_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "required_permission": { "$ref": "#/$defs/token" },
+        "skill_name": { "$ref": "#/$defs/token" },
+        "expected_manifest_digest": { "$ref": "#/$defs/digest" },
+        "resource_name": { "$ref": "#/$defs/token" },
+        "resource_digest": { "$ref": "#/$defs/digest" },
+        "detail_idempotency_key": { "$ref": "#/$defs/opaque" },
+        "expected_detail_result_digest": { "$ref": "#/$defs/digest" },
+        "deadline": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "decision_id", "decision_digest", "request_id", "policy_digest", "case", "task_id", "actor_id", "phase", "skill_name", "manifest_digest", "required_permission", "resource_name", "resource_digest", "query_digest", "snapshot_digest", "cursor", "page_limit", "parent_result_digest", "deadline", "outcome", "revision", "issued_at", "expires_at"],
+      "properties": {
+        "schema_version": { "const": "coh.skill-discovery-decision/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "decision_id": { "$ref": "#/$defs/uuid_v7" },
+        "decision_digest": { "$ref": "#/$defs/digest" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "case": { "$ref": "#/$defs/case" },
+        "task_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "phase": { "enum": ["compact_search", "detail_expand", "resource_fetch"] },
+        "skill_name": { "$ref": "#/$defs/optional_token" },
+        "manifest_digest": { "$ref": "#/$defs/optional_digest" },
+        "required_permission": { "$ref": "#/$defs/token" },
+        "resource_name": { "$ref": "#/$defs/optional_token" },
+        "resource_digest": { "$ref": "#/$defs/optional_digest" },
+        "query_digest": { "$ref": "#/$defs/digest" },
+        "snapshot_digest": { "$ref": "#/$defs/digest" },
+        "cursor": { "$ref": "#/$defs/optional_digest" },
+        "page_limit": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "parent_result_digest": { "$ref": "#/$defs/optional_digest" },
+        "deadline": { "$ref": "#/$defs/timestamp" },
+        "outcome": { "const": "allow" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "issued_at": { "$ref": "#/$defs/timestamp" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "search_result": {
+      "type": "object",
+      "required": ["skills", "snapshot_digest", "next_cursor", "result_digest", "replayed"],
+      "properties": {
+        "skills": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/compact_skill" } },
+        "snapshot_digest": { "$ref": "#/$defs/digest" },
+        "next_cursor": { "$ref": "#/$defs/optional_digest" },
+        "result_digest": { "$ref": "#/$defs/digest" },
+        "replayed": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "detail_result": {
+      "type": "object",
+      "required": ["skill_name", "skill_version", "manifest_digest", "content_digest", "resources", "permissions", "owner_actor_id", "review_id", "review_revision", "provenance_digest", "result_digest", "replayed"],
+      "properties": {
+        "skill_name": { "$ref": "#/$defs/token" },
+        "skill_version": { "$ref": "#/$defs/version" },
+        "manifest_digest": { "$ref": "#/$defs/digest" },
+        "content_digest": { "$ref": "#/$defs/digest" },
+        "resources": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/resource" } },
+        "permissions": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/token" } },
+        "owner_actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "review_id": { "$ref": "#/$defs/uuid_v7" },
+        "review_revision": { "type": "integer", "minimum": 1 },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "result_digest": { "$ref": "#/$defs/digest" },
+        "replayed": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "resource_result": {
+      "type": "object",
+      "required": ["skill_name", "manifest_digest", "resource_name", "artifact", "provenance_digest", "result_digest", "replayed"],
+      "properties": {
+        "skill_name": { "$ref": "#/$defs/token" },
+        "manifest_digest": { "$ref": "#/$defs/digest" },
+        "resource_name": { "$ref": "#/$defs/token" },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "result_digest": { "$ref": "#/$defs/digest" },
+        "replayed": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "case", "task_id", "actor_id", "policy_digest", "required_permission", "operation", "idempotency_digest", "intent_digest", "decision_digests", "search", "detail", "resource", "previous_provenance_digest", "provenance_digest", "created_at", "revision"],
+      "properties": {
+        "schema_version": { "const": "coh.skill-discovery-record/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "case": { "$ref": "#/$defs/case" },
+        "task_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "required_permission": { "$ref": "#/$defs/token" },
+        "operation": { "enum": ["compact_search", "detail_expand", "resource_fetch"] },
+        "idempotency_digest": { "$ref": "#/$defs/digest" },
+        "intent_digest": { "$ref": "#/$defs/digest" },
+        "decision_digests": { "type": "array", "minItems": 1, "maxItems": 33, "items": { "$ref": "#/$defs/digest" } },
+        "search": { "oneOf": [{ "$ref": "#/$defs/search_result" }, { "type": "null" }] },
+        "detail": { "oneOf": [{ "$ref": "#/$defs/detail_result" }, { "type": "null" }] },
+        "resource": { "oneOf": [{ "$ref": "#/$defs/resource_result" }, { "type": "null" }] },
+        "previous_provenance_digest": { "type": "string", "maxLength": 0 },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "revision": { "const": 1 }
+      },
+      "additionalProperties": false
+    },
+    "catalog_snapshot": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "organization_id", "tenant_id", "entries", "snapshot_digest", "updated_at", "revision"],
+      "properties": {
+        "schema_version": { "const": "coh.promoted-skill-catalog/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "organization_id": { "$ref": "#/$defs/uuid_v7" },
+        "tenant_id": { "$ref": "#/$defs/uuid_v7" },
+        "entries": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/catalog_entry" } },
+        "snapshot_digest": { "$ref": "#/$defs/digest" },
+        "updated_at": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "string", "maxLength": 0 }] },
+        "revision": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "compact_skill": {
+      "type": "object",
+      "required": ["skill_name", "skill_version", "manifest_digest", "provenance_digest"],
+      "properties": {
+        "skill_name": { "$ref": "#/$defs/token" },
+        "skill_version": { "$ref": "#/$defs/version" },
+        "manifest_digest": { "$ref": "#/$defs/digest" },
+        "provenance_digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "catalog_entry": {
+      "type": "object",
+      "required": ["skill_name", "manifest_digest", "state_revision", "provenance_digest"],
+      "properties": {
+        "skill_name": { "$ref": "#/$defs/token" },
+        "manifest_digest": { "$ref": "#/$defs/digest" },
+        "state_revision": { "type": "integer", "minimum": 1 },
+        "provenance_digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "resource": {
+      "type": "object",
+      "required": ["name", "digest", "media_type", "classification", "length"],
+      "properties": {
+        "name": { "$ref": "#/$defs/token" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "media_type": { "type": "string", "minLength": 3, "maxLength": 127 },
+        "classification": { "$ref": "#/$defs/token" },
+        "length": { "type": "integer", "minimum": 1, "maximum": 1073741824 }
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "media_type": { "type": "string", "minLength": 3, "maxLength": 127 },
+        "classification": { "$ref": "#/$defs/token" },
+        "length": { "type": "integer", "minimum": 1, "maximum": 1073741824 }
+      },
+      "additionalProperties": false
+    },
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": { "$ref": "#/$defs/uuid_v7" },
+        "tenant_id": { "$ref": "#/$defs/uuid_v7" },
+        "case_id": { "$ref": "#/$defs/uuid_v7" }
+      },
+      "additionalProperties": false
+    },
+    "uuid_v7": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "optional_digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "string", "maxLength": 0 }] },
+    "token": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$" },
+    "optional_token": { "oneOf": [{ "$ref": "#/$defs/token" }, { "type": "string", "maxLength": 0 }] },
+    "opaque": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "version": { "type": "string", "pattern": "^[1-9][0-9]{0,8}\\.[0-9]{1,9}\\.[0-9]{1,9}$" },
+    "timestamp": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{9}Z$" }
+  }
+}

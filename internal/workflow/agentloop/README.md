@@ -49,3 +49,11 @@ must drain `coh.agent-loop.plan.v1` activity tasks on the old worker before
 deploying workers that register v2. New and resumed planning work then uses v2;
 v1 payloads are never widened by inventing missing policy, budget, route, or
 deadline bindings.
+
+`coh.agent-loop.skill-discovery.v1` is the separate progressive skill activity.
+Its only dependency exposes compact search, exact detail expansion, and exact
+resource resolution. Each method preserves the discovery controller's
+case/task/policy/deadline and idempotency boundaries. The activity cannot
+promote, revoke, execute, fetch arbitrary content, or reach a connector. The
+older exact `skill-lookup` adapter remains a registry integration boundary but
+is not the agent-facing discovery route.
