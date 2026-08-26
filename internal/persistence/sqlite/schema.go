@@ -74,6 +74,46 @@ var metadataDown = []string{
 	"DROP TABLE coh_records",
 }
 
+var auditUp = []string{
+	`CREATE TABLE coh_audit_heads (
+  organization_id TEXT NOT NULL, tenant_id TEXT NOT NULL,
+  sequence INTEGER NOT NULL CHECK (sequence >= 0), chain_hash TEXT NOT NULL,
+  last_record_at TEXT NOT NULL, last_checkpoint_sequence INTEGER NOT NULL CHECK (last_checkpoint_sequence >= 0),
+  last_checkpoint_at TEXT NOT NULL, PRIMARY KEY (organization_id, tenant_id)
+) STRICT`,
+	`CREATE TABLE coh_audit_records (
+  organization_id TEXT NOT NULL, tenant_id TEXT NOT NULL, sequence INTEGER NOT NULL CHECK (sequence > 0),
+  event_id TEXT NOT NULL, event_digest TEXT NOT NULL, previous_chain_hash TEXT NOT NULL, chain_hash TEXT NOT NULL,
+  appended_at TEXT NOT NULL, canonical BLOB NOT NULL,
+  PRIMARY KEY (organization_id, tenant_id, sequence), UNIQUE (organization_id, tenant_id, event_id)
+) STRICT`,
+	`CREATE TABLE coh_audit_checkpoints (
+  organization_id TEXT NOT NULL, tenant_id TEXT NOT NULL, sequence INTEGER NOT NULL CHECK (sequence > 0),
+  checkpoint_id TEXT NOT NULL, chain_hash TEXT NOT NULL, created_at TEXT NOT NULL, canonical BLOB NOT NULL,
+  PRIMARY KEY (organization_id, tenant_id, sequence), UNIQUE (organization_id, tenant_id, checkpoint_id)
+) STRICT`,
+	`CREATE TABLE coh_audit_idempotency (
+  organization_id TEXT NOT NULL, tenant_id TEXT NOT NULL, idempotency_key TEXT NOT NULL,
+  request_digest TEXT NOT NULL, sequence INTEGER NOT NULL CHECK (sequence > 0), chain_hash TEXT NOT NULL,
+  checkpoint_id TEXT NOT NULL, PRIMARY KEY (organization_id, tenant_id, idempotency_key)
+) STRICT`,
+	`CREATE TRIGGER coh_audit_records_no_update BEFORE UPDATE ON coh_audit_records BEGIN SELECT RAISE(ABORT, 'audit records are append-only'); END`,
+	`CREATE TRIGGER coh_audit_records_no_delete BEFORE DELETE ON coh_audit_records BEGIN SELECT RAISE(ABORT, 'audit records are append-only'); END`,
+	`CREATE TRIGGER coh_audit_checkpoints_no_update BEFORE UPDATE ON coh_audit_checkpoints BEGIN SELECT RAISE(ABORT, 'audit checkpoints are append-only'); END`,
+	`CREATE TRIGGER coh_audit_checkpoints_no_delete BEFORE DELETE ON coh_audit_checkpoints BEGIN SELECT RAISE(ABORT, 'audit checkpoints are append-only'); END`,
+}
+
+var auditDown = []string{
+	"DROP TRIGGER coh_audit_checkpoints_no_delete",
+	"DROP TRIGGER coh_audit_checkpoints_no_update",
+	"DROP TRIGGER coh_audit_records_no_delete",
+	"DROP TRIGGER coh_audit_records_no_update",
+	"DROP TABLE coh_audit_idempotency",
+	"DROP TABLE coh_audit_checkpoints",
+	"DROP TABLE coh_audit_records",
+	"DROP TABLE coh_audit_heads",
+}
+
 type migration struct {
 	component string
 	version   uint64
@@ -90,7 +130,12 @@ type migrationKey struct {
 func builtInMigrations() map[migrationKey]migration {
 	metadata := migration{component: "metadata", version: 1, up: metadataUp, down: metadataDown}
 	metadata.checksum = migrationChecksum(metadata)
-	return map[migrationKey]migration{{component: metadata.component, version: metadata.version}: metadata}
+	audit := migration{component: "audit", version: 1, up: auditUp, down: auditDown}
+	audit.checksum = migrationChecksum(audit)
+	return map[migrationKey]migration{
+		{component: metadata.component, version: metadata.version}: metadata,
+		{component: audit.component, version: audit.version}:       audit,
+	}
 }
 
 func migrationChecksum(value migration) string {
@@ -124,5 +169,21 @@ func (store *Store) ensureMetadataSchema(ctx context.Context) error {
 		Component:       spec.component, Version: spec.version, Checksum: spec.checksum,
 		BackupDigest: backup.Digest, Direction: workflow.MigrationApply,
 	})
+	return err
+}
+
+func (store *Store) ensureAuditSchema(ctx context.Context) error {
+	result, err := store.migrationStatus(ctx, "audit")
+	if err != nil || result.State == workflow.MigrationApplied {
+		return err
+	}
+	backup, err := store.backup(ctx, store.nextBackupPath("audit-v1"))
+	if err != nil {
+		return err
+	}
+	spec := store.migrations[migrationKey{component: "audit", version: 1}]
+	_, err = store.migrate(ctx, workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion,
+		Component: spec.component, Version: spec.version, Checksum: spec.checksum,
+		BackupDigest: backup.Digest, Direction: workflow.MigrationApply})
 	return err
 }

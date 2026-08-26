@@ -38,6 +38,21 @@ func TestStorageConformance(t *testing.T) {
 	})
 }
 
+func TestAuditConformance(t *testing.T) {
+	store := openTestStore(t)
+	storetest.RunAuditConformance(t, store)
+	var updateBlocked, deleteBlocked bool
+	if _, err := store.db.Exec(`UPDATE coh_audit_records SET chain_hash=''`); err != nil {
+		updateBlocked = true
+	}
+	if _, err := store.db.Exec(`DELETE FROM coh_audit_records`); err != nil {
+		deleteBlocked = true
+	}
+	if !updateBlocked || !deleteBlocked {
+		t.Fatalf("append-only triggers update=%v delete=%v", updateBlocked, deleteBlocked)
+	}
+}
+
 func TestWALRecoveryAndConsistentBackup(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "coh.sqlite3")

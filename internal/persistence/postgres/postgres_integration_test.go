@@ -49,6 +49,25 @@ func TestPostgresConformance(t *testing.T) {
 	})
 }
 
+func TestPostgresAuditConformance(t *testing.T) {
+	url := integrationURL(t)
+	resetDatabase(t, url)
+	t.Cleanup(func() { resetDatabase(t, url) })
+	store := openTestStore(t, url, testBackupVerifier{})
+	t.Cleanup(store.Close)
+	storetest.RunAuditConformance(t, store)
+	tx, err := store.beginScoped(context.Background(), "0198d6c4-a111-7a11-8a11-111111111111", "0198d6c4-a222-7a22-8a22-222222222222")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, updateErr := tx.Exec(context.Background(), `UPDATE public.coh_audit_records SET chain_hash=''`)
+	_, deleteErr := tx.Exec(context.Background(), `DELETE FROM public.coh_audit_records`)
+	tx.Rollback(context.Background())
+	if updateErr == nil || deleteErr == nil {
+		t.Fatalf("append-only RLS update=%v delete=%v", updateErr, deleteErr)
+	}
+}
+
 func TestRowLevelTenantIsolationAndConnectionBounds(t *testing.T) {
 	url := integrationURL(t)
 	resetDatabase(t, url)

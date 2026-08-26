@@ -89,6 +89,10 @@ func Open(ctx context.Context, config Config) (*Store, error) {
 		pool.Close()
 		return nil, err
 	}
+	if err := store.ensureAuditSchema(ctx, config.BootstrapBackupDigest); err != nil {
+		pool.Close()
+		return nil, err
+	}
 	return store, nil
 }
 

@@ -196,7 +196,8 @@ func decodeOutput(results topdown.QueryResultSet) (policyOutput, error) {
 func baseDecision(request policy.Request, current *snapshot, now time.Time) policy.Decision {
 	decision := policy.Decision{SchemaVersion: policy.SchemaVersion, ContractVersion: policy.ContractVersion,
 		EvaluationID: request.EvaluationID, Phase: request.Phase, ManifestDigest: request.Manifest.ManifestDigest,
-		ActorID: request.Actor.ActorID, ActorRevision: request.Actor.Revision, EvaluatedAt: now.Format(timestampLayout)}
+		ActorID: request.Actor.ActorID, ActorRevision: request.Actor.Revision, EvaluatedAt: now.Format(timestampLayout),
+		AuditOrganizationID: request.Actor.OrganizationID, AuditTenantID: request.Actor.TenantID, AuditCaseID: request.Actor.CaseID}
 	if current != nil {
 		decision.PolicyDigest, decision.PolicyRevision, decision.BundleID = current.digest, current.metadata.PolicyRevision, current.metadata.BundleID
 		decision.SignerKeyID, decision.SignerKeyRevision = current.metadata.SignerKeyID, current.metadata.SignerKeyRevision
@@ -208,7 +209,10 @@ func (engine *Engine) record(ctx context.Context, decision policy.Decision, resu
 	decision = decisionWithError(decision, resultErr)
 	auditCtx, cancel := auditContext(ctx)
 	defer cancel()
-	if err := engine.audit.AppendPolicyEvent(auditCtx, policy.AuditEvent{Kind: "policy_evaluation", Decision: &decision}); err != nil {
+	if err := engine.audit.AppendPolicyEvent(auditCtx, policy.AuditEvent{Kind: "policy_evaluation", Decision: &decision,
+		EventID: decision.EvaluationID, OrganizationID: decision.AuditOrganizationID, TenantID: decision.AuditTenantID,
+		CaseID: decision.AuditCaseID, ActorID: decision.ActorID, ActorRevision: decision.ActorRevision,
+		OccurredAt: decision.EvaluatedAt}); err != nil {
 		auditErr := policy.NewError(policy.Unavailable, "audit_unavailable")
 		return decisionWithError(decision, auditErr), auditErr
 	}

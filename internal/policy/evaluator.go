@@ -71,24 +71,27 @@ type Request struct {
 // Decision is safe audit and approval input. It contains no policy source,
 // public key, credential, raw target, raw argument, or model-controlled text.
 type Decision struct {
-	SchemaVersion     string `json:"schema_version"`
-	ContractVersion   string `json:"contract_version"`
-	EvaluationID      string `json:"evaluation_id"`
-	DecisionDigest    string `json:"decision_digest"`
-	InputDigest       string `json:"input_digest"`
-	Outcome           string `json:"outcome"`
-	ReasonCode        string `json:"reason_code"`
-	Phase             Phase  `json:"phase"`
-	ManifestDigest    string `json:"manifest_digest"`
-	PolicyDigest      string `json:"policy_digest"`
-	PolicyRevision    uint64 `json:"policy_revision"`
-	BundleID          string `json:"bundle_id"`
-	SignerKeyID       string `json:"signer_key_id"`
-	SignerKeyRevision uint64 `json:"signer_key_revision"`
-	ActorID           string `json:"actor_id"`
-	ActorRevision     uint64 `json:"actor_revision"`
-	ApprovalRequired  bool   `json:"approval_required"`
-	EvaluatedAt       string `json:"evaluated_at"`
+	SchemaVersion       string `json:"schema_version"`
+	ContractVersion     string `json:"contract_version"`
+	EvaluationID        string `json:"evaluation_id"`
+	DecisionDigest      string `json:"decision_digest"`
+	InputDigest         string `json:"input_digest"`
+	Outcome             string `json:"outcome"`
+	ReasonCode          string `json:"reason_code"`
+	Phase               Phase  `json:"phase"`
+	ManifestDigest      string `json:"manifest_digest"`
+	PolicyDigest        string `json:"policy_digest"`
+	PolicyRevision      uint64 `json:"policy_revision"`
+	BundleID            string `json:"bundle_id"`
+	SignerKeyID         string `json:"signer_key_id"`
+	SignerKeyRevision   uint64 `json:"signer_key_revision"`
+	ActorID             string `json:"actor_id"`
+	ActorRevision       uint64 `json:"actor_revision"`
+	ApprovalRequired    bool   `json:"approval_required"`
+	EvaluatedAt         string `json:"evaluated_at"`
+	AuditOrganizationID string `json:"-"`
+	AuditTenantID       string `json:"-"`
+	AuditCaseID         string `json:"-"`
 }
 
 // Activation is the safe result of verifying, compiling, and atomically
@@ -103,9 +106,16 @@ type Activation struct {
 }
 
 type AuditEvent struct {
-	Kind       string      `json:"kind"`
-	Activation *Activation `json:"activation,omitempty"`
-	Decision   *Decision   `json:"decision,omitempty"`
+	Kind           string      `json:"kind"`
+	Activation     *Activation `json:"activation,omitempty"`
+	Decision       *Decision   `json:"decision,omitempty"`
+	EventID        string      `json:"event_id"`
+	OrganizationID string      `json:"organization_id"`
+	TenantID       string      `json:"tenant_id"`
+	CaseID         string      `json:"case_id,omitempty"`
+	ActorID        string      `json:"actor_id,omitempty"`
+	ActorRevision  uint64      `json:"actor_revision,omitempty"`
+	OccurredAt     string      `json:"occurred_at"`
 }
 
 type AuditSink interface {

@@ -60,7 +60,7 @@ func (engine *Engine) perform(ctx context.Context, operation string, candidate F
 	if resultErr == nil && operation == "verify" && !sameFingerprint(candidate, result) {
 		resultErr = policy.NewError(policy.Denied, "fingerprint_mismatch")
 	}
-	event := auditEvent(operation, result, resultErr, now)
+	event := auditEvent(operation, result, resultErr, now, manifest, decision)
 	auditCtx, cancel := auditContext(ctx)
 	defer cancel()
 	if err := engine.audit.AppendApprovalFingerprintEvent(auditCtx, event); err != nil {
@@ -182,7 +182,7 @@ func auditContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(ctx), auditTimeout)
 }
 
-func auditEvent(operation string, result Fingerprint, resultErr error, now time.Time) AuditEvent {
+func auditEvent(operation string, result Fingerprint, resultErr error, now time.Time, verified actionmanifest.VerifiedEnvelope, decision policy.Decision) AuditEvent {
 	outcome, reason := "allowed", "fingerprint_built"
 	if operation == "verify" {
 		reason = "fingerprint_verified"
@@ -200,9 +200,25 @@ func auditEvent(operation string, result Fingerprint, resultErr error, now time.
 			outcome = "unavailable"
 		}
 	}
-	return AuditEvent{Operation: operation, Outcome: outcome, ReasonCode: reason,
+	manifest := verified.Manifest()
+	occurredAt := decision.EvaluatedAt
+	if occurredAt == "" {
+		occurredAt = now.Format(timestampLayout)
+	}
+	event := AuditEvent{Operation: operation, Outcome: outcome, ReasonCode: reason,
 		FingerprintDigest: result.FingerprintDigest, ManifestDigest: result.ManifestDigest,
-		PolicyDecisionDigest: result.PolicyDecisionDigest, OccurredAt: now.Format(timestampLayout)}
+		PolicyDecisionDigest: result.PolicyDecisionDigest, OccurredAt: occurredAt,
+		OrganizationID: manifest.OrganizationID, TenantID: manifest.TenantID, CaseID: manifest.CaseID,
+		ActorID: decision.ActorID, ActorRevision: decision.ActorRevision}
+	event.EventID = auditEventDigest(event)
+	return event
+}
+
+func auditEventDigest(event AuditEvent) string {
+	event.EventID = ""
+	encoded, _ := json.Marshal(event)
+	sum := sha256.Sum256(encoded)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func cloneString(value *string) *string {

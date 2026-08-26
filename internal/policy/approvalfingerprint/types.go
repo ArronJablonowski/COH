@@ -43,6 +43,12 @@ type AuditEvent struct {
 	ManifestDigest       string `json:"manifest_digest,omitempty"`
 	PolicyDecisionDigest string `json:"policy_decision_digest,omitempty"`
 	OccurredAt           string `json:"occurred_at"`
+	EventID              string `json:"event_id"`
+	OrganizationID       string `json:"organization_id,omitempty"`
+	TenantID             string `json:"tenant_id,omitempty"`
+	CaseID               string `json:"case_id,omitempty"`
+	ActorID              string `json:"actor_id,omitempty"`
+	ActorRevision        uint64 `json:"actor_revision,omitempty"`
 }
 
 type AuditSink interface {

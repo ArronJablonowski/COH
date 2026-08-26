@@ -73,7 +73,9 @@ func (engine *Engine) Load(ctx context.Context, input []byte, authority policy.B
 	}
 	auditCtx, cancel := auditContext(ctx)
 	defer cancel()
-	if err := engine.audit.AppendPolicyEvent(auditCtx, policy.AuditEvent{Kind: "policy_activation", Activation: &activation}); err != nil {
+	if err := engine.audit.AppendPolicyEvent(auditCtx, policy.AuditEvent{Kind: "policy_activation", Activation: &activation,
+		EventID: activation.PolicyDigest, OrganizationID: metadata.OrganizationID, TenantID: metadata.TenantID,
+		OccurredAt: activation.ActivatedAt}); err != nil {
 		return policy.Activation{}, policy.NewError(policy.Unavailable, "audit_unavailable")
 	}
 	engine.active.Store(&snapshot{compiler: compiler, query: query, store: inmem.NewFromObject(envelope.Bundle.Data),
