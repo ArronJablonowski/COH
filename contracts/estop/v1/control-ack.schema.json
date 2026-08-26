@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/estop/v1/control-ack.schema.json",
+  "title": "COH emergency-stop control acknowledgement v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "scope", "epoch", "control_id", "control_kind", "outcome", "reason_code", "started_at", "completed_at", "elapsed_nanos", "objective_nanos"],
+  "properties": {
+    "schema_version": {"const": "coh.estop-control-ack/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "scope": {"$ref": "command.schema.json#/$defs/scope"},
+    "epoch": {"type": "integer", "minimum": 1},
+    "control_id": {"$ref": "#/$defs/token"},
+    "control_kind": {"enum": ["credential", "lease", "egress", "remote_job", "workflow", "cooperative"]},
+    "outcome": {"enum": ["applied", "failed", "timeout"]},
+    "reason_code": {"$ref": "#/$defs/token"},
+    "evidence_digest": {"$ref": "#/$defs/digest"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "elapsed_nanos": {"type": "integer", "minimum": 0},
+    "objective_nanos": {"type": "integer", "minimum": 1}
+  },
+  "allOf": [
+    {"if": {"properties": {"outcome": {"const": "applied"}}}, "then": {"required": ["evidence_digest"]}},
+    {"if": {"properties": {"outcome": {"enum": ["failed", "timeout"]}}}, "then": {"not": {"required": ["evidence_digest"]}}}
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"}
+  }
+}

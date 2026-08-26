@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/estop/v1/decision.schema.json",
+  "title": "COH emergency-stop decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "event", "outcome", "reason_code", "scope", "occurred_at", "decision_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.estop-decision/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "event": {"enum": ["activation", "control_ack"]},
+    "outcome": {"enum": ["allowed", "invalid", "denied", "canceled", "timeout", "unavailable"]},
+    "reason_code": {"$ref": "control-ack.schema.json#/$defs/token"},
+    "request_id": {"type": "string"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "organization_id", "tenant_id"],
+      "properties": {
+        "kind": {"type": "string"}, "organization_id": {"type": "string"},
+        "tenant_id": {"type": "string"}, "case_id": {"type": "string"}
+      }
+    },
+    "epoch": {"type": "integer", "minimum": 1},
+    "actor_id": {"type": "string"},
+    "actor_revision": {"type": "integer", "minimum": 1},
+    "control_id": {"type": "string"},
+    "control_kind": {"type": "string"},
+    "control_outcome": {"type": "string"},
+    "evidence_digest": {"type": "string"},
+    "authorization_decision_digest": {"type": "string"},
+    "policy_decision_digest": {"type": "string"},
+    "activated_at": {"type": "string", "format": "date-time"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "elapsed_nanos": {"type": "integer", "minimum": 0},
+    "objective_nanos": {"type": "integer", "minimum": 0},
+    "decision_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

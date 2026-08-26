@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/estop/v1/command.schema.json",
+  "title": "COH emergency-stop command v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "scope", "actor_id", "reason_code"],
+  "properties": {
+    "schema_version": {"const": "coh.estop-command/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "request_id": {"$ref": "#/$defs/uuid7"},
+    "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
+    "scope": {"$ref": "#/$defs/scope"},
+    "actor_id": {"$ref": "#/$defs/uuid7"},
+    "reason_code": {"enum": ["operator_emergency", "safety_watch_expired", "runner_heartbeat_lost", "policy_emergency", "incident_containment"]}
+  },
+  "$defs": {
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "organization_id", "tenant_id"],
+      "properties": {
+        "kind": {"enum": ["global", "case"]},
+        "organization_id": {"$ref": "#/$defs/uuid7"},
+        "tenant_id": {"$ref": "#/$defs/uuid7"},
+        "case_id": {"$ref": "#/$defs/uuid7"}
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "global"}}}, "then": {"not": {"required": ["case_id"]}}},
+        {"if": {"properties": {"kind": {"const": "case"}}}, "then": {"required": ["case_id"]}}
+      ]
+    }
+  }
+}
