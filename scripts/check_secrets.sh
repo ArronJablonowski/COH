@@ -58,12 +58,12 @@ verify_complete_history() {
 
 case "${mode}" in
   worktree)
-    safe_gitleaks dir --config "${config}" --gitleaks-ignore-path "${ignore}" --ignore-gitleaks-allow --no-banner --redact --exit-code 2 "${scan_root}"
+    (cd "${scan_root}" && safe_gitleaks dir --config "${config}" --gitleaks-ignore-path "${ignore}" --ignore-gitleaks-allow --no-banner --redact --exit-code 2 .)
     ;;
   history)
     if safe_git rev-parse --verify HEAD >/dev/null 2>&1; then
       verify_complete_history
-      safe_gitleaks git --log-opts=--all --config "${config}" --gitleaks-ignore-path "${ignore}" --ignore-gitleaks-allow --no-banner --redact --exit-code 2 "${scan_root}"
+      (cd "${scan_root}" && safe_gitleaks git --log-opts=--all --config "${config}" --gitleaks-ignore-path "${ignore}" --ignore-gitleaks-allow --no-banner --redact --exit-code 2 .)
     elif [[ -z "$(safe_git rev-list --all 2>/dev/null)" ]]; then
       if [[ "${CI:-}" == "true" ]]; then
         echo "Hosted CI requires a committed full-history checkout" >&2
@@ -78,7 +78,7 @@ case "${mode}" in
   evidence)
     artifact_dir="${2:-${COH_CI_ARTIFACT_DIR:?COH_CI_ARTIFACT_DIR is required}}"
     [[ "${artifact_dir}" == /* && -d "${artifact_dir}" && ! -L "${artifact_dir}" ]] || { echo "Evidence root must be an absolute real directory" >&2; exit 64; }
-    safe_gitleaks dir --config "${config}" --gitleaks-ignore-path "${ignore}" --ignore-gitleaks-allow --no-banner --redact --exit-code 2 "${artifact_dir}"
+    (cd "${artifact_dir}" && safe_gitleaks dir --config "${config}" --gitleaks-ignore-path "${ignore}" --ignore-gitleaks-allow --no-banner --redact --exit-code 2 .)
     ;;
   *) echo "Usage: $0 worktree|history|evidence" >&2; exit 64 ;;
 esac

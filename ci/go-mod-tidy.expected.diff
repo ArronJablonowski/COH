@@ -9,4 +9,4 @@ diff current/go.mod tidy/go.mod
 -
  require (
  	github.com/jackc/pgx/v5 v5.10.0
- 	go.temporal.io/api v1.62.12
+ 	github.com/open-policy-agent/opa v1.17.0

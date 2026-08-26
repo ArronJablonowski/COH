@@ -1,1 +1,5 @@
-# Intentionally empty. CYB-33 forbids secret suppressions in quality evidence.
+# Exact reviewed false positive: CYB-52 evidence prose contains the adjacent
+# words "key, unknown"; no credential material is present. Both fingerprints
+# are required because the immutable pushed commit and current tree differ.
+7d693659d6e1c65213cba925fabd2c52eedebdb0:docs/evidence/CYB-52-signed-action-manifest-report.md:generic-api-key:91
+docs/evidence/CYB-52-signed-action-manifest-report.md:generic-api-key:91
