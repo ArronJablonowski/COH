@@ -99,7 +99,14 @@ func (controller *Controller) replayOrRecover(ctx context.Context, request Reque
 }
 
 func (controller *Controller) writeSummary(ctx context.Context, request Request, current State) (Result, error) {
-	writeCtx, cancel := context.WithDeadline(ctx, current.Deadline)
+	remaining := current.Deadline.Sub(current.UpdatedAt)
+	if remaining <= 0 {
+		return controller.failAfterWrite(ctx, request.IdempotencyKey, current, context.DeadlineExceeded)
+	}
+	// The persisted domain clock owns deadline semantics. Converting its
+	// remaining budget to a duration avoids coupling an injected/replayed clock
+	// to the process wall clock used internally by context.
+	writeCtx, cancel := context.WithTimeout(ctx, remaining)
 	defer cancel()
 	summary, err := controller.writer.Write(writeCtx, SummaryRequest{CompactionID: current.CompactionID,
 		RunID: current.RunID, TaskID: current.TaskID, Case: current.Case,
