@@ -45,6 +45,9 @@ func ValidateRequest(value InferenceRequest) error {
 	if err := validateState(value.State); err != nil {
 		return err
 	}
+	if value.State.Mode != value.Provider.StateMode || value.MaximumOutputTokens > value.Provider.ContextLimit {
+		return NewError(Denied, "request_provider_binding")
+	}
 	if _, err := parseTimestamp(value.Deadline); err != nil {
 		return NewError(InvalidInput, "request_deadline")
 	}
@@ -84,6 +87,9 @@ func ValidateResponse(value InferenceResponse) error {
 	}
 	if err := validateState(value.State); err != nil {
 		return err
+	}
+	if value.State.Mode != value.Provider.StateMode {
+		return NewError(Denied, "response_provider_binding")
 	}
 	started, startErr := parseTimestamp(value.StartedAt)
 	completed, completeErr := parseTimestamp(value.CompletedAt)
