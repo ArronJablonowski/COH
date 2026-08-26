@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/evidence/v1/immutable-cas-ingestion.schema.json",
+  "title": "COH immutable encrypted CAS ingestion v1",
+  "oneOf": [
+    {"$ref": "#/$defs/command"},
+    {"$ref": "#/$defs/authorization_request"},
+    {"$ref": "#/$defs/decision"},
+    {"$ref": "#/$defs/artifact_manifest"},
+    {"$ref": "#/$defs/encrypted_object"},
+    {"$ref": "#/$defs/receipt"}
+  ],
+  "$defs": {
+    "uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{9}Z$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "opaque": {"type": "string", "minLength": 1, "maxLength": 256},
+    "media_type": {"type": "string", "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$"},
+    "classification": {"enum": ["public", "internal", "confidential", "restricted"]},
+    "status": {"enum": ["staged", "verified", "published"]},
+    "transport_mode": {"enum": ["in_process", "mtls"]},
+    "source_kind": {"enum": ["upload", "connector", "query", "tool", "model", "derived", "import"]},
+    "component_kind": {"enum": ["tool", "query", "model"]},
+    "time_precision": {"enum": ["nanosecond", "microsecond", "millisecond", "second", "minute", "day", "unknown"]},
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"}
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": {"$ref": "#/$defs/digest"},
+        "media_type": {"$ref": "#/$defs/media_type"},
+        "classification": {"$ref": "#/$defs/classification"},
+        "length": {"type": "integer", "minimum": 1, "maximum": 1073741824}
+      },
+      "additionalProperties": false
+    },
+    "observed_time": {
+      "type": "object",
+      "required": ["value", "original_offset_minutes", "precision", "uncertainty_nanos"],
+      "properties": {
+        "value": {"$ref": "#/$defs/timestamp"},
+        "original_offset_minutes": {"type": "integer", "minimum": -840, "maximum": 840},
+        "precision": {"$ref": "#/$defs/time_precision"},
+        "uncertainty_nanos": {"type": "integer", "minimum": 0, "maximum": 86400000000000}
+      },
+      "additionalProperties": false
+    },
+    "source_range": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"$ref": "#/$defs/observed_time"},
+        "end": {"$ref": "#/$defs/observed_time"}
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["kind", "identity", "identity_digest", "collection_method", "collection_method_version", "collected_at", "source_time", "source_range"],
+      "properties": {
+        "kind": {"$ref": "#/$defs/source_kind"},
+        "identity": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "identity_digest": {"$ref": "#/$defs/digest"},
+        "collection_method": {"$ref": "#/$defs/token"},
+        "collection_method_version": {"$ref": "#/$defs/opaque"},
+        "collected_at": {"$ref": "#/$defs/timestamp"},
+        "source_time": {"oneOf": [{"$ref": "#/$defs/observed_time"}, {"type": "null"}]},
+        "source_range": {"oneOf": [{"$ref": "#/$defs/source_range"}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "component": {
+      "type": "object",
+      "required": ["kind", "name", "version", "digest"],
+      "properties": {
+        "kind": {"$ref": "#/$defs/component_kind"},
+        "name": {"$ref": "#/$defs/token"},
+        "version": {"$ref": "#/$defs/opaque"},
+        "digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "transport": {
+      "type": "object",
+      "required": ["mode", "peer_identity_digest", "channel_binding_digest"],
+      "properties": {
+        "mode": {"$ref": "#/$defs/transport_mode"},
+        "peer_identity_digest": {"$ref": "#/$defs/digest"},
+        "channel_binding_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "case", "actor_id", "actor_revision", "expected_digest", "expected_length", "media_type", "classification", "source", "parent_artifacts", "parent_manifest_digests", "components", "key_profile", "key_profile_digest", "policy_digest", "transport", "deadline"],
+      "properties": {
+        "schema_version": {"const": "coh.evidence-ingest-command/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "request_id": {"$ref": "#/$defs/uuid_v7"},
+        "idempotency_key": {"$ref": "#/$defs/opaque"},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1},
+        "expected_digest": {"$ref": "#/$defs/digest"},
+        "expected_length": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "media_type": {"$ref": "#/$defs/media_type"},
+        "classification": {"$ref": "#/$defs/classification"},
+        "source": {"$ref": "#/$defs/source"},
+        "parent_artifacts": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/artifact"}},
+        "parent_manifest_digests": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/digest"}},
+        "components": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/component"}},
+        "key_profile": {"$ref": "#/$defs/token"},
+        "key_profile_digest": {"$ref": "#/$defs/digest"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "transport": {"$ref": "#/$defs/transport"},
+        "deadline": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "authorization_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "authorization_digest", "intent_digest", "command", "case_revision", "case_state", "case_classification", "case_provenance_digest"],
+      "properties": {
+        "schema_version": {"const": "coh.evidence-ingest-authorization/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "command": {"$ref": "#/$defs/command"},
+        "case_revision": {"type": "integer", "minimum": 1},
+        "case_state": {"enum": ["open", "closed"]},
+        "case_classification": {"$ref": "#/$defs/classification"},
+        "case_provenance_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "decision_id", "decision_digest", "authorization_digest", "intent_digest", "case", "actor_id", "actor_revision", "artifact_digest", "artifact_length", "policy_digest", "key_profile_digest", "transport_digest", "revocation_digest", "outcome", "reason_code", "issued_at", "expires_at", "revision"],
+      "properties": {
+        "schema_version": {"const": "coh.evidence-ingest-decision/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "decision_id": {"$ref": "#/$defs/uuid_v7"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "artifact_length": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "key_profile_digest": {"$ref": "#/$defs/digest"},
+        "transport_digest": {"$ref": "#/$defs/digest"},
+        "revocation_digest": {"$ref": "#/$defs/digest"},
+        "outcome": {"enum": ["allow", "deny"]},
+        "reason_code": {"$ref": "#/$defs/token"},
+        "issued_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "artifact_manifest": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "manifest_id", "case", "artifact", "source", "parent_artifacts", "parent_manifest_digests", "components", "actor_id", "actor_revision", "policy_digest", "authorization_digest", "decision_digest", "revocation_digest", "transport_digest", "encryption_context_digest", "audit_event_digest", "previous_provenance_digest", "provenance_digest", "created_at", "revision"],
+      "properties": {
+        "schema_version": {"const": "coh.artifact-manifest/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "manifest_id": {"$ref": "#/$defs/uuid_v7"},
+        "case": {"$ref": "#/$defs/case"},
+        "artifact": {"$ref": "#/$defs/artifact"},
+        "source": {"$ref": "#/$defs/source"},
+        "parent_artifacts": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/artifact"}},
+        "parent_manifest_digests": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/digest"}},
+        "components": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/component"}},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "revocation_digest": {"$ref": "#/$defs/digest"},
+        "transport_digest": {"$ref": "#/$defs/digest"},
+        "encryption_context_digest": {"$ref": "#/$defs/digest"},
+        "audit_event_digest": {"$ref": "#/$defs/digest"},
+        "previous_provenance_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "const": 1}
+      },
+      "additionalProperties": false
+    },
+    "encrypted_object": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "status", "case", "plaintext_digest", "plaintext_length", "ciphertext_digest", "ciphertext_length", "media_type", "classification", "encryption_format", "chunk_size", "chunk_count", "key_reference", "key_revision", "key_algorithm", "wrapped_key_digest", "encryption_context_digest", "locator_digest", "created_at"],
+      "properties": {
+        "schema_version": {"const": "coh.encrypted-object/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "status": {"$ref": "#/$defs/status"},
+        "case": {"$ref": "#/$defs/case"},
+        "plaintext_digest": {"$ref": "#/$defs/digest"},
+        "plaintext_length": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "ciphertext_digest": {"$ref": "#/$defs/digest"},
+        "ciphertext_length": {"type": "integer", "minimum": 1},
+        "media_type": {"$ref": "#/$defs/media_type"},
+        "classification": {"$ref": "#/$defs/classification"},
+        "encryption_format": {"const": "coh.encrypted-cas/aes-256-gcm-chunked/v1"},
+        "chunk_size": {"type": "integer", "minimum": 4096, "maximum": 1048576},
+        "chunk_count": {"type": "integer", "minimum": 1},
+        "key_reference": {"$ref": "#/$defs/token"},
+        "key_revision": {"type": "integer", "minimum": 1},
+        "key_algorithm": {"const": "aes-256-gcm"},
+        "wrapped_key_digest": {"$ref": "#/$defs/digest"},
+        "encryption_context_digest": {"$ref": "#/$defs/digest"},
+        "locator_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "published_object": {
+      "type": "object",
+      "required": ["case", "plaintext_digest", "plaintext_length", "ciphertext_digest", "ciphertext_length", "encryption_format", "encryption_context_digest", "locator_digest"],
+      "properties": {
+        "case": {"$ref": "#/$defs/case"},
+        "plaintext_digest": {"$ref": "#/$defs/digest"},
+        "plaintext_length": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "ciphertext_digest": {"$ref": "#/$defs/digest"},
+        "ciphertext_length": {"type": "integer", "minimum": 1},
+        "encryption_format": {"const": "coh.encrypted-cas/aes-256-gcm-chunked/v1"},
+        "encryption_context_digest": {"$ref": "#/$defs/digest"},
+        "locator_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "receipt": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "case", "actor_id", "actor_revision", "intent_digest", "idempotency_digest", "decision_digest", "revocation_digest", "transport_digest", "artifact", "manifest", "encrypted_artifact", "encrypted_manifest", "manifest_provenance_digest", "audit_event_digest", "created_at", "receipt_digest"],
+      "properties": {
+        "schema_version": {"const": "coh.evidence-ingest-receipt/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "request_id": {"$ref": "#/$defs/uuid_v7"},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "idempotency_digest": {"$ref": "#/$defs/digest"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "revocation_digest": {"$ref": "#/$defs/digest"},
+        "transport_digest": {"$ref": "#/$defs/digest"},
+        "artifact": {"$ref": "#/$defs/artifact"},
+        "manifest": {"$ref": "#/$defs/artifact"},
+        "encrypted_artifact": {"$ref": "#/$defs/published_object"},
+        "encrypted_manifest": {"$ref": "#/$defs/published_object"},
+        "manifest_provenance_digest": {"$ref": "#/$defs/digest"},
+        "audit_event_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "receipt_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
