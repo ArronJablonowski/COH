@@ -1,0 +1,7 @@
+{
+  "id":"chatcmpl-fixture-001","object":"chat.completion","created":1787724601,"model":"qwen3-8b-coh",
+  "choices":[{"index":0,"message":{"role":"assistant","content":"Host is clean.","refusal":null,"annotations":null,"audio":null,"function_call":null,"tool_calls":[{"id":"call-vendor-001","type":"function","function":{"name":"query_host","arguments":"{\"host\":\"srv-1\"}"}}],"reasoning":"I checked the supplied evidence."},"logprobs":null,"finish_reason":"tool_calls","stop_reason":null,"token_ids":null,"routed_experts":null}],
+  "service_tier":null,"system_fingerprint":"sha256:8888888888888888888888888888888888888888888888888888888888888888",
+  "usage":{"prompt_tokens":100,"total_tokens":120,"completion_tokens":20,"prompt_tokens_details":{"cached_tokens":20,"created_cache_tokens":0,"multimodal_tokens":null},"completion_tokens_details":{"reasoning_tokens":5}},
+  "prompt_logprobs":null,"prompt_token_ids":null,"prompt_text":null,"kv_transfer_params":null,"ec_transfer_params":null,"metrics":null
+}

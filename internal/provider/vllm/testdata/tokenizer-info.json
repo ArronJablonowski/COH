@@ -1,0 +1,8 @@
+{
+  "name_or_path": "/models/Qwen3-8B",
+  "model_max_length": 32768,
+  "tokenizer_class": "Qwen2TokenizerFast",
+  "tokenizer_version": "4.55.0",
+  "clean_up_tokenization_spaces": false,
+  "chat_template": "{% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %}"
+}

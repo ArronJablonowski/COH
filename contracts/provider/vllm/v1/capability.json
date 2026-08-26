@@ -1,0 +1,48 @@
+{
+  "schema_version": "coh.provider-capability/v1",
+  "contract_version": "1.0.0",
+  "snapshot_id": "0198e300-3000-7000-8000-000000000001",
+  "observed_at": "2026-08-26T05:00:00.000000000Z",
+  "valid_until": "2026-08-27T05:00:00.000000000Z",
+  "provider": {
+    "provider_kind": "vllm",
+    "adapter_version": "1.0.0",
+    "endpoint_identity_digest": "sha256:f84702b595506b29b8cab4bd7fb9129d8e153a61992be5f376691c3c840cf585",
+    "data_route": "local",
+    "requested_model": "qwen3-8b-coh",
+    "actual_model": "qwen3-8b-coh",
+    "model_revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runtime_name": "vLLM",
+    "runtime_version": "0.11.0",
+    "runtime_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "tokenizer_name": "Qwen2TokenizerFast",
+    "tokenizer_version": "4.55.0",
+    "tokenizer_digest": "sha256:6b6ee7871bd224b7aa4e9ed0659f974561b50eeda1f448d00cde177d9d2f05a6",
+    "chat_template_digest": "sha256:95fb15ad31e7466f1a8824936f09284995d36b574f77306663654dc7daa1fdd3",
+    "tool_parser_digest": "sha256:350468e050d0b26d78dfd4c8f4dd6b8d60ac3900f267cd662f05e9b7c6580e7f",
+    "reasoning_parser_digest": "sha256:303cc40cc363fc7234a2c7cc5c5d92fa7d1aaf2823d12ceeca0ae2fa020411d6",
+    "context_limit": 32768,
+    "sampling_profile_digest": "sha256:866f3756211323a960c59cb0ceb88badcaaa756d6f594a390187af7d0531b9c4",
+    "hardware_profile_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "state_mode": "stateless",
+    "policy_revision": 7
+  },
+  "features": {
+    "message_roles": ["assistant", "system", "tool", "user"],
+    "content_kinds": ["input_json", "output_json", "reasoning_ref", "text", "tool_call", "tool_result"],
+    "tool_calls": true,
+    "structured_output": true,
+    "streaming": true,
+    "cancellation": true,
+    "usage": true,
+    "state_modes": ["stateless"]
+  },
+  "limits": {
+    "maximum_input_tokens": 24576,
+    "maximum_output_tokens": 8192,
+    "maximum_messages": 512,
+    "maximum_tools": 32,
+    "maximum_parallel_tool_calls": 4,
+    "maximum_stream_seconds": 600
+  }
+}
