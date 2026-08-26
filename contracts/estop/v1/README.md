@@ -30,6 +30,12 @@ containment result with a durable audit record for retry and reconciliation.
 Exact activation and control replays are idempotent; changed use of an
 idempotency key is denied.
 
+The supported single-node durable store requires SQLite WAL mode, FULL
+synchronous writes, and a bounded busy timeout. Stop state, epochs, replay
+records, control acknowledgements, and audit outbox entries survive restart.
+A multi-replica deployment requires a linearizable implementation of the same
+store contract.
+
 The v1 contract intentionally has no deactivation command. Recovery from an
 emergency requires a separately reviewed future contract and cannot mutate or
 reuse an activation epoch.

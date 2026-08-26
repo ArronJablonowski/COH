@@ -24,9 +24,13 @@ Activation is exact-replay idempotent. Reusing the idempotency key with a
 changed command conflicts. A different activation cannot replace an already
 active stop. v1 intentionally provides no deactivation operation.
 
-The current `MemoryStore` is a process-local reference implementation. A
-multi-replica deployment must provide a durable, linearizable implementation
-of the same store contract before it can claim production qualification.
+`SQLiteStore` persists stop epochs, state, activation replay records, control
+acknowledgements, and the audit outbox atomically for single-node deployments.
+It refuses startup unless SQLite is configured for WAL journaling, FULL
+synchronous durability, and a bounded busy timeout. `MemoryStore` remains a
+process-local reference implementation. A multi-replica deployment must use a
+durable, linearizable implementation of the same store contract before it can
+claim production qualification.
 
 ## Authority denial and revocation
 
@@ -97,6 +101,7 @@ race, vet, architecture, and file-size gates, and runs the timing conformance
 tests. The harness inspects all 1/2/5/10-second deadlines and exercises an
 actual one-second timeout using monotonic elapsed time.
 
-Known production-qualification residuals are the durable multi-replica stop
-store and durable workflow enumeration/rebuild. They are not hidden by the
-in-memory conformance implementation and must be resolved before production.
+Known production-qualification residuals are a linearizable multi-replica
+store and durable workflow enumeration/rebuild. SQLite covers the supported
+single-node restart path. These residuals are not hidden by the conformance
+implementation and must be resolved before a multi-replica production claim.
