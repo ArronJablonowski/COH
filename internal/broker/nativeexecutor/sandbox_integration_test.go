@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -26,12 +25,16 @@ func TestProcessSandboxExecutesWithoutDockerOrAmbientEnvironment(t *testing.T) {
 	helper := filepath.Join(root, "coh-native-limit")
 	testTool := filepath.Join(root, "native-echo")
 	repositoryRoot := filepath.Clean(filepath.Join("..", "..", ".."))
-	command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-trimpath", "-o", helper, "./cmd/coh-native-limit")
+	goBinary, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatalf("locate go toolchain: %v", err)
+	}
+	command := exec.Command(goBinary, "build", "-trimpath", "-o", helper, "./cmd/coh-native-limit")
 	command.Dir = repositoryRoot
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build helper: %v: %s", err, output)
 	}
-	command = exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-trimpath", "-o", testTool, "./internal/broker/nativeexecutor/testdata/native_echo")
+	command = exec.Command(goBinary, "build", "-trimpath", "-o", testTool, "./internal/broker/nativeexecutor/testdata/native_echo")
 	command.Dir = repositoryRoot
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build test tool: %v: %s", err, output)
