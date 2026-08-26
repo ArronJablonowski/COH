@@ -1,0 +1,48 @@
+{
+  "schema_version": "coh.provider-capability/v1",
+  "contract_version": "1.0.0",
+  "snapshot_id": "0198e300-3000-7000-8000-000000000001",
+  "observed_at": "2026-08-26T05:00:00.000000000Z",
+  "valid_until": "2026-08-27T05:00:00.000000000Z",
+  "provider": {
+    "provider_kind": "llama_cpp",
+    "adapter_version": "1.0.0",
+    "endpoint_identity_digest": "sha256:4d1ff847a541ee9149c8da1d2dd86c70490ad4fa4567ad6b6df5fc60a0519476",
+    "data_route": "local",
+    "requested_model": "qwen3-8b-coh",
+    "actual_model": "qwen3-8b-coh",
+    "model_revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runtime_name": "llama.cpp",
+    "runtime_version": "7000.0+5d5cb4c3",
+    "runtime_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "tokenizer_name": "gguf",
+    "tokenizer_version": "7000.0+5d5cb4c3",
+    "tokenizer_digest": "sha256:fb3d1feca124615311d291a813f8aa31d887fdd4ff3457e01fd221a8474b418c",
+    "chat_template_digest": "sha256:e53aed85d8e7da23d29b90e378aa8538168f1f35d82edb9c66ec12f98ddf9247",
+    "tool_parser_digest": "sha256:2f20d484df32a742ea2a64ee7c306286a67138d3cc1698bcf79606cc3d20c287",
+    "reasoning_parser_digest": "sha256:25834b8cb2d89b968f4a7ba0edb48fea6ca92c4ea55c8ddebf1b47c5cab852a6",
+    "context_limit": 32768,
+    "sampling_profile_digest": "sha256:958b228875ead8543a69b64d9fc7072f90a3bbcdfa5253da436f7802373d2e02",
+    "hardware_profile_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "state_mode": "stateless",
+    "policy_revision": 7
+  },
+  "features": {
+    "message_roles": ["assistant", "system", "tool", "user"],
+    "content_kinds": ["input_json", "output_json", "reasoning_ref", "text", "tool_call", "tool_result"],
+    "tool_calls": true,
+    "structured_output": true,
+    "streaming": true,
+    "cancellation": true,
+    "usage": true,
+    "state_modes": ["stateless"]
+  },
+  "limits": {
+    "maximum_input_tokens": 24576,
+    "maximum_output_tokens": 8192,
+    "maximum_messages": 512,
+    "maximum_tools": 32,
+    "maximum_parallel_tool_calls": 4,
+    "maximum_stream_seconds": 600
+  }
+}

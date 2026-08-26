@@ -1,0 +1,42 @@
+{
+  "id": "chatcmpl-fixture-001",
+  "object": "chat.completion",
+  "created": 1787724601,
+  "model": "qwen3-8b-coh",
+  "system_fingerprint": "b7000-5d5cb4c3",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Host is clean.",
+        "reasoning_content": "I checked the supplied evidence.",
+        "tool_calls": [
+          {
+            "id": "call-vendor-001",
+            "type": "function",
+            "function": {"name": "query_host", "arguments": "{\"host\":\"srv-1\"}"}
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "completion_tokens": 20,
+    "prompt_tokens": 100,
+    "total_tokens": 120,
+    "prompt_tokens_details": {"cached_tokens": 20}
+  },
+  "timings": {
+    "cache_n": 20,
+    "prompt_n": 80,
+    "prompt_ms": 200.0,
+    "prompt_per_token_ms": 2.5,
+    "prompt_per_second": 400.0,
+    "predicted_n": 20,
+    "predicted_ms": 700.0,
+    "predicted_per_token_ms": 35.0,
+    "predicted_per_second": 28.5714285714
+  }
+}
