@@ -4,15 +4,27 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sync"
 )
 
-type guardedEngine struct{ driver EngineDriver }
+type StopGuard interface {
+	Allow(context.Context, string, string, string) error
+}
 
-func GuardEngine(driver EngineDriver) (Engine, error) {
-	if driver == nil || isNilEngineDriver(driver) {
+type GuardedEngine struct {
+	driver EngineDriver
+	stop   StopGuard
+	mu     sync.Mutex
+	active map[string]WorkflowTarget
+	runs   map[string]*workflowStopRun
+}
+
+func GuardEngine(driver EngineDriver, stop StopGuard) (*GuardedEngine, error) {
+	if driver == nil || isNilEngineDriver(driver) || stop == nil {
 		return nil, engineInvalid("guard", "driver", "driver is required")
 	}
-	return &guardedEngine{driver: driver}, nil
+	return &GuardedEngine{driver: driver, stop: stop, active: make(map[string]WorkflowTarget),
+		runs: make(map[string]*workflowStopRun)}, nil
 }
 
 func isNilEngineDriver(driver EngineDriver) bool {
@@ -25,11 +37,14 @@ func isNilEngineDriver(driver EngineDriver) bool {
 	}
 }
 
-func (engine *guardedEngine) Start(ctx context.Context, request WorkflowStart) (WorkflowHandle, error) {
+func (engine *GuardedEngine) Start(ctx context.Context, request WorkflowStart) (WorkflowHandle, error) {
 	if err := validateEngineContext(ctx, "start"); err != nil {
 		return WorkflowHandle{}, err
 	}
 	if err := ValidateWorkflowStart(request); err != nil {
+		return WorkflowHandle{}, err
+	}
+	if err := engine.allow(ctx, request.Operation.Case); err != nil {
 		return WorkflowHandle{}, err
 	}
 	handle, err := engine.driver.Start(ctx, request)
@@ -40,20 +55,35 @@ func (engine *guardedEngine) Start(ctx context.Context, request WorkflowStart) (
 		handle.Definition != OperationWorkflowV1 || handle.Version != "v1" || validateWorkflowTarget("start", handle.Target) != nil {
 		return WorkflowHandle{}, NewEngineError(EngineDenied, "start", "result", "driver returned an invalid workflow handle", nil)
 	}
+	engine.track(handle.Target)
+	if err := engine.allow(ctx, handle.Target.Case); err != nil {
+		cancelCtx := context.WithoutCancel(ctx)
+		_ = engine.driver.Cancel(cancelCtx, WorkflowCancel{ContractVersion: WorkflowContractVersion,
+			IdempotencyKey: "estop-start-race", Target: handle.Target, ReasonDigest: workflowStopDigest(handle.Target.Case, 0)})
+		engine.untrack(handle.Target)
+		return WorkflowHandle{}, err
+	}
 	return handle, nil
 }
 
-func (engine *guardedEngine) Signal(ctx context.Context, request WorkflowSignal) error {
+func (engine *GuardedEngine) Signal(ctx context.Context, request WorkflowSignal) error {
 	if err := validateEngineContext(ctx, "signal"); err != nil {
 		return err
 	}
 	if err := ValidateWorkflowSignal(request); err != nil {
 		return err
 	}
-	return finishEngineCall(ctx, "signal", engine.driver.Signal(ctx, request))
+	if err := engine.allow(ctx, request.Target.Case); err != nil {
+		return err
+	}
+	err := finishEngineCall(ctx, "signal", engine.driver.Signal(ctx, request))
+	if err == nil && request.Kind == "complete" {
+		engine.untrack(request.Target)
+	}
+	return err
 }
 
-func (engine *guardedEngine) Query(ctx context.Context, request WorkflowQuery) (WorkflowSnapshot, error) {
+func (engine *GuardedEngine) Query(ctx context.Context, request WorkflowQuery) (WorkflowSnapshot, error) {
 	if err := validateEngineContext(ctx, "query"); err != nil {
 		return WorkflowSnapshot{}, err
 	}
@@ -70,20 +100,27 @@ func (engine *guardedEngine) Query(ctx context.Context, request WorkflowQuery) (
 		(snapshot.State != WorkflowRunning && snapshot.State != WorkflowCompleted && snapshot.State != WorkflowDenied) {
 		return WorkflowSnapshot{}, NewEngineError(EngineDenied, "query", "result", "driver returned an invalid workflow snapshot", nil)
 	}
+	if snapshot.State != WorkflowRunning {
+		engine.untrack(snapshot.Target)
+	}
 	return snapshot, nil
 }
 
-func (engine *guardedEngine) Cancel(ctx context.Context, request WorkflowCancel) error {
+func (engine *GuardedEngine) Cancel(ctx context.Context, request WorkflowCancel) error {
 	if err := validateEngineContext(ctx, "cancel"); err != nil {
 		return err
 	}
 	if err := ValidateWorkflowCancel(request); err != nil {
 		return err
 	}
-	return finishEngineCall(ctx, "cancel", engine.driver.Cancel(ctx, request))
+	err := finishEngineCall(ctx, "cancel", engine.driver.Cancel(ctx, request))
+	if err == nil {
+		engine.untrack(request.Target)
+	}
+	return err
 }
 
-func (engine *guardedEngine) Replay(ctx context.Context, request WorkflowReplay) (WorkflowReplayResult, error) {
+func (engine *GuardedEngine) Replay(ctx context.Context, request WorkflowReplay) (WorkflowReplayResult, error) {
 	if err := validateEngineContext(ctx, "replay"); err != nil {
 		return WorkflowReplayResult{}, err
 	}

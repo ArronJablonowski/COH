@@ -43,7 +43,7 @@ func TestAdapterRuntimeAndIdempotency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := core.GuardEngine(adapter)
+	engine, err := core.GuardEngine(adapter, allowStopGuard{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestGuardRejectsInvalidAndCanceledRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := core.GuardEngine(adapter)
+	engine, err := core.GuardEngine(adapter, allowStopGuard{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestRetainedHistoryReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := core.GuardEngine(adapter)
+	engine, err := core.GuardEngine(adapter, allowStopGuard{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,6 +218,10 @@ func testStart() core.WorkflowStart {
 		InputDigest: testDigest,
 	}
 }
+
+type allowStopGuard struct{}
+
+func (allowStopGuard) Allow(context.Context, string, string, string) error { return nil }
 
 type fakeTemporalClient struct {
 	duplicate    bool

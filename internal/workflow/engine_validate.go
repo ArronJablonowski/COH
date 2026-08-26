@@ -31,7 +31,9 @@ func ValidateWorkflowSignal(value WorkflowSignal) error {
 	if err := validateWorkflowTarget("signal", value.Target); err != nil {
 		return err
 	}
-	if !validOpaque(value.IdempotencyKey, 1, 256) || (value.Kind != "advance" && value.Kind != "complete") || !digestPattern.MatchString(value.PayloadDigest) {
+	if !validOpaque(value.IdempotencyKey, 1, 256) ||
+		(value.Kind != "advance" && value.Kind != "complete" && value.Kind != "emergency_stop") ||
+		!digestPattern.MatchString(value.PayloadDigest) {
 		return engineInvalid("signal", "signal", "idempotency key, registered kind, and payload digest are required")
 	}
 	return nil
