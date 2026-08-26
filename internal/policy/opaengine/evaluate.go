@@ -221,13 +221,11 @@ func decisionWithError(decision policy.Decision, err error) policy.Decision {
 	} else if decision.Outcome == "" {
 		decision.Outcome, decision.ReasonCode = "allowed", "policy_allowed"
 	}
-	decision.DecisionDigest = ""
-	encoded, marshalErr := json.Marshal(decision)
-	if marshalErr != nil {
+	finalized, finalizeErr := policy.FinalizeDecision(decision)
+	if finalizeErr != nil {
 		panic("policy decisions contain only JSON-safe fields")
 	}
-	decision.DecisionDigest = digestBytes(encoded)
-	return decision
+	return finalized
 }
 
 func outcome(err error) string {
