@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/broker/executionstop"
+	stopcontract "github.com/ArronJablonowski/COH/internal/domain/estop"
 	"github.com/ArronJablonowski/COH/internal/domain/toolregistry"
 )
 
@@ -24,15 +26,17 @@ type Executor struct {
 	authorizer    Authorizer
 	artifacts     ArtifactPreparer
 	sandbox       Sandbox
+	execution     *executionstop.Tracker
 	clock         Clock
 	registrations map[string]Registration
 	mu            sync.Mutex
 	attempts      map[string]*attempt
 }
 
-func New(resolver Resolver, authorizer Authorizer, artifacts ArtifactPreparer, sandbox Sandbox, clock Clock,
+func New(resolver Resolver, authorizer Authorizer, artifacts ArtifactPreparer, sandbox Sandbox,
+	execution *executionstop.Tracker, clock Clock,
 	registrations []Registration) (*Executor, error) {
-	if resolver == nil || authorizer == nil || artifacts == nil || sandbox == nil || clock == nil ||
+	if resolver == nil || authorizer == nil || artifacts == nil || sandbox == nil || execution == nil || clock == nil ||
 		len(registrations) == 0 || len(registrations) > MaximumRegistrations {
 		return nil, NewError(InvalidInput, "executor_dependencies")
 	}
@@ -47,13 +51,14 @@ func New(resolver Resolver, authorizer Authorizer, artifacts ArtifactPreparer, s
 		}
 		values[key] = cloneRegistration(registration)
 	}
-	return &Executor{resolver: resolver, authorizer: authorizer, artifacts: artifacts, sandbox: sandbox, clock: clock,
+	return &Executor{resolver: resolver, authorizer: authorizer, artifacts: artifacts, sandbox: sandbox,
+		execution: execution, clock: clock,
 		registrations: values, attempts: make(map[string]*attempt)}, nil
 }
 
 func (executor *Executor) Execute(ctx context.Context, request Request) (Result, error) {
 	if executor == nil || executor.resolver == nil || executor.authorizer == nil || executor.artifacts == nil ||
-		executor.sandbox == nil || executor.clock == nil {
+		executor.sandbox == nil || executor.execution == nil || executor.clock == nil {
 		return Result{}, NewError(Unavailable, "executor_unavailable")
 	}
 	if err := validateRequest(ctx, request); err != nil {
@@ -84,6 +89,14 @@ func (executor *Executor) executeOwned(ctx context.Context, request Request) (Re
 	if started.IsZero() {
 		return terminal(base, executor.clock.Now(), Unavailable, "clock_unavailable", SandboxResult{})
 	}
+	scope := executionstop.Scope{OrganizationID: request.OrganizationID, TenantID: request.TenantID, CaseID: request.CaseID}
+	execution, stopErr := executor.execution.Begin(ctx, request.AttemptID, scope)
+	if stopErr != nil {
+		mapped := mapStopError(stopErr)
+		return terminal(base, executor.clock.Now(), Code(mapped), Reason(mapped), SandboxResult{})
+	}
+	defer execution.Finish()
+	ctx = execution.Context
 	registration, found := executor.registrations[registrationKey(request.Tool, request.Operation)]
 	if !found {
 		return terminal(base, executor.clock.Now(), Denied, "binary_not_registered", SandboxResult{})
@@ -155,8 +168,27 @@ func (executor *Executor) executeOwned(ctx context.Context, request Request) (Re
 	if sandboxResult.ExitCode != 0 {
 		return terminal(base, executor.clock.Now(), Failed, "process_exit", sandboxResult)
 	}
+	if stopErr := executor.execution.Check(context.WithoutCancel(ctx), scope); stopErr != nil {
+		mapped := mapStopError(stopErr)
+		return terminal(base, executor.clock.Now(), Code(mapped), Reason(mapped), sandboxResult)
+	}
 	result, _ := terminal(base, executor.clock.Now(), "", "", sandboxResult)
 	return result, nil
+}
+
+func mapStopError(err error) error {
+	switch stopcontract.Code(err) {
+	case stopcontract.Denied:
+		return NewError(Denied, "emergency_stop_active")
+	case stopcontract.Canceled:
+		return NewError(Canceled, "stop_check_canceled")
+	case stopcontract.Timeout:
+		return NewError(Timeout, "stop_check_timeout")
+	case stopcontract.Conflict:
+		return NewError(Conflict, "execution_identity_conflict")
+	default:
+		return NewError(Unavailable, "stop_state_unavailable")
+	}
 }
 
 func (executor *Executor) reserve(ctx context.Context, id, fingerprint string) (*attempt, bool, error) {

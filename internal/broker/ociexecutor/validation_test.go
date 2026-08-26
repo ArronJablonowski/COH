@@ -31,7 +31,7 @@ func TestRegistrationRejectsFloatingRootHostAndSecretExpansion(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			registration := testRegistration()
 			test.mutate(&registration)
-			if _, err := New(&fakeResolver{}, &fakeAuthorizer{}, testContainmentNetwork(&fakeNetworkBroker{}), &fakeRuntime{}, fixedClock{testNow},
+			if _, err := New(&fakeResolver{}, &fakeAuthorizer{}, testContainmentNetwork(&fakeNetworkBroker{}), &fakeRuntime{}, testOCIExecutionTracker(), fixedClock{testNow},
 				[]Registration{registration}); Code(err) != InvalidInput {
 				t.Fatalf("error=%v", err)
 			}

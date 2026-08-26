@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/broker/executionstop"
+	stopcontract "github.com/ArronJablonowski/COH/internal/domain/estop"
 	"github.com/ArronJablonowski/COH/internal/domain/toolregistry"
 )
 
@@ -25,15 +27,17 @@ type Executor struct {
 	authorizer    Authorizer
 	network       *ContainmentNetworkBroker
 	runtime       Runtime
+	execution     *executionstop.Tracker
 	clock         Clock
 	registrations map[string]Registration
 	mu            sync.Mutex
 	attempts      map[string]*attempt
 }
 
-func New(resolver Resolver, authorizer Authorizer, network *ContainmentNetworkBroker, runtime Runtime, clock Clock,
+func New(resolver Resolver, authorizer Authorizer, network *ContainmentNetworkBroker, runtime Runtime,
+	execution *executionstop.Tracker, clock Clock,
 	registrations []Registration) (*Executor, error) {
-	if resolver == nil || authorizer == nil || network == nil || runtime == nil || clock == nil ||
+	if resolver == nil || authorizer == nil || network == nil || runtime == nil || execution == nil || clock == nil ||
 		len(registrations) == 0 || len(registrations) > MaximumRegistrations {
 		return nil, NewError(InvalidInput, "executor_dependencies")
 	}
@@ -48,13 +52,14 @@ func New(resolver Resolver, authorizer Authorizer, network *ContainmentNetworkBr
 		}
 		values[key] = cloneRegistration(registration)
 	}
-	return &Executor{resolver: resolver, authorizer: authorizer, network: network, runtime: runtime, clock: clock,
+	return &Executor{resolver: resolver, authorizer: authorizer, network: network, runtime: runtime,
+		execution: execution, clock: clock,
 		registrations: values, attempts: make(map[string]*attempt)}, nil
 }
 
 func (executor *Executor) Execute(ctx context.Context, request Request) (Result, error) {
 	if executor == nil || executor.resolver == nil || executor.authorizer == nil || executor.network == nil ||
-		executor.runtime == nil || executor.clock == nil {
+		executor.runtime == nil || executor.execution == nil || executor.clock == nil {
 		return Result{}, NewError(Unavailable, "executor_unavailable")
 	}
 	if err := validateRequest(ctx, request); err != nil {
@@ -77,8 +82,6 @@ func (executor *Executor) Execute(ctx context.Context, request Request) (Result,
 }
 
 func (executor *Executor) executeOwned(ctx context.Context, request Request) (Result, error) {
-	boundaryCtx, cancelBoundary := context.WithTimeout(ctx, 5*time.Minute)
-	defer cancelBoundary()
 	started := executor.clock.Now().UTC()
 	base := Provenance{AttemptID: request.AttemptID, OrganizationID: request.OrganizationID,
 		TenantID: request.TenantID, CaseID: request.CaseID, ActorID: request.ActorID, Tool: request.Tool,
@@ -87,6 +90,15 @@ func (executor *Executor) executeOwned(ctx context.Context, request Request) (Re
 	if started.IsZero() {
 		return terminal(base, executor.clock.Now(), Unavailable, "clock_unavailable", RuntimeResult{})
 	}
+	scope := executionstop.Scope{OrganizationID: request.OrganizationID, TenantID: request.TenantID, CaseID: request.CaseID}
+	execution, stopErr := executor.execution.Begin(ctx, request.AttemptID, scope)
+	if stopErr != nil {
+		mapped := mapExecutionStopError(stopErr)
+		return terminal(base, executor.clock.Now(), Code(mapped), Reason(mapped), RuntimeResult{})
+	}
+	defer execution.Finish()
+	boundaryCtx, cancelBoundary := context.WithTimeout(execution.Context, 5*time.Minute)
+	defer cancelBoundary()
 	rawInputDigest, err := inputRequestDigest(request.Inputs)
 	if err != nil {
 		return terminal(base, executor.clock.Now(), Code(err), Reason(err), RuntimeResult{})
@@ -189,8 +201,27 @@ func (executor *Executor) executeOwned(ctx context.Context, request Request) (Re
 	if runtimeResult.ExitCode != 0 {
 		return terminal(base, executor.clock.Now(), Failed, "container_exit", runtimeResult)
 	}
+	if stopErr := executor.execution.Check(context.WithoutCancel(ctx), scope); stopErr != nil {
+		mapped := mapExecutionStopError(stopErr)
+		return terminal(base, executor.clock.Now(), Code(mapped), Reason(mapped), runtimeResult)
+	}
 	result, _ := terminal(base, executor.clock.Now(), "", "", runtimeResult)
 	return result, nil
+}
+
+func mapExecutionStopError(err error) error {
+	switch stopcontract.Code(err) {
+	case stopcontract.Denied:
+		return NewError(Denied, "emergency_stop_active")
+	case stopcontract.Canceled:
+		return NewError(Canceled, "stop_check_canceled")
+	case stopcontract.Timeout:
+		return NewError(Timeout, "stop_check_timeout")
+	case stopcontract.Conflict:
+		return NewError(Conflict, "execution_identity_conflict")
+	default:
+		return NewError(Unavailable, "stop_state_unavailable")
+	}
 }
 
 func (executor *Executor) reserve(ctx context.Context, id, fingerprint string) (*attempt, bool, error) {

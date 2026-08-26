@@ -146,7 +146,7 @@ func TestProcessSandboxExecutesWithoutDockerOrAmbientEnvironment(t *testing.T) {
 	t.Run("executor end to end", func(t *testing.T) {
 		toolReference := toolregistry.ToolReference{Name: "fixture.echo", Version: "1.0.0", ArtifactDigest: fileDigest(t, testTool)}
 		registry, publisher := signedRegistry(t, toolReference)
-		executor, err := New(registry, testAuthorizer(), preparer, sandbox,
+		executor, err := New(registry, testAuthorizer(), preparer, sandbox, testExecutionTracker(),
 			fixedClock{time.Date(2026, 8, 26, 3, 0, 0, 0, time.UTC)}, []Registration{{Tool: toolReference,
 				Operation: "execute", ExecutablePath: testTool, FixedArguments: []string{"echo"},
 				FixedEnvironment: []EnvironmentVariable{{Name: "LANG", Value: "C"}}}})

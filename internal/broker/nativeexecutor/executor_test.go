@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/broker/executionstop"
 	"github.com/ArronJablonowski/COH/internal/domain/toolregistry"
 )
 
@@ -254,13 +255,25 @@ func TestExecutorTimeoutAndRecoveryUseDistinctAttempts(t *testing.T) {
 func newTestExecutor(t *testing.T, resolver Resolver, authorizer Authorizer,
 	artifacts ArtifactPreparer, sandbox Sandbox) *Executor {
 	t.Helper()
-	executor, err := New(resolver, authorizer, artifacts, sandbox, fixedClock{time.Date(2026, 8, 26, 3, 0, 0, 0, time.UTC)},
+	executor, err := New(resolver, authorizer, artifacts, sandbox, testExecutionTracker(), fixedClock{time.Date(2026, 8, 26, 3, 0, 0, 0, time.UTC)},
 		[]Registration{{Tool: testRequest().Tool, Operation: "execute", ExecutablePath: "/approved/tool",
 			FixedArguments: []string{"--query"}, FixedEnvironment: []EnvironmentVariable{{Name: "TZ", Value: "UTC"}, {Name: "LANG", Value: "C"}}}})
 	if err != nil {
 		t.Fatalf("New() error=%v", err)
 	}
 	return executor
+}
+
+type allowStopGuard struct{}
+
+func (allowStopGuard) Allow(context.Context, string, string, string) error { return nil }
+
+func testExecutionTracker() *executionstop.Tracker {
+	tracker, err := executionstop.New("native-executions", allowStopGuard{})
+	if err != nil {
+		panic(err)
+	}
+	return tracker
 }
 
 func testRequest() Request {

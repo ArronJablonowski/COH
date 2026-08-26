@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/broker/executionstop"
 	"github.com/ArronJablonowski/COH/internal/domain/toolregistry"
 )
 
@@ -88,12 +89,13 @@ func (broker *fakeNetworkBroker) Acquire(_ context.Context, request NetworkReque
 }
 
 type fakeRuntime struct {
-	mu     sync.Mutex
-	mutate func(*RuntimeResult)
-	err    error
-	calls  int
-	plans  []ContainerPlan
-	block  <-chan struct{}
+	mu      sync.Mutex
+	mutate  func(*RuntimeResult)
+	err     error
+	calls   int
+	plans   []ContainerPlan
+	block   <-chan struct{}
+	started chan struct{}
 }
 
 func (runtime *fakeRuntime) Execute(ctx context.Context, plan ContainerPlan) (RuntimeResult, error) {
@@ -101,6 +103,9 @@ func (runtime *fakeRuntime) Execute(ctx context.Context, plan ContainerPlan) (Ru
 	runtime.calls++
 	runtime.plans = append(runtime.plans, plan)
 	runtime.mu.Unlock()
+	if runtime.started != nil {
+		close(runtime.started)
+	}
 	if runtime.block != nil {
 		select {
 		case <-ctx.Done():
@@ -169,11 +174,19 @@ func testExecutor() (*Executor, *fakeResolver, *fakeAuthorizer, *fakeNetworkBrok
 		ValidUntil: formatTime(testNow.Add(time.Minute))}}
 	network := &fakeNetworkBroker{clock: fixedClock{testNow}}
 	runtime := &fakeRuntime{}
-	executor, err := New(resolver, authorizer, testContainmentNetwork(network), runtime, fixedClock{testNow}, []Registration{testRegistration()})
+	executor, err := New(resolver, authorizer, testContainmentNetwork(network), runtime, testOCIExecutionTracker(), fixedClock{testNow}, []Registration{testRegistration()})
 	if err != nil {
 		panic(err)
 	}
 	return executor, resolver, authorizer, network, runtime
+}
+
+func testOCIExecutionTracker() *executionstop.Tracker {
+	tracker, err := executionstop.New("oci-executions", &mutableStopGuard{})
+	if err != nil {
+		panic(err)
+	}
+	return tracker
 }
 
 func testContainmentNetwork(inner NetworkBroker) *ContainmentNetworkBroker {
