@@ -76,7 +76,7 @@ func (auditor *retrievalAuditor) AppendAuditEvent(_ context.Context, event tampe
 }
 
 func TestRetrievalGuardRecoversCommittedInspectionAfterSQLiteRestart(t *testing.T) {
-	now := time.Date(2026, 8, 26, 22, 30, 0, 0, time.UTC)
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
 	root := t.TempDir()
 	backup := filepath.Join(root, "backups")
 	if err := os.Mkdir(backup, 0o700); err != nil {
