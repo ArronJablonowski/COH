@@ -122,8 +122,8 @@ retained log is:
 SHA-256 f9e5068003764dbe77b9f6df4535f5870fe2af5848d383aa7f114508b24ef432
 ```
 
-It includes unit, three repeated runs, race, vet, six-schema structural and
-secret-surface checks, fixture/denial checks, 55-package architecture
+It includes unit, three repeated runs, race, vet, six-schema structural checks,
+repository content scanning, fixture/denial checks, 55-package architecture
 verification with zero violations, file-size enforcement, Markdown-link
 checks, and diff validation. Provenance records `e48e20b`, `modified:false`, Go
 1.26.7, and darwin/arm64.
