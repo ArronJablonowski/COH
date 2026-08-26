@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/skill/v1/skill-registry.schema.json",
+  "title": "COH skill promotion, state, policy, and resolution records v1",
+  "oneOf": [
+    {"$ref": "#/$defs/signed_change"},
+    {"$ref": "#/$defs/state"},
+    {"$ref": "#/$defs/policy_decision"},
+    {"$ref": "#/$defs/resolve_request"},
+    {"$ref": "#/$defs/access_decision"}
+  ],
+  "$defs": {
+    "uuid_v7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "optional_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9][.][0-9]{9}Z$"
+    },
+    "action": {"enum": ["promote", "rollback", "revoke"]},
+    "signature": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "actor_id", "key_id", "key_revision", "approval_revision",
+        "signature_algorithm", "signature"
+      ],
+      "properties": {
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "key_id": {"$ref": "#/$defs/token"},
+        "key_revision": {"type": "integer", "minimum": 1},
+        "approval_revision": {"type": "integer", "minimum": 1},
+        "signature_algorithm": {"const": "ed25519"},
+        "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+      }
+    },
+    "command": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema_version", "contract_version", "command_id", "action", "organization_id",
+        "tenant_id", "case_id", "task_id", "actor_id", "skill_name",
+        "target_manifest_digest", "expected_current_digest", "expected_revision",
+        "reason_digest", "created_at", "deadline"
+      ],
+      "properties": {
+        "schema_version": {"const": "coh.skill-change/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "command_id": {"$ref": "#/$defs/uuid_v7"},
+        "action": {"$ref": "#/$defs/action"},
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"},
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "skill_name": {"$ref": "#/$defs/token"},
+        "target_manifest_digest": {"$ref": "#/$defs/digest"},
+        "expected_current_digest": {"$ref": "#/$defs/optional_digest"},
+        "expected_revision": {"type": "integer", "minimum": 0},
+        "reason_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "deadline": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "signed_change": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "contract_version", "command", "command_digest", "signature"],
+      "properties": {
+        "schema_version": {"const": "coh.signed-skill-change/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "command": {"$ref": "#/$defs/command"},
+        "command_digest": {"$ref": "#/$defs/digest"},
+        "signature": {"$ref": "#/$defs/signature"}
+      }
+    },
+    "state": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema_version", "contract_version", "organization_id", "tenant_id", "skill_name",
+        "status", "current_manifest_digest", "previous_manifest_digest", "last_action",
+        "last_command_digest", "idempotency_digest", "policy_decision_digest",
+        "review_evidence_digest", "audit_receipt_digest", "previous_provenance_digest",
+        "provenance_digest", "created_at", "updated_at", "revision"
+      ],
+      "properties": {
+        "schema_version": {"const": "coh.skill-registry-state/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "skill_name": {"$ref": "#/$defs/token"},
+        "status": {"enum": ["promoted", "revoked"]},
+        "current_manifest_digest": {"$ref": "#/$defs/digest"},
+        "previous_manifest_digest": {"$ref": "#/$defs/optional_digest"},
+        "last_action": {"$ref": "#/$defs/action"},
+        "last_command_digest": {"$ref": "#/$defs/digest"},
+        "idempotency_digest": {"$ref": "#/$defs/digest"},
+        "policy_decision_digest": {"$ref": "#/$defs/digest"},
+        "review_evidence_digest": {"$ref": "#/$defs/digest"},
+        "audit_receipt_digest": {"$ref": "#/$defs/digest"},
+        "previous_provenance_digest": {"$ref": "#/$defs/optional_digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1}
+      }
+    },
+    "policy_decision": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema_version", "contract_version", "decision_id", "decision_digest", "policy_digest",
+        "organization_id", "tenant_id", "case_id", "task_id", "actor_id", "action",
+        "skill_name", "manifest_digest", "outcome", "revision", "issued_at", "expires_at"
+      ],
+      "properties": {
+        "schema_version": {"const": "coh.skill-policy-decision/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "decision_id": {"$ref": "#/$defs/uuid_v7"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"},
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "action": {"$ref": "#/$defs/action"},
+        "skill_name": {"$ref": "#/$defs/token"},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "outcome": {"const": "allow"},
+        "revision": {"type": "integer", "minimum": 1},
+        "issued_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "resolve_request": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema_version", "contract_version", "request_id", "organization_id", "tenant_id",
+        "case_id", "task_id", "actor_id", "skill_name", "expected_manifest_digest",
+        "required_permission", "policy_digest", "deadline"
+      ],
+      "properties": {
+        "schema_version": {"const": "coh.skill-resolution-request/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "request_id": {"$ref": "#/$defs/uuid_v7"},
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"},
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "skill_name": {"$ref": "#/$defs/token"},
+        "expected_manifest_digest": {"$ref": "#/$defs/digest"},
+        "required_permission": {"$ref": "#/$defs/token"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "deadline": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "access_decision": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "schema_version", "contract_version", "decision_id", "decision_digest", "policy_digest",
+        "organization_id", "tenant_id", "case_id", "task_id", "actor_id", "skill_name",
+        "manifest_digest", "permission", "outcome", "revision", "issued_at", "expires_at"
+      ],
+      "properties": {
+        "schema_version": {"const": "coh.skill-access-decision/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "decision_id": {"$ref": "#/$defs/uuid_v7"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"},
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "skill_name": {"$ref": "#/$defs/token"},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "permission": {"$ref": "#/$defs/token"},
+        "outcome": {"const": "allow"},
+        "revision": {"type": "integer", "minimum": 1},
+        "issued_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"}
+      }
+    }
+  }
+}
