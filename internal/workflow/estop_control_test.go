@@ -73,7 +73,7 @@ func (driver *workflowDriverStub) Replay(context.Context, WorkflowReplay) (Workf
 
 func TestGuardedEngineSignalsAndCancelsOnlyStoppedCase(t *testing.T) {
 	driver, guard := &workflowDriverStub{}, &mutableWorkflowStopGuard{}
-	engine, err := GuardEngine(driver, guard)
+	engine, err := GuardEngine(driver, guard, NewMemoryWorkflowIndex())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestGuardedEngineClosesStartActivationRace(t *testing.T) {
 	driver := &workflowDriverStub{startHook: func() {
 		guard.set(stopcontract.NewError(stopcontract.Denied, "emergency_stop_active"))
 	}}
-	engine, err := GuardEngine(driver, guard)
+	engine, err := GuardEngine(driver, guard, NewMemoryWorkflowIndex())
 	if err != nil {
 		t.Fatal(err)
 	}

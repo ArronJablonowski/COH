@@ -63,6 +63,7 @@ fi
 for pattern in \
   'execution \*executionstop.Tracker' \
   'stop +StopGuard' \
+  'index +WorkflowIndex' \
   'network +\*ContainmentNetworkBroker'; do
   /usr/bin/grep -R -E "${pattern}" "${root}/internal/broker" "${root}/internal/workflow" --include='*.go' >/dev/null || {
     echo "error: mandatory containment dependency is missing: ${pattern}" >&2

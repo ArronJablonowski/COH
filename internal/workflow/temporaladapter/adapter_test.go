@@ -43,7 +43,7 @@ func TestAdapterRuntimeAndIdempotency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := core.GuardEngine(adapter, allowStopGuard{})
+	engine, err := core.GuardEngine(adapter, allowStopGuard{}, core.NewMemoryWorkflowIndex())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestGuardRejectsInvalidAndCanceledRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := core.GuardEngine(adapter, allowStopGuard{})
+	engine, err := core.GuardEngine(adapter, allowStopGuard{}, core.NewMemoryWorkflowIndex())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestRetainedHistoryReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := core.GuardEngine(adapter, allowStopGuard{})
+	engine, err := core.GuardEngine(adapter, allowStopGuard{}, core.NewMemoryWorkflowIndex())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,26 +5,33 @@ import (
 	"errors"
 	"reflect"
 	"sync"
+
+	stopcontract "github.com/ArronJablonowski/COH/internal/domain/estop"
 )
 
 type StopGuard interface {
 	Allow(context.Context, string, string, string) error
 }
 
+type WorkflowIndex interface {
+	Add(context.Context, WorkflowTarget) error
+	Remove(context.Context, WorkflowTarget) error
+	List(context.Context, stopcontract.Scope) ([]WorkflowTarget, error)
+}
+
 type GuardedEngine struct {
 	driver EngineDriver
 	stop   StopGuard
+	index  WorkflowIndex
 	mu     sync.Mutex
-	active map[string]WorkflowTarget
 	runs   map[string]*workflowStopRun
 }
 
-func GuardEngine(driver EngineDriver, stop StopGuard) (*GuardedEngine, error) {
-	if driver == nil || isNilEngineDriver(driver) || stop == nil {
+func GuardEngine(driver EngineDriver, stop StopGuard, index WorkflowIndex) (*GuardedEngine, error) {
+	if driver == nil || isNilEngineDriver(driver) || stop == nil || index == nil {
 		return nil, engineInvalid("guard", "driver", "driver is required")
 	}
-	return &GuardedEngine{driver: driver, stop: stop, active: make(map[string]WorkflowTarget),
-		runs: make(map[string]*workflowStopRun)}, nil
+	return &GuardedEngine{driver: driver, stop: stop, index: index, runs: make(map[string]*workflowStopRun)}, nil
 }
 
 func isNilEngineDriver(driver EngineDriver) bool {
@@ -55,12 +62,16 @@ func (engine *GuardedEngine) Start(ctx context.Context, request WorkflowStart) (
 		handle.Definition != OperationWorkflowV1 || handle.Version != "v1" || validateWorkflowTarget("start", handle.Target) != nil {
 		return WorkflowHandle{}, NewEngineError(EngineDenied, "start", "result", "driver returned an invalid workflow handle", nil)
 	}
-	engine.track(handle.Target)
+	if err := engine.index.Add(ctx, handle.Target); err != nil {
+		_ = engine.driver.Cancel(context.WithoutCancel(ctx), WorkflowCancel{ContractVersion: WorkflowContractVersion,
+			IdempotencyKey: "index-add-failed", Target: handle.Target, ReasonDigest: workflowStopDigest(handle.Target.Case, 0)})
+		return WorkflowHandle{}, NewEngineError(EngineUnavailable, "start", "index", "workflow index unavailable", nil)
+	}
 	if err := engine.allow(ctx, handle.Target.Case); err != nil {
 		cancelCtx := context.WithoutCancel(ctx)
 		_ = engine.driver.Cancel(cancelCtx, WorkflowCancel{ContractVersion: WorkflowContractVersion,
 			IdempotencyKey: "estop-start-race", Target: handle.Target, ReasonDigest: workflowStopDigest(handle.Target.Case, 0)})
-		engine.untrack(handle.Target)
+		_ = engine.index.Remove(cancelCtx, handle.Target)
 		return WorkflowHandle{}, err
 	}
 	return handle, nil
@@ -78,7 +89,9 @@ func (engine *GuardedEngine) Signal(ctx context.Context, request WorkflowSignal)
 	}
 	err := finishEngineCall(ctx, "signal", engine.driver.Signal(ctx, request))
 	if err == nil && request.Kind == "complete" {
-		engine.untrack(request.Target)
+		if indexErr := engine.index.Remove(ctx, request.Target); indexErr != nil {
+			return NewEngineError(EngineUnavailable, "signal", "index", "workflow index unavailable", nil)
+		}
 	}
 	return err
 }
@@ -101,7 +114,9 @@ func (engine *GuardedEngine) Query(ctx context.Context, request WorkflowQuery) (
 		return WorkflowSnapshot{}, NewEngineError(EngineDenied, "query", "result", "driver returned an invalid workflow snapshot", nil)
 	}
 	if snapshot.State != WorkflowRunning {
-		engine.untrack(snapshot.Target)
+		if indexErr := engine.index.Remove(ctx, snapshot.Target); indexErr != nil {
+			return WorkflowSnapshot{}, NewEngineError(EngineUnavailable, "query", "index", "workflow index unavailable", nil)
+		}
 	}
 	return snapshot, nil
 }
@@ -115,7 +130,9 @@ func (engine *GuardedEngine) Cancel(ctx context.Context, request WorkflowCancel)
 	}
 	err := finishEngineCall(ctx, "cancel", engine.driver.Cancel(ctx, request))
 	if err == nil {
-		engine.untrack(request.Target)
+		if indexErr := engine.index.Remove(ctx, request.Target); indexErr != nil {
+			return NewEngineError(EngineUnavailable, "cancel", "index", "workflow index unavailable", nil)
+		}
 	}
 	return err
 }

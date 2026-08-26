@@ -65,14 +65,17 @@ ten-second deadline. Dispatch rechecks stop state before recording success, so
 a callback that ignores cancellation cannot turn a stopped operation into a
 successful completion.
 
-`workflow.GuardedEngine` requires current stop state, tracks active durable
-workflow targets, and closes the start/activation race. Its workflow control
-sends an `emergency_stop` signal and then cancellation to every exact-scope
-target. Regular cancellation remains usable while a stop is active.
+`workflow.GuardedEngine` requires current stop state and a `WorkflowIndex`,
+tracks active durable workflow targets, and closes the start/activation race.
+Its workflow control sends an `emergency_stop` signal and then cancellation to
+every exact-scope target. Regular cancellation remains usable while a stop is
+active.
 
-The active workflow index is currently process-local. Production recovery must
-rebuild it from the durable workflow backend or provide a durable enumeration
-port before restart conformance can be claimed.
+`SQLiteWorkflowIndex` persists active targets for supported single-node
+deployments and rejects unsafe SQLite durability configuration. Restart tests
+reconstruct the guarded engine and prove that a workflow started by the prior
+process is still enumerated, signaled, canceled, and removed. Multi-replica
+deployments must provide a linearizable implementation of the same index port.
 
 ## Cooperative native and OCI execution
 
@@ -101,7 +104,7 @@ race, vet, architecture, and file-size gates, and runs the timing conformance
 tests. The harness inspects all 1/2/5/10-second deadlines and exercises an
 actual one-second timeout using monotonic elapsed time.
 
-Known production-qualification residuals are a linearizable multi-replica
-store and durable workflow enumeration/rebuild. SQLite covers the supported
-single-node restart path. These residuals are not hidden by the conformance
-implementation and must be resolved before a multi-replica production claim.
+SQLite covers the supported single-node restart path for both stop state and
+active workflow enumeration. Multi-replica deployments require linearizable
+implementations of the `estop.Store` and `WorkflowIndex` ports before making a
+multi-replica production claim.

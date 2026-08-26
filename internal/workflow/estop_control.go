@@ -47,14 +47,10 @@ func (engine *GuardedEngine) Apply(ctx context.Context, request stopcontract.Con
 }
 
 func (engine *GuardedEngine) applyStop(ctx context.Context, request stopcontract.ControlRequest) (string, error) {
-	engine.mu.Lock()
-	targets := make([]WorkflowTarget, 0, len(engine.active))
-	for _, target := range engine.active {
-		if workflowScopeMatches(target.Case, request.Scope) {
-			targets = append(targets, target)
-		}
+	targets, err := engine.index.List(ctx, request.Scope)
+	if err != nil {
+		return "", NewEngineError(EngineUnavailable, "estop", "index", "workflow index unavailable", nil)
 	}
-	engine.mu.Unlock()
 	sort.Slice(targets, func(i, j int) bool { return workflowTargetKey(targets[i]) < workflowTargetKey(targets[j]) })
 	reasonDigest := workflowStopDigest(domain.CaseRef{OrganizationID: request.Scope.OrganizationID,
 		TenantID: request.Scope.TenantID, CaseID: request.Scope.CaseID}, request.Epoch)
@@ -85,7 +81,9 @@ func (engine *GuardedEngine) applyStop(ctx context.Context, request stopcontract
 			if completed.err != nil {
 				failed = true
 			} else {
-				engine.untrack(completed.target)
+				if removeErr := engine.index.Remove(ctx, completed.target); removeErr != nil {
+					failed = true
+				}
 			}
 		case <-ctx.Done():
 			return "", ctx.Err()
@@ -122,26 +120,9 @@ func (engine *GuardedEngine) allow(ctx context.Context, scope domain.CaseRef) er
 	}
 }
 
-func (engine *GuardedEngine) track(target WorkflowTarget) {
-	engine.mu.Lock()
-	defer engine.mu.Unlock()
-	engine.active[workflowTargetKey(target)] = target
-}
-
-func (engine *GuardedEngine) untrack(target WorkflowTarget) {
-	engine.mu.Lock()
-	defer engine.mu.Unlock()
-	delete(engine.active, workflowTargetKey(target))
-}
-
 func workflowTargetKey(target WorkflowTarget) string {
 	return target.Case.OrganizationID + "\x00" + target.Case.TenantID + "\x00" + target.Case.CaseID + "\x00" +
 		target.WorkflowID + "\x00" + target.RunID
-}
-
-func workflowScopeMatches(scope domain.CaseRef, stop stopcontract.Scope) bool {
-	return scope.OrganizationID == stop.OrganizationID && scope.TenantID == stop.TenantID &&
-		(stop.Kind == "global" || scope.CaseID == stop.CaseID)
 }
 
 func workflowStopRunKey(request stopcontract.ControlRequest) string {
