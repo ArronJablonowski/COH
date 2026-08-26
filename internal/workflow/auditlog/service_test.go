@@ -256,7 +256,7 @@ func TestCheckpointTargetUsesEarlierMandatoryTrigger(t *testing.T) {
 	record := tamperaudit.Record{Sequence: tamperaudit.CheckpointRecordLimit,
 		ChainHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
 	head := tamperaudit.Head{Sequence: tamperaudit.CheckpointRecordLimit - 1,
-		ChainHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		ChainHash:    "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 		LastRecordAt: "2026-08-26T01:00:00.000000000Z"}
 	sequence, chainHash, reason := checkpointTarget(head, record, time.Date(2026, 8, 26, 2, 0, 0, 0, time.UTC))
 	if sequence != tamperaudit.CheckpointRecordLimit || chainHash != record.ChainHash || reason != "record_limit" {
