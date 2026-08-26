@@ -88,6 +88,25 @@ func (store *MemoryStore) Revoke(ctx context.Context, leaseID, reason string) (R
 	return cloneRecord(record), nil
 }
 
+func (store *MemoryStore) RevokeScope(ctx context.Context, organizationID, tenantID, caseID, reason string) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	matched := 0
+	for leaseID, record := range store.records {
+		scope := record.Request.Context
+		if scope.OrganizationID != organizationID || scope.TenantID != tenantID || (caseID != "" && scope.CaseID != caseID) {
+			continue
+		}
+		matched++
+		record.Revoked, record.RevokeReason = true, reason
+		store.records[leaseID] = record
+	}
+	return matched, nil
+}
+
 func cloneRecord(record Record) Record {
 	record.Request.TargetDigests = append([]string(nil), record.Request.TargetDigests...)
 	return record

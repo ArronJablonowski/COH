@@ -31,6 +31,7 @@ type Store interface {
 	Create(context.Context, Record) (CreateResult, error)
 	Claim(context.Context, string, [32]byte, time.Time) (Record, error)
 	Revoke(context.Context, string, string) (Record, error)
+	RevokeScope(context.Context, string, string, string, string) (int, error)
 }
 
 type SecretResolver interface {

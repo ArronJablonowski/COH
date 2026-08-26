@@ -218,6 +218,25 @@ func (store *MemoryStore) RevokeWorkerLeases(ctx context.Context, scope workerco
 	return nil
 }
 
+func (store *MemoryStore) RevokeLeaseScope(ctx context.Context, organizationID, tenantID, caseID, reason string) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	matched := 0
+	for leaseID, lease := range store.leases {
+		scope := lease.Request.Scope
+		if scope.OrganizationID != organizationID || scope.TenantID != tenantID || (caseID != "" && scope.CaseID != caseID) {
+			continue
+		}
+		matched++
+		lease.Revoked, lease.RevokeReason = true, reason
+		store.leases[leaseID] = lease
+	}
+	return matched, nil
+}
+
 func workerKey(scope workercontract.Scope, workerID string) string {
 	return scope.OrganizationID + "\x00" + scope.TenantID + "\x00" + workerID
 }

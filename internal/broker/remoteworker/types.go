@@ -63,6 +63,7 @@ type LeaseStore interface {
 	ClaimLease(context.Context, string, [32]byte, time.Time) (LeaseRecord, error)
 	RevokeLease(context.Context, string, string) (LeaseRecord, error)
 	RevokeWorkerLeases(context.Context, workercontract.Scope, string, string) error
+	RevokeLeaseScope(context.Context, string, string, string, string) (int, error)
 }
 
 type Store interface {
