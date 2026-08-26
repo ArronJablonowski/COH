@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/tool/v1/signed-tool-manifest.schema.json",
+  "title": "COH signed tool manifest envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "manifest", "manifest_digest", "publisher_id", "publisher_key_id", "publisher_key_revision", "signature_algorithm", "signature"],
+  "properties": {
+    "schema_version": {"const": "coh.signed-tool-manifest/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "manifest": {"$ref": "tool-manifest.schema.json"},
+    "manifest_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "publisher_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "publisher_key_id": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "publisher_key_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "signature_algorithm": {"const": "ed25519"},
+    "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+  }
+}

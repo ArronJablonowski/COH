@@ -1,0 +1,18 @@
+{
+  "schema_version": "coh.tool-registry-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name": "unreviewed", "boundary": "manifest", "reason": "manifest_review"},
+    {"name": "unsorted-reviewers", "boundary": "manifest", "reason": "manifest_reviewers"},
+    {"name": "operation-above-tool-ceiling", "boundary": "manifest", "reason": "operation_tier"},
+    {"name": "native-t3", "boundary": "manifest", "reason": "operation_controls"},
+    {"name": "public-internet", "boundary": "manifest", "reason": "operation_sandbox"},
+    {"name": "metadata-egress", "boundary": "manifest", "reason": "operation_sandbox"},
+    {"name": "unknown-field-type", "boundary": "manifest", "reason": "operation_inputs"},
+    {"name": "expired-ordering", "boundary": "manifest", "reason": "manifest_validity"},
+    {"name": "publisher-revoked", "boundary": "signature", "reason": "publisher_authority"},
+    {"name": "tool-identity-collision", "boundary": "registry", "reason": "tool_identity_collision"},
+    {"name": "policy-ceiling-elevation", "boundary": "resolve", "reason": "policy_ceiling_elevation"},
+    {"name": "approval-revision-rollback", "boundary": "resolve", "reason": "publisher_authority_stale"}
+  ]
+}
