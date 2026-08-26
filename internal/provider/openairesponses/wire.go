@@ -135,20 +135,12 @@ type incomplete struct {
 	Reason string `json:"reason"`
 }
 
-type outputItemType struct {
-	Type string `json:"type"`
-}
-
 type outputMessage struct {
 	ID      string            `json:"id"`
 	Type    string            `json:"type"`
 	Role    string            `json:"role"`
 	Status  string            `json:"status"`
 	Content []json.RawMessage `json:"content"`
-}
-
-type outputContentType struct {
-	Type string `json:"type"`
 }
 
 type outputText struct {

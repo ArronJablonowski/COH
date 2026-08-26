@@ -102,6 +102,7 @@ cd "${root}"
 "${COH_GO_ROOT}/bin/go" test -count=3 ./internal/provider/openairesponses
 "${COH_GO_ROOT}/bin/go" test -count=1 -race ./internal/provider/openairesponses
 "${COH_GO_ROOT}/bin/go" vet ./internal/provider/openairesponses
+"${root}/scripts/check_static_analysis.sh"
 "${root}/scripts/check_go_architecture.sh"
 "${root}/scripts/check_file_sizes.sh"
 "${root}/scripts/check_markdown_links.sh" "${adapter}/README.md" "${public_contract}/README.md"
