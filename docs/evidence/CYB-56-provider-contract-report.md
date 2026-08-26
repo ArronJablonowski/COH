@@ -5,7 +5,7 @@
 | Issue | COH-E07-01 / CYB-56 |
 | Requirements | FR-031, FR-037, FR-038, EVAL-028 |
 | Verification date | 2026-08-26 |
-| Verified checkpoint | `e48e20bc62a8cc62cd6cb7dbfd77c842119ceb5a` |
+| Verified checkpoint | `733f0022fc9d8b270525d54c48db1dec967bf055` |
 | Aggregate result | Pass |
 
 ## Outcome
@@ -17,6 +17,12 @@ discovery, requested/actual provider identity, complete inference provenance,
 and release-matrix qualification records. No generic vendor request, options,
 headers, passthrough object, credential, secret, or API-key field crosses the
 contract.
+
+Each `tool_result` carries its call ID, terminal outcome, typed JSON object,
+output-schema digest, and a domain-separated digest of the canonical result.
+The contract therefore preserves the value required for a subsequent provider
+turn while detecting result-value tamper and binding the value to its declared
+output schema.
 
 A provider tuple cannot serve a workflow merely because an endpoint is
 reachable or a model name matches. Admission requires an unexpired capability
@@ -41,6 +47,20 @@ ID collision are handled explicitly and fail closed.
 | Invalid input, denial, timeout/cancellation, and recovery preserve provenance and policy | Duplicate/unknown/trailing/non-integer denial; exact authority/provenance bindings; canceled/timeout traces; retry recovery; stream terminal/sequence enforcement | Pass |
 | Automated success/failure paths pass applicable gates | Dedicated unit/repeat/race/vet/schema/architecture/size/link/diff verifier and all 18 clean baseline stages | Pass |
 | Evidence cross-references COH-E07-01 and FR-031/037/038/EVAL-028 | This report, public bundle, retained logs, clean baseline, checksum manifest, and Linear attachment | Pass |
+
+## Post-closure remediation
+
+The initial closure review found that a `tool_result` retained only a result
+digest. That was sufficient for audit comparison but insufficient to submit a
+typed function result on a later inference turn. The issue was reopened and
+the contract was strengthened to require the typed value and
+`output_schema_digest` alongside its canonical, domain-separated
+`result_digest`.
+
+The schema, Go shape/type model, semantic validator, documentation, and tests
+now enforce the corrected boundary. A positive round trip proves the value is
+usable; a value-tamper case proves a stale digest is rejected. The retained
+focused and baseline evidence below supersedes the initial closure evidence.
 
 ## Public schema bundle
 
@@ -118,14 +138,14 @@ The exact clean checkpoint passed `scripts/verify_provider_contract.sh`. The
 retained log is:
 
 ```text
-/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/provider-contract.QZsl7C/provider-contract.log
-SHA-256 f9e5068003764dbe77b9f6df4535f5870fe2af5848d383aa7f114508b24ef432
+/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/provider-contract.qBiLGG/provider-contract.log
+SHA-256 b64a53c72f8411f167a6cce3114293ec243ee6c03a50f178b45297a8a2bf3289
 ```
 
 It includes unit, three repeated runs, race, vet, six-schema structural checks,
 repository content scanning, fixture/denial checks, 55-package architecture
 verification with zero violations, file-size enforcement, Markdown-link
-checks, and diff validation. Provenance records `e48e20b`, `modified:false`, Go
+checks, and diff validation. Provenance records `733f002`, `modified:false`, Go
 1.26.7, and darwin/arm64.
 
 ## Clean baseline
@@ -135,15 +155,15 @@ The exact clean checkpoint passed all 18 baseline stages with
 `vcs_modified=false`. Evidence is retained at:
 
 ```text
-/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.nQW6zD/quality-report.json
+/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.Xprape/quality-report.json
 ```
 
 The embedded report digest is
-`b08cf2315c86678e1e97efe57a7c77013cc7153a1b8709f4ed8f76ac2e318230`;
+`5093b4f2526ae8757ef1d8669c18997d1b383692bda04e4c58904620b69777f5`;
 the report-file SHA-256 is
-`98859ccc84911c00e00805eb2020a0277aca74db8d7c455632b0789d9502d509`.
-Provenance records 752 source files, source digest
-`6a56f342e2f046effcd685a3a23a6eee6744e6d11e4e51f4b29e550a76593a85`,
+`218c6c145c413275d2d6e8a1d349319ef4080070f7fc9cf3f662c18e3704b329`.
+Provenance records 754 source files, source digest
+`81f21a34e4957d9c783c920c1bf343e37a1f71d639e18bc59756a8dcf84e0291`,
 Go 1.26.7 on darwin/arm64, and the exact clean revision.
 
 ## Reproduction
