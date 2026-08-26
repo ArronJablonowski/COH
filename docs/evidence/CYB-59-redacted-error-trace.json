@@ -1,0 +1,78 @@
+{
+  "schema_version": "coh.redacted-provider-error-examples/v1",
+  "issue": "CYB-59",
+  "requirements": ["FR-034", "FR-037", "FR-038"],
+  "provider_kind": "llama_cpp",
+  "redaction": {
+    "provider_bodies_retained": false,
+    "credentials_retained": false,
+    "prompt_or_tool_values_retained": false,
+    "deployment_attestor_detail_retained": false
+  },
+  "examples": [
+    {
+      "condition": "unknown provider response member",
+      "code": "invalid_input",
+      "reason": "vendor_document_malformed",
+      "retryable": false,
+      "chat_dispatched": true
+    },
+    {
+      "condition": "qualified GGUF or launch route not attested",
+      "code": "denied",
+      "reason": "local_route_attestation_failed",
+      "retryable": false,
+      "chat_dispatched": false
+    },
+    {
+      "condition": "model, build, template, or context identity drift",
+      "code": "denied",
+      "reason": "observed_identity_drift",
+      "retryable": false,
+      "chat_dispatched": false
+    },
+    {
+      "condition": "tool calling combined with structured-output grammar",
+      "code": "unsupported",
+      "reason": "tools_with_structured_output",
+      "retryable": false,
+      "chat_dispatched": false
+    },
+    {
+      "condition": "active request cancellation",
+      "code": "canceled",
+      "reason": "request_canceled",
+      "retryable": false,
+      "terminal_message": "model response stream was canceled"
+    },
+    {
+      "condition": "request deadline exceeded",
+      "code": "timeout",
+      "reason": "request_timeout",
+      "retryable": false,
+      "terminal_message": "model response stream timed out"
+    },
+    {
+      "condition": "provider outage",
+      "code": "unavailable",
+      "reason": "vendor_unavailable",
+      "retryable": true,
+      "provider_body": "[not retained]"
+    },
+    {
+      "condition": "SSE ended without usage and DONE terminal",
+      "code": "unavailable",
+      "reason": "stream_terminal_missing",
+      "retryable": true,
+      "terminal_message": "model response stream failed"
+    },
+    {
+      "condition": "generation reached maximum output tokens",
+      "outcome": "uncertain",
+      "code": "unavailable",
+      "reason": "response_incomplete",
+      "retryable": false,
+      "message": "model response reached its output limit"
+    }
+  ]
+}
