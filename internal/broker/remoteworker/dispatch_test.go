@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	workercontract "github.com/ArronJablonowski/COH/internal/domain/remoteworker"
 )
@@ -146,9 +147,64 @@ func TestLeaseCapabilityAndAuditFailures(t *testing.T) {
 		t.Fatalf("capacity err=%v", err)
 	}
 	request, authority = leaseFixture(record, enrollmentAuthority.Transport, clock.Now())
+	capabilityTests := []struct {
+		name   string
+		mutate func(*workercontract.LeaseRequest, *workercontract.LeaseAuthority)
+		reason string
+	}{
+		{"isolation", func(request *workercontract.LeaseRequest, authority *workercontract.LeaseAuthority) {
+			request.Scope.IsolationClass, authority.Scope.IsolationClass = "native_restricted", "native_restricted"
+		}, "worker_isolation_mismatch"},
+		{"tier", func(request *workercontract.LeaseRequest, authority *workercontract.LeaseAuthority) {
+			request.Scope.RequiredTier, authority.Scope.RequiredTier = "T3", "T3"
+			authority.Worker.Attestation.MaximumActionTier = "T2"
+		}, "worker_isolation_mismatch"},
+		{"registry", func(request *workercontract.LeaseRequest, authority *workercontract.LeaseAuthority) {
+			request.Scope.ToolRegistryDigest, authority.Scope.ToolRegistryDigest = digest("old-registry"), digest("old-registry")
+		}, "worker_isolation_mismatch"},
+		{"network", func(request *workercontract.LeaseRequest, authority *workercontract.LeaseAuthority) {
+			request.Scope.NetworkMode, authority.Scope.NetworkMode = "brokered_egress", "brokered_egress"
+			authority.Worker.Attestation.NetworkModes = []string{"none"}
+		}, "worker_capacity_exceeded"},
+	}
+	for _, test := range capabilityTests {
+		t.Run(test.name, func(t *testing.T) {
+			changedRequest, changedAuthority := request, authority
+			test.mutate(&changedRequest, &changedAuthority)
+			if _, _, err := broker.Issue(context.Background(), changedRequest, changedAuthority); workercontract.Reason(err) != test.reason {
+				t.Fatalf("reason=%q err=%v", workercontract.Reason(err), err)
+			}
+		})
+	}
+	request, authority = leaseFixture(record, enrollmentAuthority.Transport, clock.Now())
 	audit.fail = true
 	handle, _, err := broker.Issue(context.Background(), request, authority)
 	if workercontract.Reason(err) != "audit_unavailable" || handle != nil {
 		t.Fatalf("handle=%v err=%v", handle, err)
+	}
+}
+
+func TestLeaseEntropyAndStoreFailure(t *testing.T) {
+	baseBroker, memory, audit, clock := setupBroker(t)
+	record, enrollmentAuthority, _ := enrollWorker(t, baseBroker, clock)
+	request, authority := leaseFixture(record, enrollmentAuthority.Transport, clock.Now())
+	entropyBroker, err := NewWithDependencies(memory, audit, clock, errorReader{}, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if handle, _, issueErr := entropyBroker.Issue(context.Background(), request, authority); handle != nil ||
+		workercontract.Reason(issueErr) != "entropy_unavailable" {
+		t.Fatalf("entropy handle=%v err=%v", handle, issueErr)
+	}
+	store := &failingStore{MemoryStore: memory, failLeaseCreate: true}
+	storeBroker, err := NewWithDependencies(store, audit, clock, &repeatReader{value: 33}, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.IdempotencyKey = "store-failure"
+	request.RequestID = "018f47a6-4b2c-7a1e-8a12-123456789ac2"
+	if handle, _, issueErr := storeBroker.Issue(context.Background(), request, authority); handle != nil ||
+		workercontract.Reason(issueErr) != "worker_store_unavailable" {
+		t.Fatalf("store handle=%v err=%v", handle, issueErr)
 	}
 }

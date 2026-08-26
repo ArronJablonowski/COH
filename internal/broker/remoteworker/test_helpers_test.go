@@ -82,6 +82,22 @@ func (reader *repeatReader) Read(output []byte) (int, error) {
 	return len(output), nil
 }
 
+type errorReader struct{}
+
+func (errorReader) Read([]byte) (int, error) { return 0, errors.New("entropy unavailable") }
+
+type failingStore struct {
+	*MemoryStore
+	failLeaseCreate bool
+}
+
+func (store *failingStore) CreateLease(ctx context.Context, record LeaseRecord) (LeaseCreateResult, error) {
+	if store.failLeaseCreate {
+		return "", errors.New("store unavailable")
+	}
+	return store.MemoryStore.CreateLease(ctx, record)
+}
+
 func enrollWorker(t *testing.T, broker *Broker, clock *fakeClock) (workercontract.WorkerRecord, workercontract.EnrollmentAuthority, ed25519.PrivateKey) {
 	t.Helper()
 	privateKey := ed25519.NewKeyFromSeed([]byte(strings.Repeat("w", ed25519.SeedSize)))
