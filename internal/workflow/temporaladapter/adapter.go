@@ -65,7 +65,7 @@ func New(backend temporalClient, config Config) (*Adapter, error) {
 	}
 	histories := make(map[string]RetainedHistory, len(config.Histories))
 	for id, history := range config.Histories {
-		if !taskQueuePattern.MatchString(id) || history.Definition != core.OperationWorkflowV1 || history.Version != workflowVersion || !validDigest(history.Digest) || len(history.JSON) == 0 {
+		if !taskQueuePattern.MatchString(id) || history.Definition != core.OperationWorkflowV1 && history.Definition != core.AgentLoopWorkflowV1 || history.Version != workflowVersion || !validDigest(history.Digest) || len(history.JSON) == 0 {
 			return nil, engineError(core.EngineInvalidInput, "new", "histories", "retained history registration is invalid")
 		}
 		copyHistory := history

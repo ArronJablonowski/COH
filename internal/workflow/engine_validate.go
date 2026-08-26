@@ -15,8 +15,11 @@ func ValidateWorkflowStart(value WorkflowStart) error {
 	if err := validateCase("start", "operation.case", value.Operation.Case, false); err != nil {
 		return engineInvalid("start", "operation.case", "organization, tenant, and case must be UUIDv7 identifiers")
 	}
-	if !uuidV7Pattern.MatchString(value.Operation.ID) || !tokenPattern.MatchString(value.Operation.Kind) || value.Operation.Version != OperationWorkflowV1 {
+	if !uuidV7Pattern.MatchString(value.Operation.ID) || !tokenPattern.MatchString(value.Operation.Kind) || value.Operation.Version != OperationWorkflowV1 && value.Operation.Version != AgentLoopWorkflowV1 {
 		return engineInvalid("start", "operation", "operation identity, kind, and registered version are required")
+	}
+	if value.Operation.Version == AgentLoopWorkflowV1 && value.Operation.Kind != "agent_loop" || value.Operation.Kind == "agent_loop" && value.Operation.Version != AgentLoopWorkflowV1 {
+		return engineInvalid("start", "operation", "agent loop kind and workflow definition must be bound")
 	}
 	if !digestPattern.MatchString(value.InputDigest) {
 		return engineInvalid("start", "input_digest", "expected a sha256 digest")

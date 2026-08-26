@@ -10,10 +10,12 @@ for path in \
   "$root/internal/workflow/engine_validate.go" \
   "$root/internal/workflow/engine_guard.go" \
   "$root/internal/workflow/temporaladapter/adapter.go" \
+  "$root/internal/workflow/temporaladapter/activities.go" \
   "$root/internal/workflow/temporaladapter/runtime.go" \
   "$root/internal/workflow/temporaladapter/workflow.go" \
   "$root/internal/workflow/temporaladapter/replay.go" \
   "$root/internal/workflow/temporaladapter/testdata/coh-operation-v1-history.json" \
+  "$root/internal/workflow/temporaladapter/testdata/coh-agent-loop-v1-history.json" \
   "$root/docs/design/temporal-workflow-engine.md"; do
   [[ -f "$path" ]] || {
     printf 'error: Temporal adapter input is missing: %s\n' "$path" >&2
@@ -32,7 +34,7 @@ source "$root/scripts/lib/go_ssd_env.sh"
 "$COH_GO_ROOT/bin/go" test -count=1 -race \
   "$root/internal/workflow" \
   "$root/internal/workflow/temporaladapter"
-"$COH_GO_ROOT/bin/go" test -count=5 -run 'TestRetainedHistoryReplay|TestOperationWorkflow' \
+"$COH_GO_ROOT/bin/go" test -count=5 -run 'Test(RetainedHistoryReplay|OperationWorkflow|AgentLoop)' \
   "$root/internal/workflow/temporaladapter"
 "$COH_GO_ROOT/bin/go" vet \
   "$root/internal/workflow" \
@@ -40,4 +42,4 @@ source "$root/scripts/lib/go_ssd_env.sh"
 "$root/scripts/check_go_architecture.sh"
 
 printf '%s\n' \
-  'temporal-adapter summary: operations=5 workflow_versions=1 retained_histories=1 replay_runs=5 history_payload=identifiers-and-hashes typed_errors=7 architecture_violations=0 failures=0'
+  'temporal-adapter summary: operations=5 workflow_definitions=2 workflow_versions=1 retained_histories=2 replay_runs=10 history_payload=identifiers-and-hashes typed_errors=7 architecture_violations=0 failures=0'

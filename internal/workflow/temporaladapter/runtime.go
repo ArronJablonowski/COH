@@ -29,9 +29,10 @@ func (adapter *Adapter) Start(ctx context.Context, request core.WorkflowStart) (
 		WorkflowIDReusePolicy:                    enumspb.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
 		WorkflowExecutionErrorWhenAlreadyStarted: true,
 	}
-	run, err := adapter.client.ExecuteWorkflow(ctx, options, core.OperationWorkflowV1, inputFromStart(request, startDigest))
+	definition := request.Operation.Version
+	run, err := adapter.client.ExecuteWorkflow(ctx, options, definition, inputFromStart(request, startDigest))
 	if err == nil {
-		return core.WorkflowHandle{Target: core.WorkflowTarget{Case: request.Operation.Case, WorkflowID: run.GetID(), RunID: run.GetRunID()}, Definition: core.OperationWorkflowV1, Version: workflowVersion}, nil
+		return core.WorkflowHandle{Target: core.WorkflowTarget{Case: request.Operation.Case, WorkflowID: run.GetID(), RunID: run.GetRunID()}, Definition: definition, Version: workflowVersion}, nil
 	}
 	var duplicate *serviceerror.WorkflowExecutionAlreadyStarted
 	if !errors.As(err, &duplicate) {

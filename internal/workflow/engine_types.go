@@ -5,6 +5,7 @@ import "github.com/ArronJablonowski/COH/internal/domain"
 const (
 	WorkflowContractVersion = "coh.workflow/v1"
 	OperationWorkflowV1     = "coh.operation.v1"
+	AgentLoopWorkflowV1     = "coh.agent-loop.v1"
 )
 
 type WorkflowState string

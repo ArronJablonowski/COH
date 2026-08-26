@@ -174,6 +174,57 @@ func TestOperationWorkflowDeniesChangedSignalReplay(t *testing.T) {
 	}
 }
 
+func TestAgentLoopWorkflowUsesVersionedDefinition(t *testing.T) {
+	request := testStart()
+	request.Operation.Kind = "agent_loop"
+	request.Operation.Version = core.AgentLoopWorkflowV1
+	startDigest, _ := digestValue(request)
+	var suite testsuite.WorkflowTestSuite
+	environment := suite.NewTestWorkflowEnvironment()
+	environment.RegisterWorkflowWithOptions(AgentLoopWorkflow, temporalworkflow.RegisterOptions{Name: core.AgentLoopWorkflowV1})
+	environment.RegisterDelayedCallback(func() {
+		environment.SignalWorkflow(signalLifecycle, lifecycleSignal{IdempotencyDigest: digestBytes([]byte("complete-agent-loop")), RequestDigest: testDigest, Kind: "complete", PayloadDigest: testDigest})
+	}, time.Second)
+	environment.ExecuteWorkflow(core.AgentLoopWorkflowV1, inputFromStart(request, startDigest))
+	if err := environment.GetWorkflowError(); err != nil {
+		t.Fatal(err)
+	}
+	var result core.WorkflowSnapshot
+	if err := environment.GetWorkflowResult(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Definition != core.AgentLoopWorkflowV1 || result.State != core.WorkflowCompleted || result.Sequence != 1 {
+		t.Fatalf("result=%+v", result)
+	}
+	backend := &fakeTemporalClient{}
+	adapter, err := New(backend, Config{TaskQueue: "coh-workstation"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := adapter.Start(context.Background(), request)
+	if err != nil || handle.Definition != core.AgentLoopWorkflowV1 || backend.definition != core.AgentLoopWorkflowV1 {
+		t.Fatalf("handle=%+v definition=%v err=%v", handle, backend.definition, err)
+	}
+	wrongKind := request
+	wrongKind.Operation.Kind = "analysis"
+	if _, err := adapter.Start(context.Background(), wrongKind); core.EngineCode(err) != core.EngineInvalidInput {
+		t.Fatalf("agent-loop definition without bound kind err=%v", err)
+	}
+	wrongDefinition := request
+	wrongDefinition.Operation.Version = core.OperationWorkflowV1
+	if _, err := adapter.Start(context.Background(), wrongDefinition); core.EngineCode(err) != core.EngineInvalidInput {
+		t.Fatalf("agent-loop kind without bound definition err=%v", err)
+	}
+	mismatched := suite.NewTestWorkflowEnvironment()
+	mismatched.RegisterWorkflowWithOptions(AgentLoopWorkflow, temporalworkflow.RegisterOptions{Name: core.AgentLoopWorkflowV1})
+	badInput := inputFromStart(request, startDigest)
+	badInput.Version = core.OperationWorkflowV1
+	mismatched.ExecuteWorkflow(core.AgentLoopWorkflowV1, badInput)
+	if err := mismatched.GetWorkflowError(); err == nil || !strings.Contains(err.Error(), "workflow definition mismatch") {
+		t.Fatalf("mismatched workflow input err=%v", err)
+	}
+}
+
 func TestRetainedHistoryReplay(t *testing.T) {
 	history, err := os.ReadFile("testdata/coh-operation-v1-history.json")
 	if err != nil {
@@ -206,6 +257,24 @@ func TestRetainedHistoryReplay(t *testing.T) {
 	}
 }
 
+func TestAgentLoopRetainedHistoryReplay(t *testing.T) {
+	history, err := os.ReadFile("testdata/coh-agent-loop-v1-history.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := digestBytes(history)
+	adapter, err := New(&fakeTemporalClient{}, Config{TaskQueue: "coh-workstation", Histories: map[string]RetainedHistory{
+		"agent-loop-v1": {Definition: core.AgentLoopWorkflowV1, Version: workflowVersion, Digest: digest, JSON: history},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := adapter.Replay(context.Background(), core.WorkflowReplay{ContractVersion: core.WorkflowContractVersion, FixtureID: "agent-loop-v1"})
+	if err != nil || !result.Replayed || result.Definition != core.AgentLoopWorkflowV1 || result.HistoryDigest != digest {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+}
+
 func testStart() core.WorkflowStart {
 	return core.WorkflowStart{
 		ContractVersion: core.WorkflowContractVersion,
@@ -230,10 +299,12 @@ type fakeTemporalClient struct {
 	snapshot     core.WorkflowSnapshot
 	signal       lifecycleSignal
 	canceled     bool
+	definition   interface{}
 }
 
-func (fake *fakeTemporalClient) ExecuteWorkflow(context.Context, client.StartWorkflowOptions, interface{}, ...interface{}) (client.WorkflowRun, error) {
+func (fake *fakeTemporalClient) ExecuteWorkflow(_ context.Context, _ client.StartWorkflowOptions, definition interface{}, _ ...interface{}) (client.WorkflowRun, error) {
 	fake.executeCalls++
+	fake.definition = definition
 	if fake.executeErr != nil {
 		return nil, fake.executeErr
 	}

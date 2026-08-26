@@ -24,8 +24,15 @@
         "workflow_version": { "$ref": "#/$defs/version" },
         "policy_digest": { "$ref": "#/$defs/digest" },
         "provider_route": { "$ref": "#/$defs/token" },
-        "status": { "enum": ["queued", "running", "succeeded", "failed", "cancelled", "uncertain"] },
-        "budget_units": { "type": "integer", "minimum": 1, "maximum": 1000000000 }
+        "status": { "enum": ["queued", "running", "waiting", "succeeded", "failed", "denied", "canceled", "cancelled", "timeout", "uncertain"] },
+        "budget_units": { "type": "integer", "minimum": 1, "maximum": 1000000000 },
+        "contract_version": { "type": "string", "pattern": "^coh[.]agent-loop/v1$" },
+        "current_step_id": { "$ref": "#/$defs/uuid_v7" },
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "input_refs": { "$ref": "#/$defs/digest_set" },
+        "output_refs": { "$ref": "#/$defs/digest_set" },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "updated_at": { "$ref": "#/$defs/timestamp" }
       },
       "additionalProperties": false
     },
@@ -37,10 +44,16 @@
         "parent_task_id": { "oneOf": [{ "$ref": "#/$defs/uuid_v7" }, { "type": "null" }] },
         "attempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
         "lease_id": { "oneOf": [{ "$ref": "#/$defs/uuid_v7" }, { "type": "null" }] },
-        "status": { "enum": ["pending", "leased", "running", "succeeded", "failed", "cancelled", "uncertain"] },
+        "status": { "enum": ["pending", "leased", "running", "dispatching", "succeeded", "failed", "denied", "canceled", "cancelled", "timeout", "uncertain"] },
         "deadline": { "$ref": "#/$defs/timestamp" },
         "input_refs": { "$ref": "#/$defs/digest_set" },
-        "output_refs": { "$ref": "#/$defs/digest_set" }
+        "output_refs": { "$ref": "#/$defs/digest_set" },
+        "contract_version": { "type": "string", "pattern": "^coh[.]agent-loop/v1$" },
+        "activity_kind": { "enum": ["planning", "authorized_action"] },
+        "intent_digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "string", "maxLength": 0 }] },
+        "receipt_digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "string", "maxLength": 0 }] },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "updated_at": { "$ref": "#/$defs/timestamp" }
       },
       "additionalProperties": false
     },

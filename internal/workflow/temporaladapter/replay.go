@@ -32,7 +32,11 @@ func (adapter *Adapter) Replay(ctx context.Context, request core.WorkflowReplay)
 		return core.WorkflowReplayResult{}, engineError(core.EngineDenied, "replay", "history", "retained history is invalid")
 	}
 	replayer := worker.NewWorkflowReplayer()
-	replayer.RegisterWorkflowWithOptions(OperationWorkflow, workflow.RegisterOptions{Name: core.OperationWorkflowV1})
+	if history.Definition == core.AgentLoopWorkflowV1 {
+		replayer.RegisterWorkflowWithOptions(AgentLoopWorkflow, workflow.RegisterOptions{Name: core.AgentLoopWorkflowV1})
+	} else {
+		replayer.RegisterWorkflowWithOptions(OperationWorkflow, workflow.RegisterOptions{Name: core.OperationWorkflowV1})
+	}
 	if err := replayer.ReplayWorkflowHistory(nil, parsed); err != nil {
 		return core.WorkflowReplayResult{}, engineError(core.EngineConflict, "replay", "history", "workflow history is not replay-compatible")
 	}
