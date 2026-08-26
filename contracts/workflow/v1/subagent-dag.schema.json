@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/workflow/v1/subagent-dag.schema.json",
+  "title": "COH bounded subagent DAG v1",
+  "oneOf": [
+    {"$ref": "#/$defs/graph"},
+    {"$ref": "#/$defs/decision"},
+    {"$ref": "#/$defs/structured_result"}
+  ],
+  "$defs": {
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"}
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": {"$ref": "#/$defs/digest"},
+        "media_type": {"const": "application/json"},
+        "classification": {"$ref": "#/$defs/token"},
+        "length": {"type": "integer", "minimum": 1, "maximum": 1073741824}
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "required": ["maximum_depth", "maximum_fanout", "maximum_concurrency", "maximum_tasks"],
+      "properties": {
+        "maximum_depth": {"type": "integer", "minimum": 1, "maximum": 32},
+        "maximum_fanout": {"type": "integer", "minimum": 1, "maximum": 64},
+        "maximum_concurrency": {"type": "integer", "minimum": 1, "maximum": 64},
+        "maximum_tasks": {"type": "integer", "minimum": 1, "maximum": 512}
+      },
+      "additionalProperties": false
+    },
+    "claim": {
+      "type": "object",
+      "required": ["claim_id", "statement_digest", "evidence_refs", "counterevidence_refs", "confidence_basis_points", "unknown_digests", "recommended_next_step_digests"],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/uuid_v7"},
+        "statement_digest": {"$ref": "#/$defs/digest"},
+        "evidence_refs": {"$ref": "#/$defs/nonempty_digest_set"},
+        "counterevidence_refs": {"$ref": "#/$defs/digest_set"},
+        "confidence_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "unknown_digests": {"$ref": "#/$defs/digest_set"},
+        "recommended_next_step_digests": {"$ref": "#/$defs/nonempty_digest_set"}
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": ["finding_id", "summary_digest", "status", "severity", "evidence_refs", "counterevidence_refs", "confidence_basis_points", "unknown_digests", "recommended_next_step_digests"],
+      "properties": {
+        "finding_id": {"$ref": "#/$defs/uuid_v7"},
+        "summary_digest": {"$ref": "#/$defs/digest"},
+        "status": {"enum": ["observed", "suspected", "confirmed", "rejected"]},
+        "severity": {"enum": ["informational", "low", "medium", "high", "critical"]},
+        "evidence_refs": {"$ref": "#/$defs/nonempty_digest_set"},
+        "counterevidence_refs": {"$ref": "#/$defs/digest_set"},
+        "confidence_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "unknown_digests": {"$ref": "#/$defs/digest_set"},
+        "recommended_next_step_digests": {"$ref": "#/$defs/nonempty_digest_set"}
+      },
+      "additionalProperties": false
+    },
+    "structured_result": {
+      "type": "object",
+      "anyOf": [
+        {"properties": {"claims": {"minItems": 1}}},
+        {"properties": {"findings": {"minItems": 1}}}
+      ],
+      "required": ["task_id", "role", "artifact", "claims", "findings", "completeness", "negative_result", "runtime_digest", "result_digest"],
+      "properties": {
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "role": {"$ref": "#/$defs/role"},
+        "artifact": {"$ref": "#/$defs/artifact"},
+        "claims": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/claim"}},
+        "findings": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/finding"}},
+        "completeness": {"enum": ["complete", "partial", "empty", "uncertain"]},
+        "negative_result": {"type": "boolean"},
+        "runtime_digest": {"$ref": "#/$defs/digest"},
+        "result_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "cancellation_ack": {
+      "type": "object",
+      "required": ["task_id", "outcome", "evidence_digest", "provenance_digest"],
+      "properties": {
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "outcome": {"enum": ["canceled", "already_terminal", "uncertain"]},
+        "evidence_digest": {"$ref": "#/$defs/digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "cancellation_record": {
+      "type": "object",
+      "required": ["cancellation_id", "root_task_id", "reason_digest", "target_task_ids", "acknowledgments", "status", "intent_digest", "idempotency_digest", "created_at", "updated_at", "revision"],
+      "properties": {
+        "cancellation_id": {"$ref": "#/$defs/uuid_v7"},
+        "root_task_id": {"$ref": "#/$defs/uuid_v7"},
+        "reason_digest": {"$ref": "#/$defs/digest"},
+        "target_task_ids": {"type": "array", "minItems": 1, "maxItems": 512, "uniqueItems": true, "items": {"$ref": "#/$defs/uuid_v7"}},
+        "acknowledgments": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/cancellation_ack"}},
+        "status": {"enum": ["active", "completed", "uncertain"]},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "idempotency_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}
+      },
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "required": ["task_id", "parent_task_ids", "role", "status", "depth", "input_refs", "assignment_digest", "budget_reservation_digest", "budget_settlement_digest", "result", "cancellation", "previous_provenance_digest", "provenance_digest", "created_at", "deadline", "updated_at", "revision"],
+      "properties": {
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "parent_task_ids": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"$ref": "#/$defs/uuid_v7"}},
+        "role": {"$ref": "#/$defs/role"},
+        "status": {"enum": ["pending", "dispatching", "succeeded", "failed", "denied", "canceled", "timeout", "uncertain"]},
+        "depth": {"type": "integer", "minimum": 0, "maximum": 32},
+        "input_refs": {"$ref": "#/$defs/digest_set"},
+        "assignment_digest": {"$ref": "#/$defs/digest"},
+        "budget_reservation_digest": {"$ref": "#/$defs/digest"},
+        "budget_settlement_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "result": {"oneOf": [{"$ref": "#/$defs/structured_result"}, {"type": "null"}]},
+        "cancellation": {"oneOf": [{"$ref": "#/$defs/cancellation_ack"}, {"type": "null"}]},
+        "previous_provenance_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "deadline": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["parent_task_id", "child_task_id"],
+      "properties": {
+        "parent_task_id": {"$ref": "#/$defs/uuid_v7"},
+        "child_task_id": {"$ref": "#/$defs/uuid_v7"}
+      },
+      "additionalProperties": false
+    },
+    "receipt": {
+      "type": "object",
+      "required": ["operation", "idempotency_digest", "intent_digest", "task_id", "revision"],
+      "properties": {
+        "operation": {"enum": ["create_graph", "delegate", "execute", "cancel", "recover"]},
+        "idempotency_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}
+      },
+      "additionalProperties": false
+    },
+    "graph": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "graph_id", "run_id", "case", "actor_id", "actor_revision", "policy_digest", "provider_route", "limits", "budget_plan_digest", "tasks", "edges", "receipts", "cancellations", "previous_provenance_digest", "provenance_digest", "created_at", "deadline", "updated_at", "revision"],
+      "properties": {
+        "schema_version": {"const": "coh.subagent-dag/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "graph_id": {"$ref": "#/$defs/uuid_v7"},
+        "run_id": {"$ref": "#/$defs/uuid_v7"},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "provider_route": {"$ref": "#/$defs/token"},
+        "limits": {"$ref": "#/$defs/limits"},
+        "budget_plan_digest": {"$ref": "#/$defs/digest"},
+        "tasks": {"type": "array", "minItems": 1, "maxItems": 512, "items": {"$ref": "#/$defs/task"}},
+        "edges": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/$defs/edge"}},
+        "receipts": {"type": "array", "minItems": 1, "maxItems": 2048, "items": {"$ref": "#/$defs/receipt"}},
+        "cancellations": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/cancellation_record"}},
+        "previous_provenance_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "deadline": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "decision_id", "decision_digest", "intent_digest", "operation", "graph_id", "task_id", "case", "actor_id", "actor_revision", "policy_digest", "revocation_digest", "outcome", "reason_code", "issued_at", "expires_at", "revision"],
+      "properties": {
+        "schema_version": {"const": "coh.subagent-dag-decision/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "decision_id": {"$ref": "#/$defs/uuid_v7"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "operation": {"enum": ["create_graph", "delegate", "execute", "cancel", "recover"]},
+        "graph_id": {"$ref": "#/$defs/uuid_v7"},
+        "task_id": {"$ref": "#/$defs/uuid_v7"},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "revocation_digest": {"$ref": "#/$defs/digest"},
+        "outcome": {"enum": ["allow", "deny"]},
+        "reason_code": {"$ref": "#/$defs/token"},
+        "issued_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}
+      },
+      "additionalProperties": false
+    },
+    "role": {"enum": ["coordinator", "alert_triage", "siem_query", "timeline_correlation", "hunting", "cti_attack", "detection", "vulnerability", "validation", "ir_planner", "reviewer", "report_writer"]},
+    "digest_set": {"type": "array", "maxItems": 512, "uniqueItems": true, "items": {"$ref": "#/$defs/digest"}},
+    "nonempty_digest_set": {"type": "array", "minItems": 1, "maxItems": 512, "uniqueItems": true, "items": {"$ref": "#/$defs/digest"}},
+    "uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{9}Z$"}
+  }
+}

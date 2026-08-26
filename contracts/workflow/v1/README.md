@@ -127,3 +127,15 @@ provenance. Model-facing skill-resource and memory adapters return only the
 verified sanitized artifact produced by this boundary. See
 `../../../docs/design/hostile-content-retrieval.md` for authority separation,
 failure behavior, integration, restart recovery, deployment, and rollback.
+
+## Bounded subagent DAG
+
+`subagent-dag.schema.json` freezes CYB-74 / COH-E09-05 graph, task, edge,
+cancellation, authorization-decision, and structured-result records. One
+case-scoped durable DAG enforces exact depth, fanout, concurrency, total-task,
+deadline, run-budget, idempotency, and chained-provenance bounds across the
+closed 12-role analytical catalog. Every result contains evidence,
+counterevidence, confidence, unknowns, and recommended next steps, while the
+child runtime receives no authority or execution capability. See
+`../../../docs/design/bounded-subagent-dag.md` for scheduling, cancellation,
+crash recovery, durable storage, rollout, rollback, and verification behavior.
