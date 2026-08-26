@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/worker/v1/signed-capability-attestation.schema.json",
+  "title": "COH signed remote-worker capability attestation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "attestation", "attestation_digest", "attestation_key_id", "attestation_key_revision", "signature_algorithm", "signature"],
+  "properties": {
+    "schema_version": {"const": "coh.signed-remote-worker-capability/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "attestation": {"$ref": "capability-attestation.schema.json"},
+    "attestation_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "attestation_key_id": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "attestation_key_revision": {"type": "integer", "minimum": 1},
+    "signature_algorithm": {"const": "ed25519"},
+    "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+  }
+}

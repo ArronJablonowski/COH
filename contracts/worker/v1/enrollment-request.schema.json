@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/worker/v1/enrollment-request.schema.json",
+  "title": "COH remote-worker enrollment request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "scope", "worker_id", "enrollment_nonce", "signed_attestation"],
+  "properties": {
+    "schema_version": {"const": "coh.remote-worker-enrollment/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "request_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["organization_id", "tenant_id"],
+      "properties": {
+        "organization_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+        "tenant_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"}
+      }
+    },
+    "worker_id": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "enrollment_nonce": {"type": "string", "pattern": "^[A-Za-z0-9_-]{22,86}$"},
+    "signed_attestation": {"$ref": "signed-capability-attestation.schema.json"}
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/worker/v1/decision.schema.json",
+  "title": "COH remote-worker decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "event", "outcome", "reason_code", "occurred_at", "decision_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.remote-worker-decision/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "event": {"enum": ["worker_enrollment", "runner_lease_issuance", "runner_dispatch", "runner_dispatch_completion", "worker_revocation", "certificate_revocation", "attestation_revocation", "lease_revocation"]},
+    "outcome": {"enum": ["allowed", "invalid", "denied", "canceled", "timeout", "unavailable"]},
+    "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,127}$"},
+    "request_id": {"type": "string"}, "lease_id": {"type": "string"},
+    "organization_id": {"type": "string"}, "tenant_id": {"type": "string"}, "case_id": {"type": "string"},
+    "actor_id": {"type": "string"}, "actor_revision": {"type": "integer", "minimum": 1}, "task_id": {"type": "string"},
+    "action_digest": {"type": "string"}, "target_scope_digest": {"type": "string"}, "tool_digest": {"type": "string"},
+    "operation": {"type": "string"}, "required_tier": {"type": "string"}, "isolation_class": {"type": "string"},
+    "worker_id": {"type": "string"}, "worker_revision": {"type": "integer", "minimum": 1},
+    "transport_identity_digest": {"type": "string"}, "certificate_fingerprint": {"type": "string"},
+    "certificate_revision": {"type": "integer", "minimum": 1}, "attestation_digest": {"type": "string"},
+    "attestation_key_revision": {"type": "integer", "minimum": 1}, "attestation_key_digest": {"type": "string"},
+    "authorization_decision_digest": {"type": "string"}, "policy_decision_digest": {"type": "string"},
+    "approval_decision_digest": {"type": "string"}, "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"}, "occurred_at": {"type": "string", "format": "date-time"},
+    "decision_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

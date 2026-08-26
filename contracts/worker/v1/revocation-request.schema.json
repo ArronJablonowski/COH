@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/worker/v1/revocation-request.schema.json",
+  "title": "COH remote-worker revocation request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "request_id", "kind", "scope", "reason"],
+  "properties": {
+    "schema_version": {"const": "coh.remote-worker-revocation/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "request_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "kind": {"enum": ["worker", "certificate", "attestation", "lease"]},
+    "scope": {
+      "type": "object", "additionalProperties": false, "required": ["organization_id", "tenant_id"],
+      "properties": {
+        "organization_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+        "tenant_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"}
+      }
+    },
+    "worker_id": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "lease_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "reason": {"enum": ["operator_revoked", "certificate_revoked", "attestation_revoked", "worker_revoked", "task_canceled", "emergency_stop", "audit_unavailable"]}
+  },
+  "allOf": [
+    {"if": {"properties": {"kind": {"const": "lease"}}}, "then": {"required": ["lease_id"], "not": {"required": ["worker_id"]}}},
+    {"if": {"properties": {"kind": {"enum": ["worker", "certificate", "attestation"]}}}, "then": {"required": ["worker_id"], "not": {"required": ["lease_id"]}}}
+  ]
+}

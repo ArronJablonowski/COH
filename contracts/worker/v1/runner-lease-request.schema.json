@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/worker/v1/runner-lease-request.schema.json",
+  "title": "COH runner lease request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "scope", "worker_id", "requested_ttl_seconds"],
+  "properties": {
+    "schema_version": {"const": "coh.runner-lease/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "request_id": {"$ref": "#/$defs/uuid7"},
+    "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["organization_id", "tenant_id", "case_id", "actor_id", "task_id", "action_digest", "target_digests", "tool_name", "tool_version", "tool_digest", "tool_registry_digest", "operation", "required_tier", "isolation_class", "resources", "network_mode", "resource_policy_digest", "network_policy_digest"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid7"}, "tenant_id": {"$ref": "#/$defs/uuid7"},
+        "case_id": {"$ref": "#/$defs/uuid7"}, "actor_id": {"$ref": "#/$defs/uuid7"}, "task_id": {"$ref": "#/$defs/uuid7"},
+        "action_digest": {"$ref": "#/$defs/digest"},
+        "target_digests": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/digest"}},
+        "tool_name": {"$ref": "#/$defs/token"}, "tool_version": {"$ref": "#/$defs/token"}, "tool_digest": {"$ref": "#/$defs/digest"},
+        "tool_registry_digest": {"$ref": "#/$defs/digest"},
+        "operation": {"$ref": "#/$defs/token"}, "required_tier": {"enum": ["T0", "T1", "T2", "T3"]},
+        "isolation_class": {"enum": ["native_restricted", "oci_sandbox", "remote_isolated"]},
+        "resources": {"$ref": "capability-attestation.schema.json#/$defs/resources"},
+        "network_mode": {"enum": ["brokered_egress", "none"]},
+        "resource_policy_digest": {"$ref": "#/$defs/digest"}, "network_policy_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "worker_id": {"$ref": "#/$defs/token"},
+    "requested_ttl_seconds": {"type": "integer", "minimum": 1, "maximum": 300}
+  },
+  "$defs": {
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"}
+  }
+}

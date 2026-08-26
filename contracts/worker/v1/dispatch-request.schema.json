@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/worker/v1/dispatch-request.schema.json",
+  "title": "COH runner dispatch request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "lease_id", "scope", "worker_id"],
+  "properties": {
+    "schema_version": {"const": "coh.runner-dispatch/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "lease_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "scope": {"$ref": "runner-lease-request.schema.json#/properties/scope"},
+    "worker_id": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"}
+  }
+}
