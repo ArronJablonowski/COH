@@ -1,0 +1,30 @@
+{
+  "schema_version": "coh.approval-fingerprint-denial-corpus/v1",
+  "cases": [
+    {"name":"unsupported_version","reason":"fingerprint_contract"},
+    {"name":"malformed_manifest_digest","reason":"fingerprint_contract"},
+    {"name":"malformed_policy_decision_digest","reason":"fingerprint_contract"},
+    {"name":"policy_decision_digest_tamper","reason":"policy_decision_digest"},
+    {"name":"revoked_action_signer","reason":"manifest_authority"},
+    {"name":"policy_denied","reason":"policy_not_allowed"},
+    {"name":"predispatch_decision","reason":"policy_phase"},
+    {"name":"approval_not_required","reason":"approval_not_required"},
+    {"name":"manifest_binding_mismatch","reason":"manifest_binding"},
+    {"name":"policy_binding_mismatch","reason":"policy_binding"},
+    {"name":"actor_binding_mismatch","reason":"actor_binding"},
+    {"name":"organization_scope_mismatch","reason":"scope_binding"},
+    {"name":"tenant_scope_mismatch","reason":"scope_binding"},
+    {"name":"case_scope_mismatch","reason":"scope_binding"},
+    {"name":"future_manifest","reason":"manifest_not_current"},
+    {"name":"expired_manifest","reason":"manifest_not_current"},
+    {"name":"target_change","reason":"fingerprint_mismatch"},
+    {"name":"argument_change","reason":"fingerprint_mismatch"},
+    {"name":"credential_change","reason":"fingerprint_mismatch"},
+    {"name":"tool_change","reason":"fingerprint_mismatch"},
+    {"name":"roe_change","reason":"fingerprint_mismatch"},
+    {"name":"validity_change","reason":"fingerprint_mismatch"},
+    {"name":"use_count_change","reason":"fingerprint_mismatch"},
+    {"name":"cancellation","reason":"request_canceled"},
+    {"name":"audit_failure","reason":"audit_unavailable"}
+  ]
+}
