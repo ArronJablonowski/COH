@@ -27,17 +27,21 @@ func (adapter *Adapter) Stream(ctx context.Context, request providercontract.Val
 	translation.wire.Stream = true
 	streamContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	reducer := newStreamReducer(adapter, streamContext, request, requestValue, translation.tools, emit)
 	response, err := adapter.startRequest(streamContext, translation.wire, true)
 	if err != nil {
-		return err
+		return reducer.finishAdapterError(err)
 	}
 	defer response.Body.Close()
-	reducer := newStreamReducer(adapter, streamContext, request, requestValue, translation.tools, emit)
 	if err := consumeSSE(response.Body, reducer); err != nil {
+		if !reducer.terminal && (Code(err) == providercontract.Canceled || Code(err) == providercontract.Timeout ||
+			Code(err) == providercontract.Unavailable) {
+			return reducer.finishAdapterError(err)
+		}
 		return err
 	}
 	if !reducer.terminal {
-		return newError(providercontract.Unavailable, "stream_terminal_missing", true)
+		return reducer.finishAdapterError(newError(providercontract.Unavailable, "stream_terminal_missing", true))
 	}
 	return nil
 }

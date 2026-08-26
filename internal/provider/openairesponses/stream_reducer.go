@@ -299,6 +299,23 @@ func (reducer *streamReducer) errorTerminal(raw []byte) error {
 	return nil
 }
 
+func (reducer *streamReducer) finishAdapterError(err error) error {
+	code := Code(err)
+	reason := Reason(err)
+	message := "model response stream failed"
+	if code == providercontract.Canceled {
+		message = "model response stream was canceled"
+	} else if code == providercontract.Timeout {
+		message = "model response stream timed out"
+	}
+	terminal := providercontract.TerminalError{Code: string(code), Reason: reason, Message: message, Retryable: Retryable(err)}
+	if emitErr := reducer.emitCOH(providercontract.StreamEvent{Kind: "error", Error: &terminal}); emitErr != nil {
+		return emitErr
+	}
+	reducer.terminal = true
+	return nil
+}
+
 func (reducer *streamReducer) validateStreamResponse(response createResponse) error {
 	if !validOpaqueID(response.ID, 256) || response.Object != "response" || response.CreatedAt <= 0 ||
 		response.Model != reducer.request.Provider.ActualModel || response.Background || response.Store ||
@@ -313,7 +330,11 @@ func (reducer *streamReducer) emitCOH(event providercontract.StreamEvent) error 
 	event.RequestID, event.AttemptID, event.Sequence = reducer.request.RequestID, reducer.request.AttemptID, reducer.cohNext
 	event.ObservedAt = formatTimestamp(reducer.adapter.config.Clock())
 	encoded, _ := json.Marshal(event)
-	validated, err := providercontract.DecodeStreamEvent(reducer.ctx, encoded)
+	decodeContext := reducer.ctx
+	if event.Kind == "error" {
+		decodeContext = context.WithoutCancel(reducer.ctx)
+	}
+	validated, err := providercontract.DecodeStreamEvent(decodeContext, encoded)
 	if err != nil {
 		return newError(providercontract.Code(err), providercontract.Reason(err), false)
 	}

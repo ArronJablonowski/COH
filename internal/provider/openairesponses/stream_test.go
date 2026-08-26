@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	providercontract "github.com/ArronJablonowski/COH/internal/domain/providercontract"
 )
@@ -67,9 +69,6 @@ func TestStreamFailsClosedOnSequenceCorrelationAndTerminalTamper(t *testing.T) {
 			return strings.Replace(value, "response.output_text.delta", "response.audio.delta", 2)
 		}, providercontract.Unsupported},
 		{"early done", func(string) string { return "data: [DONE]\n\n" }, providercontract.Conflict},
-		{"missing terminal", func(value string) string {
-			return value[:strings.Index(value, "event: response.completed")]
-		}, providercontract.Unavailable},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -79,6 +78,47 @@ func TestStreamFailsClosedOnSequenceCorrelationAndTerminalTamper(t *testing.T) {
 			err := rig.adapter.Stream(context.Background(), rig.request, func(providercontract.ValidatedStreamEvent) error { return nil })
 			if Code(err) != test.code {
 				t.Fatalf("code=%s err=%v", Code(err), err)
+			}
+		})
+	}
+}
+
+func TestStreamEmitsTerminalErrorsForOutageMissingTerminalAndTimeout(t *testing.T) {
+	tests := []struct {
+		name    string
+		prepare func(*testRig) (context.Context, context.CancelFunc)
+		code    string
+	}{
+		{"outage", func(rig *testRig) (context.Context, context.CancelFunc) {
+			rig.http.status = http.StatusServiceUnavailable
+			return context.Background(), func() {}
+		}, "unavailable"},
+		{"missing terminal", func(rig *testRig) (context.Context, context.CancelFunc) {
+			fixture := string(readFixture(t, "completed-stream.sse"))
+			rig.http.body = []byte(fixture[:strings.Index(fixture, "event: response.completed")])
+			rig.http.contentType = "text/event-stream"
+			return context.Background(), func() {}
+		}, "unavailable"},
+		{"timeout", func(rig *testRig) (context.Context, context.CancelFunc) {
+			rig.adapter.config.HTTP = blockingHTTP{}
+			return context.WithTimeout(context.Background(), 10*time.Millisecond)
+		}, "timeout"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			rig := newTestRig(t, "completed-response.json")
+			ctx, cancel := test.prepare(&rig)
+			defer cancel()
+			events := make([]providercontract.ValidatedStreamEvent, 0, 1)
+			if err := rig.adapter.Stream(ctx, rig.request, func(event providercontract.ValidatedStreamEvent) error {
+				events = append(events, event)
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			terminal := events[len(events)-1].Value()
+			if terminal.Kind != "error" || terminal.Error == nil || terminal.Error.Code != test.code {
+				t.Fatalf("events=%+v", events)
 			}
 		})
 	}
@@ -94,4 +134,11 @@ func TestStreamStopsWhenEmitterFails(t *testing.T) {
 	if Code(err) != providercontract.Unavailable || Reason(err) != "stream_emitter_failed" {
 		t.Fatalf("err=%v", err)
 	}
+}
+
+type blockingHTTP struct{}
+
+func (blockingHTTP) Do(request *http.Request) (*http.Response, error) {
+	<-request.Context().Done()
+	return nil, request.Context().Err()
 }
