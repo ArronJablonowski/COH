@@ -6,6 +6,7 @@
 | Requirements | SEC-012, SEC-024, SEC-025 |
 | Verification date | 2026-08-26 |
 | Implementation checkpoint | `bfce11f7c12f47d4cd233030d5fbb65989df333f` |
+| Verification checkpoint | `663b72e0f437605db0909c77eecc59c5b851bdc2` |
 | Aggregate result | Pass |
 
 ## Outcome
@@ -37,7 +38,7 @@ failure, and revision rollback fail closed without restoring capability bytes.
 | Remote workers enroll with mTLS identity and capability attestation; dispatch requires a short-lived runner lease and matching isolation | TLS-state adapter, signed-attestation verifier, enrollment/lease stores, atomic `Use`, exact isolation/resource/network tests | Pass |
 | Default-deny actor/scope binding, redaction, fail-closed audit, replay/tamper/stale/revocation handling | Canonical schemas and strict decoders; decision digests; audit-failure revocation; replay, tamper, rotation, and revocation tests | Pass |
 | Invalid input, denial, timeout/cancellation, and recovery retain provenance without bypass | Typed error contract; invalid/denied/canceled/timeout cases; callback failure audit; same-store broker recovery; consumed-lease replay denial | Pass |
-| Success/failure automation passes applicable CI, race, architecture, secret, license, dependency, and size gates | Dedicated verifier and all 18 clean baseline stages at `bfce11f` | Pass |
+| Success/failure automation passes applicable CI, race, architecture, secret, license, dependency, and size gates | Dedicated verifier and all 18 clean baseline stages at `663b72e` | Pass |
 | Evidence cross-references COH-E06-04 and SEC-012/024/025 | This report, design traceability table, retained logs, clean baseline, and checksum manifest | Pass |
 
 ## Canonical contracts
@@ -147,26 +148,26 @@ remote-worker summary: attestation=ed25519-software freshness=5m remote_transpor
 ```
 
 The retained log is
-`/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/remote-worker.p4bkRJ/remote-worker.log`
+`/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/remote-worker.BKvU6E/remote-worker.log`
 with SHA-256
-`9b72b21a53da9043cdd432ce43df826632b991570af3a5a3659ea1a1e6cafb7d`.
+`9c96fc8ab9213dcf706247d1aa4bef8899626eb8f6cb9dd0869e0b7263450a6f`.
 It includes unit, three repeated runs, race, vet, Linux amd64 and Windows amd64
 broker compilation, schema/secret checks, 51-package architecture verification
 with zero violations, file-size enforcement, and diff checks. Provenance names
-`bfce11f`, `modified:false`, Go 1.26.7, and darwin/arm64.
+`663b72e`, `modified:false`, Go 1.26.7, and darwin/arm64.
 
 ## Clean baseline
 
 The exact clean checkpoint passed all 18 required baseline stages with
 `quality_gate_promotable=true` and `vcs_modified=false`. Evidence is retained
-at `/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.oio5wH`.
+at `/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.8vrtZK`.
 
 The embedded report digest is
-`bfd166a6d3237649048f3ddc040efcc5372774964a46a3019a5888d754f02496`;
+`e30a48561c81612b99398ce933d2af28c04554ea4e0a0f973850a0fc6b21dd33`;
 the report-file SHA-256 is
-`7a1f58b94f171b0e2f254b6f81b2a538c1753b646cfe09b10347997e8fce68c1`.
-Provenance records 680 source files, source digest
-`973521ee078edbc2fb7a696f6ab63cbb6c1f66a533213b9911bfe0c2a48b4e63`,
+`2aa9bedc48232d91039141ce84dafad6b21255a18387892ddbe43a7743f64130`.
+Provenance records 681 source files, source digest
+`cd02d09a3575460a974a9511855471fe1af0c94da345f10b5462d0afdc1db395`,
 Go 1.26.7 on darwin/arm64, 51 architecture packages with zero violations, and
 183 approved modules with zero vulnerabilities.
 
