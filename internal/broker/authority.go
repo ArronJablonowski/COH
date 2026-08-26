@@ -8,8 +8,9 @@ import (
 )
 
 // Authority is the action-authority capability visible to composition roots.
-// Runtime implementations arrive only with the policy, approval, audit, and
-// dispatch controls in COH-E05; this package does not provide a partial bypass.
+// COH-E05 produces only a broker-private pre-dispatch capability. A runtime
+// implementation remains withheld until COH-E06 can consume that capability
+// immediately at the isolated dispatch boundary; no partial bypass is exposed.
 type Authority interface {
 	workflow.ActionAuthority
 }
