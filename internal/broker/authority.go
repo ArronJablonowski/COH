@@ -7,10 +7,10 @@ import (
 	"github.com/ArronJablonowski/COH/internal/workflow"
 )
 
-// Authority is the action-authority capability visible to composition roots.
-// COH-E05 produces only a broker-private pre-dispatch capability. A runtime
-// implementation remains withheld until COH-E06 can consume that capability
-// immediately at the isolated dispatch boundary; no partial bypass is exposed.
+// Authority is the only action capability visible to workflow composition.
+// The CYB-69 implementation remains broker-private: it resolves trusted route
+// context, rechecks pre-dispatch authority and E-stop state, persists an
+// audited dispatch boundary, and only then invokes the private connector.
 type Authority interface {
 	workflow.ActionAuthority
 }

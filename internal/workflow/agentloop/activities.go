@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
+	"github.com/ArronJablonowski/COH/internal/domain/toolroute"
 	workflowbase "github.com/ArronJablonowski/COH/internal/workflow"
 )
 
@@ -91,7 +92,5 @@ func (activities *Activities) Act(ctx context.Context, request AuthorizedActionR
 }
 
 func validToolIntent(value domain.ToolIntent) bool {
-	return uuidV7Pattern.MatchString(value.OperationID) && validateCase(value.Case) &&
-		tokenPattern.MatchString(value.Tool) && tokenPattern.MatchString(value.Action) &&
-		digestPattern.MatchString(value.TargetDigest) && digestPattern.MatchString(value.ArgumentDigest)
+	return toolroute.ValidateIntent(value) == nil
 }

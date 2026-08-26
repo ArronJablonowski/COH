@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
+	"github.com/ArronJablonowski/COH/internal/domain/toolroute"
 )
 
 func planningFailure(ctx context.Context, err error) (StepStatus, RunStatus, error) {
@@ -23,21 +24,39 @@ func planningFailure(ctx context.Context, err error) (StepStatus, RunStatus, err
 	return StepFailed, RunFailed, newError(Unavailable, "activity", "planning_unavailable", true, nil)
 }
 
+func actionFailure(err error) (StepStatus, RunStatus, error, bool) {
+	var classified interface {
+		ActivityOutcome() string
+		DispatchIndeterminate() bool
+	}
+	if !errors.As(err, &classified) || classified.DispatchIndeterminate() {
+		return "", "", nil, false
+	}
+	switch classified.ActivityOutcome() {
+	case "denied", "invalid_input":
+		mapped := newError(Denied, "authorized_action", "broker_denied", false, nil)
+		return StepDenied, RunDenied, mapped, true
+	case "canceled":
+		mapped := newError(Canceled, "authorized_action", "broker_canceled", false, err)
+		return StepCanceled, RunCanceled, mapped, true
+	case "timeout":
+		mapped := newError(Timeout, "authorized_action", "broker_timeout", false, err)
+		return StepTimeout, RunTimeout, mapped, true
+	case "failed", "unavailable":
+		mapped := newError(Unavailable, "authorized_action", "broker_unavailable", true, nil)
+		return StepFailed, RunFailed, mapped, true
+	default:
+		return "", "", nil, false
+	}
+}
+
 func validArtifact(value domain.ArtifactRef) bool {
 	return digestPattern.MatchString(value.Digest) && validateOpaque(value.MediaType, 256) &&
 		tokenPattern.MatchString(value.Classification) && value.Length >= 0
 }
 
 func validReceipt(value domain.ActionReceipt, intentDigest string) bool {
-	if value.IntentDigest != intentDigest || !validArtifact(value.Evidence) {
-		return false
-	}
-	switch value.Outcome {
-	case "succeeded", "denied", "canceled", "timeout", "failed", "uncertain":
-		return true
-	default:
-		return false
-	}
+	return toolroute.ValidateReceipt(value, intentDigest) == nil
 }
 
 func receiptStatuses(outcome string) (StepStatus, RunStatus) {

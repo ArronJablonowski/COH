@@ -256,6 +256,9 @@ func (loop *Loop) executeAction(ctx context.Context, key string, active Snapshot
 		if Code(err) == Denied && Reason(err) == "broker_receipt_invalid" {
 			return loop.finishAfterActivity(ctx, key+":finished", active, StepUncertain, RunUncertain, nil, "", "broker_receipt_invalid", err)
 		}
+		if step, run, mapped, definitive := actionFailure(err); definitive {
+			return loop.finishAfterActivity(ctx, key+":finished", active, step, run, nil, "", Reason(mapped), mapped)
+		}
 		mapped := newError(Unavailable, "authorized_action", "action_outcome_uncertain", false, nil)
 		return loop.finishAfterActivity(ctx, key+":finished", active, StepUncertain, RunUncertain, nil, "", "action_outcome_uncertain", mapped)
 	}

@@ -35,3 +35,23 @@ The registry re-verifies stored envelope bytes and fresh publisher authority on
 every resolution. Publisher removal, key rotation/revocation, approval rollback,
 manifest expiry, digest change, or schema drift therefore fails closed without
 process restart.
+
+## Broker-only route records
+
+`tool-route.schema.json` freezes `coh.tool-route/v1` ToolIntent and
+ActionReceipt records for CYB-69 / COH-E08-03. The intent contains only one
+operation, tenant/case scope, allowlisted tool/action tokens, and exact target
+and argument digests. The receipt contains only the intent digest, typed
+outcome, and immutable evidence metadata. Neither record has a credential,
+secret, raw payload, connector, executor, runner, policy evaluator, or generic
+callback field.
+
+The same schema also freezes the redacted durable route state: trusted-context,
+manifest, policy, approval, actor, idempotency, transition, audit, receipt, and
+provenance digests plus typed status and reason. It has no raw signed envelope,
+approval content, credential, connector payload, or free-form error.
+
+The Go decoder requires every field and rejects duplicate, unknown, missing,
+trailing, malformed, oversized, or unsupported-version input. The shared
+intent digest retains the existing durable agent-loop v1 domain and canonical
+preimage so moving validation into the domain contract is replay compatible.

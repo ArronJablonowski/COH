@@ -8,12 +8,12 @@ import (
 	"io"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
+	"github.com/ArronJablonowski/COH/internal/domain/toolroute"
 	"github.com/ArronJablonowski/COH/internal/helper/domaincontract"
 )
 
 const (
 	provenanceDomain = "COH-AGENT-LOOP-PROVENANCE-V1\x00"
-	intentDomain     = "COH-AGENT-LOOP-INTENT-V1\x00"
 	receiptDomain    = "COH-AGENT-LOOP-RECEIPT-V1\x00"
 )
 
@@ -51,14 +51,11 @@ func transitionDigest(prior, operation string, value any) (string, error) {
 }
 
 func toolIntentDigest(intent domain.ToolIntent) (string, error) {
-	return digestValue(intentDomain, struct {
-		OperationID    string         `json:"operation_id"`
-		Case           domain.CaseRef `json:"case"`
-		Tool           string         `json:"tool"`
-		Action         string         `json:"action"`
-		TargetDigest   string         `json:"target_digest"`
-		ArgumentDigest string         `json:"argument_digest"`
-	}{intent.OperationID, intent.Case, intent.Tool, intent.Action, intent.TargetDigest, intent.ArgumentDigest})
+	digest, err := toolroute.Digest(intent)
+	if err != nil {
+		return "", newError(Denied, "digest", toolroute.ErrorReason(err), false, nil)
+	}
+	return digest, nil
 }
 
 // ToolIntentDigest returns the exact digest consumed by authorized-action

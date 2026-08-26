@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/tool/v1/tool-route.schema.json",
+  "title": "COH broker-only tool route records v1",
+  "$defs": {
+    "uuid_v7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "optional_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9][.][0-9]{9}Z$"
+    },
+    "intent": {
+      "type": "object",
+      "required": [
+        "schema_version", "contract_version", "operation_id", "organization_id",
+        "tenant_id", "case_id", "tool", "action", "target_digest", "argument_digest"
+      ],
+      "properties": {
+        "schema_version": {"const": "coh.tool-route/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "operation_id": {"$ref": "#/$defs/uuid_v7"},
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"},
+        "tool": {"$ref": "#/$defs/token"},
+        "action": {"$ref": "#/$defs/token"},
+        "target_digest": {"$ref": "#/$defs/digest"},
+        "argument_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "state": {
+      "type": "object",
+      "required": [
+        "schema_version", "contract_version", "record_type", "operation_id", "organization_id",
+        "tenant_id", "case_id", "intent_digest", "idempotency_digest", "context_digest",
+        "manifest_digest", "intent_policy_decision_digest", "pre_dispatch_decision_digest",
+        "approval_id", "approval_revision", "approval_fingerprint_digest", "requestor_actor_id",
+        "requestor_actor_revision", "action_owner_actor_id", "action_owner_actor_revision", "status",
+        "reason_code", "dispatch_audit_id", "completion_audit_id", "receipt_digest",
+        "previous_provenance_digest", "provenance_digest", "created_at", "updated_at", "revision"
+      ],
+      "properties": {
+        "schema_version": {"const": "coh.tool-route/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "record_type": {"const": "state"},
+        "operation_id": {"$ref": "#/$defs/uuid_v7"},
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "idempotency_digest": {"$ref": "#/$defs/digest"},
+        "context_digest": {"$ref": "#/$defs/digest"},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "intent_policy_decision_digest": {"$ref": "#/$defs/digest"},
+        "pre_dispatch_decision_digest": {"$ref": "#/$defs/optional_digest"},
+        "approval_id": {"$ref": "#/$defs/uuid_v7"},
+        "approval_revision": {"type": "integer", "minimum": 0},
+        "approval_fingerprint_digest": {"$ref": "#/$defs/optional_digest"},
+        "requestor_actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "requestor_actor_revision": {"type": "integer", "minimum": 1},
+        "action_owner_actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "action_owner_actor_revision": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["pending", "authorizing", "dispatching", "succeeded", "denied", "canceled", "timeout", "failed", "uncertain"]},
+        "reason_code": {"$ref": "#/$defs/token"},
+        "dispatch_audit_id": {"$ref": "#/$defs/optional_digest"},
+        "completion_audit_id": {"$ref": "#/$defs/optional_digest"},
+        "receipt_digest": {"$ref": "#/$defs/optional_digest"},
+        "previous_provenance_digest": {"$ref": "#/$defs/optional_digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"pre_dispatch_decision_digest": {"const": ""}}, "required": ["pre_dispatch_decision_digest"]},
+          "then": {
+            "properties": {
+              "approval_revision": {"const": 0},
+              "approval_fingerprint_digest": {"const": ""}
+            }
+          },
+          "else": {
+            "properties": {
+              "approval_revision": {"minimum": 1},
+              "approval_fingerprint_digest": {"$ref": "#/$defs/digest"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["succeeded", "denied", "canceled", "timeout", "failed", "uncertain"]}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "completion_audit_id": {"$ref": "#/$defs/digest"},
+              "receipt_digest": {"$ref": "#/$defs/digest"}
+            }
+          },
+          "else": {
+            "properties": {
+              "completion_audit_id": {"const": ""},
+              "receipt_digest": {"const": ""}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["dispatching", "succeeded", "uncertain"]}}, "required": ["status"]},
+          "then": {"properties": {"dispatch_audit_id": {"$ref": "#/$defs/digest"}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "receipt": {
+      "type": "object",
+      "required": [
+        "schema_version", "contract_version", "intent_digest", "outcome",
+        "evidence_digest", "evidence_media_type", "evidence_classification", "evidence_length"
+      ],
+      "properties": {
+        "schema_version": {"const": "coh.tool-route/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "outcome": {"enum": ["succeeded", "denied", "canceled", "timeout", "failed", "uncertain"]},
+        "evidence_digest": {"$ref": "#/$defs/digest"},
+        "evidence_media_type": {"type": "string", "pattern": "^[a-z][a-z0-9.+-]{0,63}/[a-z0-9][a-z0-9.+-]{0,127}$"},
+        "evidence_classification": {"$ref": "#/$defs/token"},
+        "evidence_length": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/intent"},
+    {"$ref": "#/$defs/state"},
+    {"$ref": "#/$defs/receipt"}
+  ]
+}
