@@ -21,7 +21,12 @@ type approvalAuditSink interface {
 }
 
 type approvalFingerprintVerifier interface {
-	Verify(context.Context, approvalfingerprint.Fingerprint, actionmanifest.VerifiedEnvelope, actionmanifest.SignerAuthority, policy.Decision) (approvalfingerprint.Fingerprint, error)
+	verifyApproval(context.Context, approvalfingerprint.Fingerprint, actionmanifest.VerifiedEnvelope, actionmanifest.SignerAuthority, policy.Decision) (approvalVerifiedProof, error)
+}
+
+type approvalVerifiedProof struct {
+	Fingerprint approvalfingerprint.Fingerprint
+	ActionTier  string
 }
 
 type approvalProof struct {
@@ -31,10 +36,27 @@ type approvalProof struct {
 	Decision    policy.Decision
 }
 
+// approvalPrincipalAuthority is a fresh enrollment-directory result. The
+// stable principal identity prevents one human using multiple actor accounts.
+type approvalPrincipalAuthority struct {
+	ActorID            string `json:"actor_id"`
+	ActorRevision      uint64 `json:"actor_revision"`
+	PrincipalID        string `json:"principal_id"`
+	IdentityKind       string `json:"identity_kind"`
+	EnrollmentRevision uint64 `json:"enrollment_revision"`
+	Enrolled           bool   `json:"enrolled"`
+}
+
+type approvalGrantAuthority struct {
+	Actor     policy.ActorAuthority      `json:"actor"`
+	Principal approvalPrincipalAuthority `json:"principal"`
+}
+
 type approvalRequestCommand struct {
 	ApprovalID     string
 	IdempotencyKey string
 	Requestor      policy.ActorAuthority
+	Principal      approvalPrincipalAuthority
 	approvalProof  approvalProof
 }
 
@@ -44,6 +66,8 @@ type approvalTransitionCommand struct {
 	ExpectedRevision uint64
 	Case             domain.CaseRef
 	Actor            policy.ActorAuthority
+	Principal        *approvalPrincipalAuthority
+	GrantAuthorities []approvalGrantAuthority
 	ReasonCode       string
 	approvalProof    *approvalProof
 }

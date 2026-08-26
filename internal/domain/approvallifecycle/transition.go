@@ -85,7 +85,8 @@ func sameBinding(left, right Record) bool {
 		left.TenantID == right.TenantID && left.CaseID == right.CaseID &&
 		left.FingerprintDigest == right.FingerprintDigest && left.ManifestDigest == right.ManifestDigest &&
 		left.PolicyDecisionDigest == right.PolicyDecisionDigest && left.RequestorActorID == right.RequestorActorID &&
-		left.RequestorRevision == right.RequestorRevision && left.ActionOwnerActorID == right.ActionOwnerActorID && left.RequestedAt == right.RequestedAt &&
+		left.RequestorRevision == right.RequestorRevision && left.RequestorPrincipalID == right.RequestorPrincipalID &&
+		left.ActionOwnerActorID == right.ActionOwnerActorID && left.ActionTier == right.ActionTier && left.RequestedAt == right.RequestedAt &&
 		left.ValidFrom == right.ValidFrom && left.ValidUntil == right.ValidUntil &&
 		left.RequiredGrantCount == right.RequiredGrantCount && left.MaximumUseCount == right.MaximumUseCount
 }

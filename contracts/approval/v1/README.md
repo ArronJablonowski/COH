@@ -2,10 +2,10 @@
 
 | Field | Value |
 |---|---|
-| Issues | COH-E05-03 / CYB-50; COH-E05-04 / CYB-51 |
-| Requirements | SEC-006, SEC-008, SEC-009, SEC-040, EVAL-005 |
+| Issues | COH-E05-03 / CYB-50; COH-E05-04 / CYB-51; COH-E05-05 / CYB-48 |
+| Requirements | FR-005, SEC-006, SEC-007, SEC-008, SEC-009, SEC-040, EVAL-005, EVAL-007 |
 | Fingerprint | `coh.approval-fingerprint/v1` / `1.0.0` |
-| Lifecycle | `coh.approval-lifecycle/v1` / `1.0.0` |
+| Lifecycle | `coh.approval-lifecycle/v2` / `2.0.0` |
 | Hash | SHA-256 |
 
 ## Purpose
@@ -69,20 +69,26 @@ fingerprint because the operation has no hidden mutable state.
 
 ## Lifecycle record
 
-CYB-51 persists a `coh.approval-lifecycle/v1` record inside the registered
+CYB-51 introduced the lifecycle state machine. CYB-48 migrates its current
+writer to `coh.approval-lifecycle/v2` so every grant also binds the manifest
+action tier, stable human principal identity, and enrollment revision. The
+record is persisted inside the registered
 `coh.domain/v1` `approval` envelope. The payload schema is
 [`approval-lifecycle.schema.json`](../../domain/v1/approval-lifecycle.schema.json),
 and the executable transition contract is documented in
 [`approval-lifecycle-state-machine.md`](approval-lifecycle-state-machine.md).
 
 The record binds the approval identifier and exact fingerprint/manifest/policy
-decision digests to organization, tenant, case, requestor identity revision,
-validity window, approval threshold, and maximum use count. Each transition
-records its optimistic revision and fresh acting identity revision. Grant
-history is append-only and contains distinct actor identities.
+decision digests to organization, tenant, case, requestor actor and principal,
+action owner/tier, validity window, approval threshold, and maximum use count.
+Each transition records its optimistic revision and fresh acting identity
+revision. Grant history is append-only and contains distinct actor and stable
+human-principal identities plus enrollment revisions.
 
-The domain registry mapping from the earlier provisional approval payload to
-this lifecycle payload is the CYB-51 policy/audit schema migration. Existing
+The domain registry mapping to the current lifecycle payload is the policy and
+audit schema migration. Lifecycle v1 records lack stable-principal enrollment
+proof and are never treated as T4 authority; they must be re-requested under
+v2. Existing
 SQLite and PostgreSQL stores require no DDL migration because their generic
 versioned record and transactional outbox schemas already support the
 registered `approval` kind. A deployment must apply the contract reader/writer

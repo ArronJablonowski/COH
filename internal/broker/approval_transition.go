@@ -41,7 +41,8 @@ func (service *approvalService) transition(ctx context.Context, operation string
 	}
 	material := operationMaterial{Operation: operation, ApprovalID: command.ApprovalID,
 		IdempotencyKey: command.IdempotencyKey, ExpectedRevision: command.ExpectedRevision,
-		ReasonCode: command.ReasonCode, Actor: command.Actor}
+		ReasonCode: command.ReasonCode, Actor: command.Actor, Principal: command.Principal,
+		GrantAuthorities: append([]approvalGrantAuthority(nil), command.GrantAuthorities...)}
 	if command.approvalProof != nil {
 		material.Proof = makeProofMaterial(*command.approvalProof)
 	}
@@ -122,6 +123,12 @@ func (service *approvalService) validateOperation(ctx context.Context, operation
 		if record.State != lifecycle.Requested || now.Before(validFrom) || !now.Before(validUntil) {
 			return lifecycle.NewError(lifecycle.Denied, "approval_not_current")
 		}
+		if command.Principal == nil {
+			return lifecycle.NewError(lifecycle.InvalidInput, "approver_authority_required")
+		}
+		if err := validateApproverPrincipal(command.Actor, *command.Principal, record); err != nil {
+			return err
+		}
 		return service.verifyProof(ctx, command.approvalProof, record)
 	case "reject":
 		if record.State != lifecycle.Requested {
@@ -134,6 +141,9 @@ func (service *approvalService) validateOperation(ctx context.Context, operation
 	case "consume":
 		if record.State != lifecycle.Granted || now.Before(validFrom) || !now.Before(validUntil) {
 			return lifecycle.NewError(lifecycle.Denied, "approval_not_current")
+		}
+		if err := validateGrantAuthorities(command.GrantAuthorities, record); err != nil {
+			return err
 		}
 		return service.verifyProof(ctx, command.approvalProof, record)
 	case "revoke":
@@ -150,9 +160,26 @@ func (service *approvalService) verifyProof(ctx context.Context, proof *approval
 	if proof == nil {
 		return lifecycle.NewError(lifecycle.InvalidInput, "fingerprint_proof_required")
 	}
-	verified, err := service.verifier.Verify(ctx, proof.Fingerprint, proof.Manifest, proof.Signer, proof.Decision)
-	if err != nil || !fingerprintMatches(verified, record) {
+	verified, err := service.verifier.verifyApproval(ctx, proof.Fingerprint, proof.Manifest, proof.Signer, proof.Decision)
+	if err != nil || verified.ActionTier != record.ActionTier || !fingerprintMatches(verified.Fingerprint, record) {
 		return lifecycle.NewError(lifecycle.Denied, "fingerprint_authority")
+	}
+	return nil
+}
+
+func validateGrantAuthorities(authorities []approvalGrantAuthority, record lifecycle.Record) error {
+	if len(authorities) != len(record.Grants) || len(authorities) != int(record.RequiredGrantCount) {
+		return lifecycle.NewError(lifecycle.Denied, "approver_enrollment_incomplete")
+	}
+	for index, grant := range record.Grants {
+		authority := authorities[index]
+		if authority.Actor.ActorID != grant.ActorID || authority.Principal.PrincipalID != grant.PrincipalID ||
+			authority.Actor.Revision < grant.ActorRevision || authority.Principal.EnrollmentRevision < grant.EnrollmentRevision {
+			return lifecycle.NewError(lifecycle.Denied, "approver_authority_changed")
+		}
+		if err := validateApproverPrincipal(authority.Actor, authority.Principal, record); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -169,7 +196,9 @@ func applyTransition(operation string, command approvalTransitionCommand, next *
 	switch operation {
 	case "grant":
 		next.Grants = append(append([]lifecycle.Grant(nil), next.Grants...), lifecycle.Grant{
-			ActorID: command.Actor.ActorID, ActorRevision: command.Actor.Revision, GrantedAt: formatTime(now)})
+			ActorID: command.Actor.ActorID, ActorRevision: command.Actor.Revision,
+			PrincipalID: command.Principal.PrincipalID, EnrollmentRevision: command.Principal.EnrollmentRevision,
+			GrantedAt: formatTime(now)})
 		if len(next.Grants) == int(next.RequiredGrantCount) {
 			next.State = lifecycle.Granted
 		}

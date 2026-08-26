@@ -36,6 +36,30 @@ func validateActor(actor policy.ActorAuthority, organizationID, tenantID, caseID
 	return nil
 }
 
+func validateRequestorPrincipal(actor policy.ActorAuthority, authority approvalPrincipalAuthority) error {
+	if !uuidPattern.MatchString(authority.PrincipalID) || authority.ActorID != actor.ActorID ||
+		authority.ActorRevision != actor.Revision || authority.EnrollmentRevision == 0 || !authority.Enrolled ||
+		authority.IdentityKind != "human" && authority.IdentityKind != "service" {
+		return lifecycle.NewError(lifecycle.Denied, "requestor_enrollment")
+	}
+	return nil
+}
+
+func validateApproverPrincipal(actor policy.ActorAuthority, authority approvalPrincipalAuthority, record lifecycle.Record) error {
+	if err := validateActor(actor, record.OrganizationID, record.TenantID, record.CaseID, "approval.decide"); err != nil {
+		return err
+	}
+	if !uuidPattern.MatchString(authority.PrincipalID) || authority.ActorID != actor.ActorID ||
+		authority.ActorRevision != actor.Revision || authority.EnrollmentRevision == 0 || !authority.Enrolled ||
+		authority.IdentityKind != "human" || !contains(actor.Roles, "approver") {
+		return lifecycle.NewError(lifecycle.Denied, "approver_ineligible")
+	}
+	if actor.ActorID == record.RequestorActorID || authority.PrincipalID == record.RequestorPrincipalID {
+		return lifecycle.NewError(lifecycle.Denied, "self_approval")
+	}
+	return nil
+}
+
 func validCommand(approvalID, idempotencyKey, reasonCode string, expectedRevision uint64) error {
 	if !uuidPattern.MatchString(approvalID) || expectedRevision == 0 || !tokenPattern.MatchString(reasonCode) ||
 		!utf8.ValidString(idempotencyKey) || len(idempotencyKey) == 0 || len(idempotencyKey) > 256 || strings.TrimSpace(idempotencyKey) != idempotencyKey {

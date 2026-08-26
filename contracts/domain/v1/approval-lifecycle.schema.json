@@ -5,10 +5,10 @@
   "$defs": {
     "approval": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "approval_id", "organization_id", "tenant_id", "case_id", "fingerprint_digest", "manifest_digest", "policy_decision_digest", "requestor_actor_id", "requestor_revision", "action_owner_actor_id", "state", "revision", "requested_at", "valid_from", "valid_until", "required_grant_count", "grants", "maximum_use_count", "use_count", "reason_code", "last_actor_id", "last_actor_revision", "last_operation_digest", "last_event_id", "updated_at"],
+      "required": ["schema_version", "contract_version", "approval_id", "organization_id", "tenant_id", "case_id", "fingerprint_digest", "manifest_digest", "policy_decision_digest", "requestor_actor_id", "requestor_revision", "requestor_principal_id", "action_owner_actor_id", "action_tier", "state", "revision", "requested_at", "valid_from", "valid_until", "required_grant_count", "grants", "maximum_use_count", "use_count", "reason_code", "last_actor_id", "last_actor_revision", "last_operation_digest", "last_event_id", "updated_at"],
       "properties": {
-        "schema_version": {"enum": ["coh.approval-lifecycle/v1"]},
-        "contract_version": {"enum": ["1.0.0"]},
+        "schema_version": {"enum": ["coh.approval-lifecycle/v2"]},
+        "contract_version": {"enum": ["2.0.0"]},
         "approval_id": {"$ref": "#/$defs/uuid_v7"},
         "organization_id": {"$ref": "#/$defs/uuid_v7"},
         "tenant_id": {"$ref": "#/$defs/uuid_v7"},
@@ -18,7 +18,9 @@
         "policy_decision_digest": {"$ref": "#/$defs/digest"},
         "requestor_actor_id": {"$ref": "#/$defs/uuid_v7"},
         "requestor_revision": {"type": "integer", "minimum": 1},
+        "requestor_principal_id": {"$ref": "#/$defs/uuid_v7"},
         "action_owner_actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "action_tier": {"enum": ["T0", "T1", "T2", "T3", "T4"]},
         "state": {"enum": ["requested", "granted", "rejected", "expired", "consumed", "revoked"]},
         "revision": {"type": "integer", "minimum": 1},
         "requested_at": {"$ref": "#/$defs/timestamp"},
@@ -39,10 +41,12 @@
     },
     "grant": {
       "type": "object",
-      "required": ["actor_id", "actor_revision", "granted_at"],
+      "required": ["actor_id", "actor_revision", "principal_id", "enrollment_revision", "granted_at"],
       "properties": {
         "actor_id": {"$ref": "#/$defs/uuid_v7"},
         "actor_revision": {"type": "integer", "minimum": 1},
+        "principal_id": {"$ref": "#/$defs/uuid_v7"},
+        "enrollment_revision": {"type": "integer", "minimum": 1},
         "granted_at": {"$ref": "#/$defs/timestamp"}
       },
       "additionalProperties": false

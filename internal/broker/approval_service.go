@@ -15,13 +15,15 @@ import (
 const timestampLayout = "2006-01-02T15:04:05.000000000Z"
 
 type operationMaterial struct {
-	Operation        string                `json:"operation"`
-	ApprovalID       string                `json:"approval_id"`
-	IdempotencyKey   string                `json:"idempotency_key"`
-	ExpectedRevision uint64                `json:"expected_revision"`
-	ReasonCode       string                `json:"reason_code"`
-	Actor            policy.ActorAuthority `json:"actor"`
-	Proof            *proofMaterial        `json:"proof,omitempty"`
+	Operation        string                      `json:"operation"`
+	ApprovalID       string                      `json:"approval_id"`
+	IdempotencyKey   string                      `json:"idempotency_key"`
+	ExpectedRevision uint64                      `json:"expected_revision"`
+	ReasonCode       string                      `json:"reason_code"`
+	Actor            policy.ActorAuthority       `json:"actor"`
+	Principal        *approvalPrincipalAuthority `json:"principal,omitempty"`
+	GrantAuthorities []approvalGrantAuthority    `json:"grant_authorities,omitempty"`
+	Proof            *proofMaterial              `json:"proof,omitempty"`
 }
 
 type proofMaterial struct {
@@ -51,9 +53,12 @@ func (service *approvalService) requestApproval(ctx context.Context, command app
 		err := lifecycle.NewError(lifecycle.Denied, "requestor_binding")
 		return approvalResult{}, service.failure(ctx, "request", command.ApprovalID, command.Requestor, fingerprint, 0, err, now)
 	}
+	if err := validateRequestorPrincipal(command.Requestor, command.Principal); err != nil {
+		return approvalResult{}, service.failure(ctx, "request", command.ApprovalID, command.Requestor, fingerprint, 0, err, now)
+	}
 	digest, err := operationDigest(operationMaterial{Operation: "request", ApprovalID: command.ApprovalID,
 		IdempotencyKey: command.IdempotencyKey, ExpectedRevision: 0, ReasonCode: "approval_requested",
-		Actor: command.Requestor, Proof: makeProofMaterial(command.approvalProof)})
+		Actor: command.Requestor, Principal: &command.Principal, Proof: makeProofMaterial(command.approvalProof)})
 	if err != nil {
 		return approvalResult{}, service.failure(ctx, "request", command.ApprovalID, command.Requestor, fingerprint, 0, err, now)
 	}
@@ -69,8 +74,8 @@ func (service *approvalService) requestApproval(ctx context.Context, command app
 		resultErr := mapStorageError(getErr)
 		return approvalResult{}, service.failure(ctx, "request", command.ApprovalID, command.Requestor, fingerprint, 0, resultErr, now)
 	}
-	verified, err := service.verifier.Verify(ctx, fingerprint, command.approvalProof.Manifest, command.approvalProof.Signer, command.approvalProof.Decision)
-	if err != nil || verified.FingerprintDigest != fingerprint.FingerprintDigest {
+	verified, err := service.verifier.verifyApproval(ctx, fingerprint, command.approvalProof.Manifest, command.approvalProof.Signer, command.approvalProof.Decision)
+	if err != nil || verified.Fingerprint.FingerprintDigest != fingerprint.FingerprintDigest {
 		resultErr := lifecycle.NewError(lifecycle.Denied, "fingerprint_authority")
 		return approvalResult{}, service.failure(ctx, "request", command.ApprovalID, command.Requestor, fingerprint, 0, resultErr, now)
 	}
@@ -82,13 +87,21 @@ func (service *approvalService) requestApproval(ctx context.Context, command app
 		ApprovalID: command.ApprovalID, OrganizationID: fingerprint.OrganizationID, TenantID: fingerprint.TenantID,
 		CaseID: fingerprint.CaseID, FingerprintDigest: fingerprint.FingerprintDigest, ManifestDigest: fingerprint.ManifestDigest,
 		PolicyDecisionDigest: fingerprint.PolicyDecisionDigest, RequestorActorID: fingerprint.RequestorActorID,
-		RequestorRevision: command.Requestor.Revision, ActionOwnerActorID: fingerprint.ActionOwnerActorID,
+		RequestorRevision: command.Requestor.Revision, RequestorPrincipalID: command.Principal.PrincipalID,
+		ActionOwnerActorID: fingerprint.ActionOwnerActorID, ActionTier: verified.ActionTier,
 		State: lifecycle.Requested, Revision: 1, RequestedAt: formatTime(now), ValidFrom: fingerprint.ValidFrom,
-		ValidUntil: fingerprint.ValidUntil, RequiredGrantCount: 1, Grants: []lifecycle.Grant{},
+		ValidUntil: fingerprint.ValidUntil, RequiredGrantCount: requiredGrantCount(verified.ActionTier), Grants: []lifecycle.Grant{},
 		MaximumUseCount: fingerprint.MaximumUseCount, UseCount: 0, ReasonCode: "approval_requested",
 		LastActorID: command.Requestor.ActorID, LastActorRevision: command.Requestor.Revision,
 		LastOperationDigest: digest, LastEventID: eventID, UpdatedAt: formatTime(now)}
 	return service.commit(ctx, "request", command.IdempotencyKey, 0, record, command.Requestor, fingerprint, now)
+}
+
+func requiredGrantCount(actionTier string) uint8 {
+	if actionTier == "T4" {
+		return 2
+	}
+	return 1
 }
 
 func makeProofMaterial(proof approvalProof) *proofMaterial {

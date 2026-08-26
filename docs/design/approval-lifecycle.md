@@ -2,9 +2,9 @@
 
 | Field | Value |
 |---|---|
-| Issue | COH-E05-04 / CYB-51 |
-| Requirements | SEC-006, SEC-008, SEC-040 |
-| Contract | `coh.approval-lifecycle/v1` / `1.0.0` |
+| Issues | COH-E05-04 / CYB-51; COH-E05-05 / CYB-48 |
+| Requirements | FR-005, SEC-006, SEC-007, SEC-008, SEC-040, EVAL-007 |
+| Contract | `coh.approval-lifecycle/v2` / `2.0.0` |
 | Persistence | `coh.domain/v1` `approval` record plus transactional outbox |
 
 ## Purpose and ownership
@@ -83,6 +83,29 @@ Consumption increments the use count in the same compare-and-swap that writes
 the new state. Reaching the maximum produces terminal `consumed`. Consequently,
 two concurrent consumers can never both obtain the final use.
 
+## T4 dual-human extension
+
+Lifecycle v2 records the verified action tier and a stable principal identity
+and enrollment revision for the requestor and every grant. This closes the
+multi-account alias case: distinct actor IDs do not count as distinct humans
+when their stable principal ID is equal.
+
+Only the adapter around the CYB-50 verifier returns the action tier, and it
+does so after signed-envelope and fingerprint verification. The request API
+has no threshold input. The service derives two grants for T4 and one for all
+other currently approved tiers. The first valid T4 grant therefore commits an
+audited revision that remains `requested`; only the second distinct eligible
+human grant reaches `granted`.
+
+An approver's fresh enrollment authority binds actor ID/revision, stable
+principal ID, identity kind, enrollment revision, and enrolled state. Grant
+requires an active exact-scope `approver` role with `approval.decide`, human
+kind, current enrollment, and no actor or principal match to the requestor or
+an earlier grant. T4 consumption supplies and revalidates both current
+authorities in stored grant order. Missing, revoked, unenrolled, stale,
+role-lost, scope-changed, or principal-changed authority denies before the use
+counter can advance.
+
 ## Audit and failure behavior
 
 A successful state revision and one redacted outbox reference commit in the
@@ -105,10 +128,10 @@ failures are normalized to bounded reasons without backend details.
 ## Persistence and migration
 
 The domain registry now maps `approval` to
-`contracts/domain/v1/approval-lifecycle.schema.json`. This is the required
-policy/audit schema migration from the earlier provisional approval payload.
-Legacy payloads are never interpreted as active lifecycle authority and must
-be re-requested.
+`contracts/domain/v1/approval-lifecycle.schema.json`. Lifecycle v2 is the
+required policy/audit migration from both the provisional approval payload and
+v1 records that lack stable-principal enrollment proof. Those legacy payloads
+are never interpreted as T4 authority and must be re-requested.
 
 No SQL DDL migration is required. Both adapters already store canonical
 versioned domain envelopes by kind and identity, enforce optimistic revisions,

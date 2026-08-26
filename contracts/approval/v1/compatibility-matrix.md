@@ -19,9 +19,10 @@ matching fingerprint as an approval grant.
 
 ## Lifecycle compatibility
 
-| Stored or requested state | v1 result | Required action |
+| Stored or requested state | Lifecycle v2 result | Required action |
 |---|---|---|
-| Provisional pre-CYB-51 approval payload | Never active authority | Re-request under `coh.approval-lifecycle/v1` |
+| Provisional pre-CYB-51 approval payload | Never active authority | Re-request under `coh.approval-lifecycle/v2` |
+| `coh.approval-lifecycle/v1` record | Never T4 authority; no stable-principal enrollment proof | Re-request under lifecycle v2 |
 | Exact idempotency replay | Original commit result | Return the already committed revision |
 | Same idempotency key with changed input | Conflict | Use a new key only for a new intended operation |
 | Stale expected revision | Conflict | Reload and re-authorize from fresh state |

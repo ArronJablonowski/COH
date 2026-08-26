@@ -1,0 +1,32 @@
+{
+  "schema_version": "coh.t4-dual-approval-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name":"zero-approvers","reason":"approval_not_current"},
+    {"name":"one-approver","reason":"approval_not_current"},
+    {"name":"caller-threshold-override","reason":"threshold_not_caller_controlled"},
+    {"name":"duplicate-actor","reason":"invalid_grants"},
+    {"name":"duplicate-human-principal","reason":"invalid_grants"},
+    {"name":"requestor-actor","reason":"self_approval"},
+    {"name":"requestor-principal-alias","reason":"self_approval"},
+    {"name":"service-identity","reason":"approver_ineligible"},
+    {"name":"unenrolled-approver","reason":"approver_ineligible"},
+    {"name":"revoked-approver","reason":"actor_revoked"},
+    {"name":"missing-approver-role","reason":"approver_ineligible"},
+    {"name":"missing-approval-permission","reason":"permission_denied"},
+    {"name":"cross-scope-approver","reason":"actor_scope_mismatch"},
+    {"name":"stale-actor-revision","reason":"approver_authority_changed"},
+    {"name":"stale-enrollment-revision","reason":"approver_authority_changed"},
+    {"name":"changed-principal","reason":"approver_authority_changed"},
+    {"name":"missing-current-authority","reason":"approver_enrollment_incomplete"},
+    {"name":"fingerprint-tier-mismatch","reason":"fingerprint_authority"},
+    {"name":"expired-approval","reason":"approval_not_current"},
+    {"name":"consumed-approval","reason":"terminal_state"},
+    {"name":"revoked-approval","reason":"terminal_state"},
+    {"name":"concurrent-grant-conflict","reason":"optimistic_conflict"},
+    {"name":"changed-idempotency-retry","reason":"stale_revision"},
+    {"name":"request-canceled","reason":"request_canceled"},
+    {"name":"request-timeout","reason":"request_timeout"},
+    {"name":"audit-unavailable","reason":"audit_unavailable"}
+  ]
+}

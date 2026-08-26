@@ -3,8 +3,8 @@
 package approvallifecycle
 
 const (
-	SchemaVersion   = "coh.approval-lifecycle/v1"
-	ContractVersion = "1.0.0"
+	SchemaVersion   = "coh.approval-lifecycle/v2"
+	ContractVersion = "2.0.0"
 )
 
 type State string
@@ -21,9 +21,11 @@ const (
 // Grant is one distinct approver's durable decision. ActorRevision binds the
 // decision to the fresh identity authority used by the broker.
 type Grant struct {
-	ActorID       string `json:"actor_id"`
-	ActorRevision uint64 `json:"actor_revision"`
-	GrantedAt     string `json:"granted_at"`
+	ActorID            string `json:"actor_id"`
+	ActorRevision      uint64 `json:"actor_revision"`
+	PrincipalID        string `json:"principal_id"`
+	EnrollmentRevision uint64 `json:"enrollment_revision"`
+	GrantedAt          string `json:"granted_at"`
 }
 
 // Record is the complete safe-to-persist approval authority. It contains only
@@ -40,7 +42,9 @@ type Record struct {
 	PolicyDecisionDigest string  `json:"policy_decision_digest"`
 	RequestorActorID     string  `json:"requestor_actor_id"`
 	RequestorRevision    uint64  `json:"requestor_revision"`
+	RequestorPrincipalID string  `json:"requestor_principal_id"`
 	ActionOwnerActorID   string  `json:"action_owner_actor_id"`
+	ActionTier           string  `json:"action_tier"`
 	State                State   `json:"state"`
 	Revision             uint64  `json:"revision"`
 	RequestedAt          string  `json:"requested_at"`

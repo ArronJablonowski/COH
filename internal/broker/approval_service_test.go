@@ -17,14 +17,18 @@ import (
 )
 
 const (
-	organizationID = "0198d6c4-1111-7111-8111-111111111111"
-	tenantID       = "0198d6c4-3333-7333-8333-333333333333"
-	caseID         = "0198d6c4-4444-7444-8444-444444444444"
-	requestorID    = "0198d6c4-2222-7222-8222-222222222222"
-	ownerID        = "0198d6c4-5555-7555-8555-555555555555"
-	approverID     = "0198d6c4-7777-7777-8777-777777777777"
-	serviceID      = "0198d6c4-8888-7888-8888-888888888888"
-	approvalID     = "0198d6c4-6666-7666-8666-666666666666"
+	organizationID       = "0198d6c4-1111-7111-8111-111111111111"
+	tenantID             = "0198d6c4-3333-7333-8333-333333333333"
+	caseID               = "0198d6c4-4444-7444-8444-444444444444"
+	requestorID          = "0198d6c4-2222-7222-8222-222222222222"
+	ownerID              = "0198d6c4-5555-7555-8555-555555555555"
+	approverID           = "0198d6c4-7777-7777-8777-777777777777"
+	secondApproverID     = "0198d6c4-9999-7999-8999-999999999999"
+	requestorPrincipalID = "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa"
+	approverPrincipalID  = "0198d6c4-bbbb-7bbb-8bbb-bbbbbbbbbbbb"
+	secondPrincipalID    = "0198d6c4-cccc-7ccc-8ccc-cccccccccccc"
+	serviceID            = "0198d6c4-8888-7888-8888-888888888888"
+	approvalID           = "0198d6c4-6666-7666-8666-666666666666"
 )
 
 var testTime = time.Date(2026, 8, 26, 1, 10, 0, 0, time.UTC)
@@ -178,6 +182,153 @@ func TestFingerprintDenialScopeBindingAndAuditRedaction(t *testing.T) {
 	}
 }
 
+func TestT4RequiresTwoDistinctEnrolledHumanPrincipals(t *testing.T) {
+	fixture := newServiceFixtureTier(t, "T4")
+	requested, err := fixture.service.requestApproval(context.Background(), requestCommand("t4-request"))
+	if err != nil || requested.Record.RequiredGrantCount != 2 || requested.Record.ActionTier != "T4" {
+		t.Fatalf("T4 request=%+v err=%v", requested, err)
+	}
+	first, err := fixture.service.grantApproval(context.Background(), transitionCommand("t4-first", 1, approver(), "approval_granted", true))
+	if err != nil || first.Record.State != lifecycle.Requested || len(first.Record.Grants) != 1 {
+		t.Fatalf("first grant=%+v err=%v", first, err)
+	}
+	premature := transitionCommand("t4-premature", 2, owner(), "approval_consumed", true)
+	if _, err := fixture.service.consumeApproval(context.Background(), premature); lifecycle.Reason(err) != "approval_not_current" {
+		t.Fatalf("premature consume err=%v", err)
+	}
+	secondActor := secondApprover()
+	second, err := fixture.service.grantApproval(context.Background(), transitionCommand("t4-second", 2, secondActor, "approval_granted", true))
+	if err != nil || second.Record.State != lifecycle.Granted || len(second.Record.Grants) != 2 {
+		t.Fatalf("second grant=%+v err=%v", second, err)
+	}
+	secondReplay, err := fixture.service.grantApproval(context.Background(), transitionCommand("t4-second", 2, secondActor, "approval_granted", true))
+	if err != nil || !secondReplay.Replayed || secondReplay.Record.Revision != 3 {
+		t.Fatalf("second replay=%+v err=%v", secondReplay, err)
+	}
+	consume := transitionCommand("t4-consume", 3, owner(), "approval_consumed", true)
+	consume.GrantAuthorities = []approvalGrantAuthority{
+		grantAuthority(approver(), approverPrincipalID), grantAuthority(secondActor, secondPrincipalID),
+	}
+	consumed, err := fixture.service.consumeApproval(context.Background(), consume)
+	if err != nil || consumed.Record.State != lifecycle.Consumed {
+		t.Fatalf("T4 consume=%+v err=%v", consumed, err)
+	}
+}
+
+func TestT4ConcurrentFirstGrantsSerialize(t *testing.T) {
+	fixture := newServiceFixtureTier(t, "T4")
+	_, _ = fixture.service.requestApproval(context.Background(), requestCommand("t4-race-request"))
+	commands := []approvalTransitionCommand{
+		transitionCommand("t4-race-first", 1, approver(), "approval_granted", true),
+		transitionCommand("t4-race-second", 1, secondApprover(), "approval_granted", true),
+	}
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	var wait sync.WaitGroup
+	for _, command := range commands {
+		wait.Add(1)
+		go func(value approvalTransitionCommand) {
+			defer wait.Done()
+			<-start
+			_, err := fixture.service.grantApproval(context.Background(), value)
+			results <- err
+		}(command)
+	}
+	close(start)
+	wait.Wait()
+	close(results)
+	successes, conflicts := 0, 0
+	for err := range results {
+		if err == nil {
+			successes++
+		} else if lifecycle.Code(err) == lifecycle.Conflict {
+			conflicts++
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("successes=%d conflicts=%d", successes, conflicts)
+	}
+	stored, err := fixture.store.Get(context.Background(), recordKey(organizationID, tenantID, caseID, approvalID))
+	if err != nil || stored.Revision != 2 {
+		t.Fatalf("stored=%+v err=%v", stored, err)
+	}
+	record, err := decodeMetadata(stored)
+	if err != nil || record.State != lifecycle.Requested || len(record.Grants) != 1 {
+		t.Fatalf("record=%+v err=%v", record, err)
+	}
+}
+
+func TestT4DeniesAliasServiceAndUnenrolledApprovers(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*approvalTransitionCommand)
+		reason string
+	}{
+		{name: "same human alias", reason: "invalid_grants", mutate: func(command *approvalTransitionCommand) {
+			command.Principal.PrincipalID = approverPrincipalID
+		}},
+		{name: "requestor alias", reason: "self_approval", mutate: func(command *approvalTransitionCommand) {
+			command.Principal.PrincipalID = requestorPrincipalID
+		}},
+		{name: "service identity", reason: "approver_ineligible", mutate: func(command *approvalTransitionCommand) {
+			command.Principal.IdentityKind = "service"
+		}},
+		{name: "unenrolled", reason: "approver_ineligible", mutate: func(command *approvalTransitionCommand) {
+			command.Principal.Enrolled = false
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newServiceFixtureTier(t, "T4")
+			_, _ = fixture.service.requestApproval(context.Background(), requestCommand("t4-request-"+test.name))
+			_, _ = fixture.service.grantApproval(context.Background(), transitionCommand("t4-first-"+test.name, 1, approver(), "approval_granted", true))
+			command := transitionCommand("t4-second-"+test.name, 2, secondApprover(), "approval_granted", true)
+			test.mutate(&command)
+			if _, err := fixture.service.grantApproval(context.Background(), command); lifecycle.Reason(err) != test.reason {
+				t.Fatalf("err=%v want=%s", err, test.reason)
+			}
+		})
+	}
+}
+
+func TestT4ConsumptionRevalidatesBothEnrollments(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*approvalTransitionCommand)
+		reason string
+	}{
+		{name: "missing second", reason: "approver_enrollment_incomplete", mutate: func(command *approvalTransitionCommand) {
+			command.GrantAuthorities = command.GrantAuthorities[:1]
+		}},
+		{name: "unenrolled", reason: "approver_ineligible", mutate: func(command *approvalTransitionCommand) {
+			command.GrantAuthorities[1].Principal.Enrolled = false
+		}},
+		{name: "revoked", reason: "actor_revoked", mutate: func(command *approvalTransitionCommand) {
+			command.GrantAuthorities[1].Actor.Active = false
+		}},
+		{name: "stale enrollment", reason: "approver_authority_changed", mutate: func(command *approvalTransitionCommand) {
+			command.GrantAuthorities[1].Principal.EnrollmentRevision = 1
+		}},
+		{name: "principal changed", reason: "approver_authority_changed", mutate: func(command *approvalTransitionCommand) {
+			command.GrantAuthorities[1].Principal.PrincipalID = "0198d6c4-dddd-7ddd-8ddd-dddddddddddd"
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newServiceFixtureTier(t, "T4")
+			_, _ = fixture.service.requestApproval(context.Background(), requestCommand("t4-revalidate-request-"+test.name))
+			_, _ = fixture.service.grantApproval(context.Background(), transitionCommand("t4-revalidate-first-"+test.name, 1, approver(), "approval_granted", true))
+			_, _ = fixture.service.grantApproval(context.Background(), transitionCommand("t4-revalidate-second-"+test.name, 2, secondApprover(), "approval_granted", true))
+			consume := transitionCommand("t4-revalidate-consume-"+test.name, 3, owner(), "approval_consumed", true)
+			consume.GrantAuthorities = []approvalGrantAuthority{
+				grantAuthority(approver(), approverPrincipalID), grantAuthority(secondApprover(), secondPrincipalID),
+			}
+			test.mutate(&consume)
+			if _, err := fixture.service.consumeApproval(context.Background(), consume); lifecycle.Reason(err) != test.reason {
+				t.Fatalf("consume err=%v want=%s", err, test.reason)
+			}
+		})
+	}
+}
+
 type serviceFixture struct {
 	service *approvalService
 	store   *memoryStore
@@ -186,9 +337,13 @@ type serviceFixture struct {
 }
 
 func newServiceFixture(t *testing.T) serviceFixture {
+	return newServiceFixtureTier(t, "T2")
+}
+
+func newServiceFixtureTier(t *testing.T, tier string) serviceFixture {
 	t.Helper()
 	store, audit, clock := &memoryStore{records: make(map[string]workflow.MetadataRecord)}, &memoryAudit{}, &fakeClock{now: testTime}
-	service, err := newApprovalServiceWithDependencies(store, fakeVerifier{}, audit, clock, &sequenceReader{})
+	service, err := newApprovalServiceWithDependencies(store, fakeVerifier{tier: tier}, audit, clock, &sequenceReader{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,12 +351,21 @@ func newServiceFixture(t *testing.T) serviceFixture {
 }
 
 func requestCommand(key string) approvalRequestCommand {
-	return approvalRequestCommand{ApprovalID: approvalID, IdempotencyKey: key, Requestor: requestor(), approvalProof: proof()}
+	actor := requestor()
+	return approvalRequestCommand{ApprovalID: approvalID, IdempotencyKey: key, Requestor: actor,
+		Principal: principal(actor, requestorPrincipalID), approvalProof: proof()}
 }
 
 func transitionCommand(key string, revision uint64, actor policy.ActorAuthority, reason string, withProof bool) approvalTransitionCommand {
 	command := approvalTransitionCommand{ApprovalID: approvalID, IdempotencyKey: key, ExpectedRevision: revision,
 		Case: domain.CaseRef{OrganizationID: organizationID, TenantID: tenantID, CaseID: caseID}, Actor: actor, ReasonCode: reason}
+	if contains(actor.Permissions, "approval.decide") {
+		value := principal(actor, principalIDForActor(actor.ActorID))
+		command.Principal = &value
+	}
+	if contains(actor.Permissions, "action.request") && actor.ActorID == ownerID {
+		command.GrantAuthorities = []approvalGrantAuthority{grantAuthority(approver(), approverPrincipalID)}
+	}
 	if withProof {
 		value := proof()
 		command.approvalProof = &value
@@ -221,27 +385,54 @@ func proof() approvalProof {
 }
 
 func actor(id, permission string) policy.ActorAuthority {
+	role := "analyst"
+	if permission == "approval.decide" {
+		role = "approver"
+	} else if permission == "service.invoke" {
+		role = "service"
+	}
 	return policy.ActorAuthority{ActorID: id, OrganizationID: organizationID, TenantID: tenantID, CaseID: caseID,
-		Revision: 4, Active: true, Roles: []string{"analyst"}, Permissions: []string{permission}}
+		Revision: 4, Active: true, Roles: []string{role}, Permissions: []string{permission}}
 }
 
-func requestor() policy.ActorAuthority    { return actor(requestorID, "action.request") }
-func owner() policy.ActorAuthority        { return actor(ownerID, "action.request") }
-func approver() policy.ActorAuthority     { return actor(approverID, "approval.decide") }
-func serviceActor() policy.ActorAuthority { return actor(serviceID, "service.invoke") }
+func principal(actor policy.ActorAuthority, principalID string) approvalPrincipalAuthority {
+	return approvalPrincipalAuthority{ActorID: actor.ActorID, ActorRevision: actor.Revision, PrincipalID: principalID,
+		IdentityKind: "human", EnrollmentRevision: 2, Enrolled: true}
+}
 
-type fakeVerifier struct{}
+func grantAuthority(actor policy.ActorAuthority, principalID string) approvalGrantAuthority {
+	return approvalGrantAuthority{Actor: actor, Principal: principal(actor, principalID)}
+}
 
-func (fakeVerifier) Verify(_ context.Context, candidate approvalfingerprint.Fingerprint, _ actionmanifest.VerifiedEnvelope,
-	_ actionmanifest.SignerAuthority, _ policy.Decision) (approvalfingerprint.Fingerprint, error) {
-	return candidate, nil
+func requestor() policy.ActorAuthority      { return actor(requestorID, "action.request") }
+func owner() policy.ActorAuthority          { return actor(ownerID, "action.request") }
+func approver() policy.ActorAuthority       { return actor(approverID, "approval.decide") }
+func secondApprover() policy.ActorAuthority { return actor(secondApproverID, "approval.decide") }
+func serviceActor() policy.ActorAuthority   { return actor(serviceID, "service.invoke") }
+
+func principalIDForActor(actorID string) string {
+	if actorID == secondApproverID {
+		return secondPrincipalID
+	}
+	return approverPrincipalID
+}
+
+type fakeVerifier struct{ tier string }
+
+func (verifier fakeVerifier) verifyApproval(_ context.Context, candidate approvalfingerprint.Fingerprint, _ actionmanifest.VerifiedEnvelope,
+	_ actionmanifest.SignerAuthority, _ policy.Decision) (approvalVerifiedProof, error) {
+	tier := verifier.tier
+	if tier == "" {
+		tier = "T2"
+	}
+	return approvalVerifiedProof{Fingerprint: candidate, ActionTier: tier}, nil
 }
 
 type denyingVerifier struct{}
 
-func (denyingVerifier) Verify(context.Context, approvalfingerprint.Fingerprint, actionmanifest.VerifiedEnvelope,
-	actionmanifest.SignerAuthority, policy.Decision) (approvalfingerprint.Fingerprint, error) {
-	return approvalfingerprint.Fingerprint{}, errors.New("signer revoked")
+func (denyingVerifier) verifyApproval(context.Context, approvalfingerprint.Fingerprint, actionmanifest.VerifiedEnvelope,
+	actionmanifest.SignerAuthority, policy.Decision) (approvalVerifiedProof, error) {
+	return approvalVerifiedProof{}, errors.New("signer revoked")
 }
 
 type fakeClock struct{ now time.Time }

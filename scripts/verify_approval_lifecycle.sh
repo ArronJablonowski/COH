@@ -29,8 +29,8 @@ done
 ' "${contract}/fixtures/lifecycle-denial-corpus.json" >/dev/null
 
 /usr/bin/jq -e '
-  .schema_version == "coh.approval-lifecycle/v1"
-  and .contract_version == "1.0.0"
+  .schema_version == "coh.approval-lifecycle/v2"
+  and .contract_version == "2.0.0"
   and .state == "requested"
   and .revision == 1
   and .required_grant_count == 1

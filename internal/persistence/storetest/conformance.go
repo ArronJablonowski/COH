@@ -212,13 +212,16 @@ func ApprovalRecord(t *testing.T, state lifecycle.State, revision uint64, useCou
 	if state == lifecycle.Granted || state == lifecycle.Consumed {
 		lastActor = "0198d6c4-5555-7555-8555-555555555555"
 		reason = "approval_granted"
-		grants = []lifecycle.Grant{{ActorID: lastActor, ActorRevision: 5, GrantedAt: "2026-08-25T18:01:00.000000000Z"}}
+		grants = []lifecycle.Grant{{ActorID: lastActor, ActorRevision: 5,
+			PrincipalID: "0198d6c4-bbbb-7bbb-8bbb-bbbbbbbbbbbb", EnrollmentRevision: 2,
+			GrantedAt: "2026-08-25T18:01:00.000000000Z"}}
 	}
 	record := lifecycle.Record{SchemaVersion: lifecycle.SchemaVersion, ContractVersion: lifecycle.ContractVersion,
 		ApprovalID: "0198d6c4-9999-7999-8999-999999999999", OrganizationID: OrganizationID, TenantID: TenantID, CaseID: CaseID,
 		FingerprintDigest: Digest("fingerprint"), ManifestDigest: Digest("manifest"), PolicyDecisionDigest: Digest("decision"),
 		RequestorActorID: "0198d6c4-2222-7222-8222-222222222222", RequestorRevision: 3,
-		ActionOwnerActorID: "0198d6c4-3333-7333-8333-333333333333", State: state, Revision: revision,
+		RequestorPrincipalID: "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
+		ActionOwnerActorID:   "0198d6c4-3333-7333-8333-333333333333", ActionTier: "T2", State: state, Revision: revision,
 		RequestedAt: "2026-08-25T18:00:00.000000000Z", ValidFrom: "2026-08-25T18:00:00.000000000Z",
 		ValidUntil: "2026-08-25T19:00:00.000000000Z", RequiredGrantCount: 1, Grants: grants,
 		MaximumUseCount: 1, UseCount: useCount, ReasonCode: reason, LastActorID: lastActor, LastActorRevision: 5,

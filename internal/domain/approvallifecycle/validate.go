@@ -17,7 +17,7 @@ func ValidateRecord(record Record) error {
 	if record.SchemaVersion != SchemaVersion || record.ContractVersion != ContractVersion {
 		return NewError(InvalidInput, "unsupported_contract")
 	}
-	for _, value := range []string{record.ApprovalID, record.OrganizationID, record.TenantID, record.CaseID, record.RequestorActorID, record.ActionOwnerActorID, record.LastActorID, record.LastEventID} {
+	for _, value := range []string{record.ApprovalID, record.OrganizationID, record.TenantID, record.CaseID, record.RequestorActorID, record.RequestorPrincipalID, record.ActionOwnerActorID, record.LastActorID, record.LastEventID} {
 		if !uuidPattern.MatchString(value) {
 			return NewError(InvalidInput, "invalid_identity")
 		}
@@ -39,15 +39,16 @@ func ValidateRecord(record Record) error {
 		record.MaximumUseCount == 0 || record.MaximumUseCount > 1000 || record.UseCount > record.MaximumUseCount {
 		return NewError(InvalidInput, "invalid_counter")
 	}
-	if len(record.Grants) > int(record.RequiredGrantCount) || duplicateGrant(record.Grants) {
+	if !validActionTier(record.ActionTier) || len(record.Grants) > int(record.RequiredGrantCount) || duplicateGrant(record.Grants) {
 		return NewError(InvalidInput, "invalid_grants")
 	}
 	for _, grant := range record.Grants {
 		grantedAt, err := parseTimestamp(grant.GrantedAt)
-		if !uuidPattern.MatchString(grant.ActorID) || grant.ActorRevision == 0 || err != nil || grantedAt.Before(requestedAt) || grantedAt.After(updatedAt) {
+		if !uuidPattern.MatchString(grant.ActorID) || !uuidPattern.MatchString(grant.PrincipalID) || grant.ActorRevision == 0 ||
+			grant.EnrollmentRevision == 0 || err != nil || grantedAt.Before(requestedAt) || grantedAt.After(updatedAt) {
 			return NewError(InvalidInput, "invalid_grant")
 		}
-		if grant.ActorID == record.RequestorActorID {
+		if grant.ActorID == record.RequestorActorID || grant.PrincipalID == record.RequestorPrincipalID {
 			return NewError(Denied, "self_approval")
 		}
 	}
@@ -119,14 +120,23 @@ func validStateShape(record Record) bool {
 }
 
 func duplicateGrant(grants []Grant) bool {
-	seen := make(map[string]struct{}, len(grants))
+	actors := make(map[string]struct{}, len(grants))
+	principals := make(map[string]struct{}, len(grants))
 	for _, grant := range grants {
-		if _, exists := seen[grant.ActorID]; exists {
+		if _, exists := actors[grant.ActorID]; exists {
 			return true
 		}
-		seen[grant.ActorID] = struct{}{}
+		if _, exists := principals[grant.PrincipalID]; exists {
+			return true
+		}
+		actors[grant.ActorID] = struct{}{}
+		principals[grant.PrincipalID] = struct{}{}
 	}
 	return false
+}
+
+func validActionTier(value string) bool {
+	return value == "T0" || value == "T1" || value == "T2" || value == "T3" || value == "T4"
 }
 
 func parseTimestamp(value string) (time.Time, error) { return time.Parse(timestampLayout, value) }

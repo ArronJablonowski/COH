@@ -29,7 +29,8 @@ func TestTransitionTable(t *testing.T) {
 	granted := requested
 	granted.Revision++
 	granted.State = Granted
-	granted.Grants = []Grant{{ActorID: "0198d6c4-7777-7777-8777-777777777777", ActorRevision: 9, GrantedAt: "2026-08-26T01:01:00.000000000Z"}}
+	granted.Grants = []Grant{{ActorID: "0198d6c4-7777-7777-8777-777777777777", ActorRevision: 9,
+		PrincipalID: "0198d6c4-bbbb-7bbb-8bbb-bbbbbbbbbbbb", EnrollmentRevision: 2, GrantedAt: "2026-08-26T01:01:00.000000000Z"}}
 	granted.LastActorID = granted.Grants[0].ActorID
 	granted.LastActorRevision = 9
 	granted.ReasonCode = "approval_granted"
@@ -80,8 +81,9 @@ func fixtureRecord() Record {
 		ManifestDigest:       "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 		PolicyDecisionDigest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
 		RequestorActorID:     "0198d6c4-2222-7222-8222-222222222222", RequestorRevision: 4,
-		ActionOwnerActorID: "0198d6c4-5555-7555-8555-555555555555",
-		State:              Requested, Revision: 1, RequestedAt: "2026-08-26T01:00:00.000000000Z",
+		RequestorPrincipalID: "0198d6c4-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
+		ActionOwnerActorID:   "0198d6c4-5555-7555-8555-555555555555", ActionTier: "T2",
+		State: Requested, Revision: 1, RequestedAt: "2026-08-26T01:00:00.000000000Z",
 		ValidFrom: "2026-08-26T01:00:00.000000000Z", ValidUntil: "2026-08-26T02:00:00.000000000Z",
 		RequiredGrantCount: 1, Grants: []Grant{}, MaximumUseCount: 1, UseCount: 0,
 		ReasonCode: "approval_requested", LastActorID: "0198d6c4-2222-7222-8222-222222222222",
