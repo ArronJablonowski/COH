@@ -151,6 +151,26 @@ func TestUnsupportedCapabilityFailsClosed(t *testing.T) {
 	}
 }
 
+func TestToolResultCarriesSchemaBoundCanonicalValue(t *testing.T) {
+	capability := decodeCapabilityFixture(t)
+	request := validRequest(capability.Value().Provider, capability.Digest())
+	value := json.RawMessage(`{"findings":["one"]}`)
+	resultDigest, err := DigestToolResult(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Messages = append(request.Messages, Message{MessageID: "0198e300-1000-7000-8000-000000000012", Role: "tool",
+		Items: []ContentItem{{Kind: "tool_result", CallID: "call-1", Outcome: "succeeded", Value: value,
+			OutputSchemaDigest: digest("2"), ResultDigest: resultDigest}}})
+	if _, err = DecodeRequest(context.Background(), marshal(t, request)); err != nil {
+		t.Fatal(err)
+	}
+	request.Messages[1].Items[0].Value = json.RawMessage(`{"findings":["changed"]}`)
+	if _, err := DecodeRequest(context.Background(), marshal(t, request)); Code(err) != InvalidInput || Reason(err) != "content_tool_result" {
+		t.Fatalf("tampered result err=%v", err)
+	}
+}
+
 func TestDenialCorpusMapsEveryRequiredBoundary(t *testing.T) {
 	input, err := os.ReadFile("../../../contracts/provider/v1/fixtures/denial-corpus.json")
 	if err != nil {

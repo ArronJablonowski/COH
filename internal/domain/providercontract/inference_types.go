@@ -3,18 +3,19 @@ package providercontract
 import "encoding/json"
 
 type ContentItem struct {
-	Kind              string          `json:"kind"`
-	Text              string          `json:"text,omitempty"`
-	Value             json.RawMessage `json:"value,omitempty"`
-	SchemaDigest      string          `json:"schema_digest,omitempty"`
-	CallID            string          `json:"call_id,omitempty"`
-	ToolName          string          `json:"tool_name,omitempty"`
-	Arguments         json.RawMessage `json:"arguments,omitempty"`
-	InputSchemaDigest string          `json:"input_schema_digest,omitempty"`
-	Outcome           string          `json:"outcome,omitempty"`
-	ResultDigest      string          `json:"result_digest,omitempty"`
-	ReferenceID       string          `json:"reference_id,omitempty"`
-	Digest            string          `json:"digest,omitempty"`
+	Kind               string          `json:"kind"`
+	Text               string          `json:"text,omitempty"`
+	Value              json.RawMessage `json:"value,omitempty"`
+	SchemaDigest       string          `json:"schema_digest,omitempty"`
+	CallID             string          `json:"call_id,omitempty"`
+	ToolName           string          `json:"tool_name,omitempty"`
+	Arguments          json.RawMessage `json:"arguments,omitempty"`
+	InputSchemaDigest  string          `json:"input_schema_digest,omitempty"`
+	Outcome            string          `json:"outcome,omitempty"`
+	OutputSchemaDigest string          `json:"output_schema_digest,omitempty"`
+	ResultDigest       string          `json:"result_digest,omitempty"`
+	ReferenceID        string          `json:"reference_id,omitempty"`
+	Digest             string          `json:"digest,omitempty"`
 }
 
 type Message struct {

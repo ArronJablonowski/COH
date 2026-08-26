@@ -14,6 +14,12 @@ usage, cancellation, terminal state, capability discovery, provider identity,
 inference provenance, and qualification evidence. It does not expose a generic
 vendor request, options map, headers map, or passthrough JSON field.
 
+A `tool_result` carries the original call ID, terminal outcome, strict typed
+JSON value, output-schema digest, and a domain-separated digest of the
+canonical value. This is the minimum replay-safe content required to submit a
+function result on a later inference turn; a digest without its typed value is
+not a valid tool result.
+
 ## Contract bundle
 
 | Schema | Purpose |

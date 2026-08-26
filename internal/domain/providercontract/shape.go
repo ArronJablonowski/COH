@@ -177,7 +177,7 @@ func validateContentShape(value any) error {
 	case "tool_call":
 		fields = []string{"kind", "call_id", "tool_name", "arguments", "input_schema_digest"}
 	case "tool_result":
-		fields = []string{"kind", "call_id", "outcome", "result_digest"}
+		fields = []string{"kind", "call_id", "outcome", "value", "output_schema_digest", "result_digest"}
 	case "reasoning_ref":
 		fields = []string{"kind", "reference_id", "digest"}
 	default:

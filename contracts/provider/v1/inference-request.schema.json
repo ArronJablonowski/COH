@@ -89,11 +89,13 @@
     },
     "tool_result": {
       "type": "object", "additionalProperties": false,
-      "required": ["kind", "call_id", "outcome", "result_digest"],
+      "required": ["kind", "call_id", "outcome", "value", "output_schema_digest", "result_digest"],
       "properties": {
         "kind": {"const": "tool_result"},
         "call_id": {"type": "string", "minLength": 1, "maxLength": 128},
         "outcome": {"enum": ["succeeded", "denied", "canceled", "timeout", "failed", "uncertain"]},
+        "value": {"type": "object"},
+        "output_schema_digest": {"$ref": "capability.schema.json#/$defs/digest"},
         "result_digest": {"$ref": "capability.schema.json#/$defs/digest"}
       }
     },

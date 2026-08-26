@@ -2,9 +2,16 @@ package providercontract
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"slices"
 	"strings"
+
+	"github.com/ArronJablonowski/COH/internal/helper/domaincontract"
 )
+
+const toolResultDigestDomain = "COH-PROVIDER-TOOL-RESULT-V1\x00"
 
 func ValidateRequest(value InferenceRequest) error {
 	if value.SchemaVersion != RequestSchemaVersion || value.ContractVersion != ContractVersion {
@@ -169,7 +176,10 @@ func validateMessage(value Message) error {
 		return NewError(InvalidInput, "message_identity")
 	}
 	for _, item := range value.Items {
-		if err := validateContent(item); err != nil || !roleAllows(value.Role, item.Kind) {
+		if err := validateContent(item); err != nil {
+			return err
+		}
+		if !roleAllows(value.Role, item.Kind) {
 			return NewError(Denied, "message_content")
 		}
 	}
@@ -193,7 +203,8 @@ func validateContent(value ContentItem) error {
 		}
 	case "tool_result":
 		if !boundedText(value.CallID, 128) || !oneOf(value.Outcome, "succeeded", "denied", "canceled", "timeout", "failed", "uncertain") ||
-			!digestPattern.MatchString(value.ResultDigest) || hasOutsideToolResultFields(value) {
+			!validJSONObject(value.Value) || !digestPattern.MatchString(value.OutputSchemaDigest) ||
+			value.ResultDigest != toolResultDigest(value.Value) || hasOutsideToolResultFields(value) {
 			return NewError(InvalidInput, "content_tool_result")
 		}
 	case "reasoning_ref":
@@ -268,28 +279,50 @@ func safeErrorMessage(value string) bool {
 
 func rawEmpty(value []byte) bool { return len(bytes.TrimSpace(value)) == 0 }
 
+func toolResultDigest(value []byte) string {
+	canonical, err := domaincontract.Canonicalize(value)
+	if err != nil {
+		return ""
+	}
+	input := make([]byte, 0, len(toolResultDigestDomain)+len(canonical))
+	input = append(input, toolResultDigestDomain...)
+	input = append(input, canonical...)
+	sum := sha256.Sum256(input)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+// DigestToolResult returns the contract digest for one typed JSON tool result.
+func DigestToolResult(value json.RawMessage) (string, error) {
+	digest := toolResultDigest(value)
+	if digest == "" || !validJSONObject(value) {
+		return "", NewError(InvalidInput, "tool_result_value")
+	}
+	return digest, nil
+}
+
 func hasNonTextFields(value ContentItem) bool {
 	return !rawEmpty(value.Value) || value.SchemaDigest != "" || value.CallID != "" || value.ToolName != "" ||
-		!rawEmpty(value.Arguments) || value.InputSchemaDigest != "" || value.Outcome != "" || value.ResultDigest != "" ||
+		!rawEmpty(value.Arguments) || value.InputSchemaDigest != "" || value.Outcome != "" || value.OutputSchemaDigest != "" || value.ResultDigest != "" ||
 		value.ReferenceID != "" || value.Digest != ""
 }
 
 func hasOutsideJSONFields(value ContentItem) bool {
 	return value.Text != "" || value.CallID != "" || value.ToolName != "" || !rawEmpty(value.Arguments) ||
-		value.InputSchemaDigest != "" || value.Outcome != "" || value.ResultDigest != "" || value.ReferenceID != "" || value.Digest != ""
+		value.InputSchemaDigest != "" || value.Outcome != "" || value.OutputSchemaDigest != "" || value.ResultDigest != "" || value.ReferenceID != "" || value.Digest != ""
 }
 
 func hasOutsideToolCallFields(value ContentItem) bool {
 	return value.Text != "" || !rawEmpty(value.Value) || value.SchemaDigest != "" || value.Outcome != "" ||
-		value.ResultDigest != "" || value.ReferenceID != "" || value.Digest != ""
+		value.OutputSchemaDigest != "" || value.ResultDigest != "" || value.ReferenceID != "" || value.Digest != ""
 }
 
 func hasOutsideToolResultFields(value ContentItem) bool {
-	return value.Text != "" || !rawEmpty(value.Value) || value.SchemaDigest != "" || value.ToolName != "" ||
+	return value.Text != "" || value.SchemaDigest != "" || value.ToolName != "" ||
 		!rawEmpty(value.Arguments) || value.InputSchemaDigest != "" || value.ReferenceID != "" || value.Digest != ""
 }
 
 func hasOutsideReasoningFields(value ContentItem) bool {
 	return value.Text != "" || !rawEmpty(value.Value) || value.SchemaDigest != "" || value.CallID != "" ||
-		value.ToolName != "" || !rawEmpty(value.Arguments) || value.InputSchemaDigest != "" || value.Outcome != "" || value.ResultDigest != ""
+		value.ToolName != "" || !rawEmpty(value.Arguments) || value.InputSchemaDigest != "" || value.Outcome != "" ||
+		value.OutputSchemaDigest != "" || value.ResultDigest != ""
 }
