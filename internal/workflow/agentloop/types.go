@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
+	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
 
 const (
@@ -56,6 +57,7 @@ type Run struct {
 	WorkflowVersion  string
 	PolicyDigest     string
 	ProviderRoute    string
+	BudgetPlanDigest string
 	Status           RunStatus
 	CurrentStepID    string
 	Sequence         uint64
@@ -68,22 +70,24 @@ type Run struct {
 }
 
 type Step struct {
-	ContractVersion  string
-	StepID           string
-	RunID            string
-	Case             domain.CaseRef
-	Kind             ActivityKind
-	Status           StepStatus
-	Attempt          uint32
-	Deadline         time.Time
-	InputRefs        []string
-	OutputRefs       []string
-	IntentDigest     string
-	ReceiptDigest    string
-	ProvenanceDigest string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	Revision         uint64
+	ContractVersion         string
+	StepID                  string
+	RunID                   string
+	Case                    domain.CaseRef
+	Kind                    ActivityKind
+	Status                  StepStatus
+	Attempt                 uint32
+	Deadline                time.Time
+	InputRefs               []string
+	OutputRefs              []string
+	IntentDigest            string
+	ReceiptDigest           string
+	BudgetReservationDigest string
+	BudgetSettlementDigest  string
+	ProvenanceDigest        string
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	Revision                uint64
 }
 
 type Snapshot struct {
@@ -104,6 +108,9 @@ type StartRequest struct {
 	InputRefs      []string
 	IntentDigest   string
 	Deadline       time.Time
+	BudgetPlan     *runbudget.Plan
+	TaskBudget     runbudget.Vector
+	BudgetClaim    runbudget.Vector
 }
 
 type ExecuteRequest struct {
@@ -115,14 +122,17 @@ type ExecuteRequest struct {
 }
 
 type ScheduleRequest struct {
-	IdempotencyKey string
-	Case           domain.CaseRef
-	RunID          string
-	StepID         string
-	Activity       ActivityKind
-	InputRefs      []string
-	IntentDigest   string
-	Deadline       time.Time
+	IdempotencyKey     string
+	Case               domain.CaseRef
+	RunID              string
+	StepID             string
+	Activity           ActivityKind
+	InputRefs          []string
+	IntentDigest       string
+	Deadline           time.Time
+	BudgetParentTaskID string
+	TaskBudget         runbudget.Vector
+	BudgetClaim        runbudget.Vector
 }
 
 type CompleteRequest struct {

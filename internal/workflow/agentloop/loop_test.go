@@ -32,11 +32,12 @@ func TestDurablePlanActionLoopPersistsBeforeActivities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if acted.Run.Status != RunWaiting || acted.Step.Status != StepSucceeded || acted.Step.ReceiptDigest == "" || action.calls != 1 || store.history[len(store.history)-2].Step.Status != StepDispatching {
+	if acted.Run.Status != RunWaiting || acted.Step.Status != StepSucceeded || acted.Step.ReceiptDigest == "" ||
+		acted.Step.BudgetSettlementDigest == "" || action.calls != 1 || store.history[len(store.history)-3].Step.Status != StepDispatching {
 		t.Fatalf("acted=%+v calls=%d history=%+v", acted, action.calls, store.history)
 	}
 	completed, err := loop.Complete(context.Background(), CompleteRequest{IdempotencyKey: "complete-1", Case: testScope(), RunID: testRun})
-	if err != nil || completed.Run.Status != RunSucceeded || completed.Run.Sequence != 7 || len(completed.Run.OutputRefs) != 2 {
+	if err != nil || completed.Run.Status != RunSucceeded || completed.Run.Sequence != 9 || len(completed.Run.OutputRefs) != 2 {
 		t.Fatalf("completed=%+v err=%v", completed, err)
 	}
 	replayed, err := loop.Resume(context.Background(), ResumeRequest{IdempotencyKey: "resume-complete", Case: testScope(), RunID: testRun})
@@ -96,7 +97,7 @@ func TestCancellationAndTimeoutBecomeDurableTerminalStates(t *testing.T) {
 			model := &blockingModel{}
 			action := &actionStub{store: store}
 			clock := &fixedClock{value: mustTime(t, "2026-08-26T16:10:00.000000000Z")}
-			loop, err := New(store, model, action, clock)
+			loop, err := New(store, model, action, &budgetStub{}, clock)
 			if err != nil {
 				t.Fatal(err)
 			}

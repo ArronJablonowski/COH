@@ -9,6 +9,7 @@ import (
 
 	"github.com/ArronJablonowski/COH/internal/domain"
 	"github.com/ArronJablonowski/COH/internal/workflow/agentloop"
+	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
 
 const (
@@ -113,6 +114,20 @@ type phaseActionStub struct {
 	err     error
 }
 
+type phaseBudgetStub struct{}
+
+func (*phaseBudgetStub) Reserve(_ context.Context,
+	_ runbudget.ReservationRequest) (runbudget.Reservation, error) {
+	return runbudget.Reservation{ReservationDigest: testDigestSix, PlanDigest: testDigestSeven,
+		ClaimDigest: testDigestOne, LedgerDigest: testDigestSeven}, nil
+}
+
+func (*phaseBudgetStub) Settle(_ context.Context,
+	request runbudget.SettlementRequest) (runbudget.Settlement, error) {
+	return runbudget.Settlement{ReservationDigest: request.ReservationDigest,
+		SettlementDigest: testDigestSeven, LedgerDigest: testDigestSix}, nil
+}
+
 func (action *phaseActionStub) Submit(_ context.Context, _ domain.ToolIntent) (domain.ActionReceipt, error) {
 	action.calls++
 	return action.receipt, action.err
@@ -151,7 +166,7 @@ func newPhaseFixture(t *testing.T) *phaseFixture {
 	action := &phaseActionStub{}
 	resolver := &resolverStub{outputs: map[string]PhaseOutput{}, errors: map[string]error{}, calls: map[string]int{}}
 	coordinator, err := New(Dependencies{
-		Store: store, Models: model, Actions: action, Results: resolver,
+		Store: store, Models: model, Actions: action, Budgets: &phaseBudgetStub{}, Results: resolver,
 		Clock: &phaseClock{value: mustTime(t, "2026-08-26T16:45:00.000000000Z")},
 	})
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/ArronJablonowski/COH/internal/domain"
 	workflowbase "github.com/ArronJablonowski/COH/internal/workflow"
 	"github.com/ArronJablonowski/COH/internal/workflow/agentloop"
+	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
 
 const ContractVersion = "coh.agent-phase/v1"
@@ -105,6 +106,9 @@ type StartRequest struct {
 	InputRefs      []string
 	RetryPolicy    RetryPolicy
 	Deadline       time.Time
+	BudgetPlan     *runbudget.Plan
+	TaskBudget     runbudget.Vector
+	BudgetClaim    runbudget.Vector
 }
 
 type Session struct {
@@ -128,9 +132,11 @@ type AdvanceResult struct {
 }
 
 type TransitionRequest struct {
-	IdempotencyKey string
-	Session        Session
-	Output         PhaseOutput
+	IdempotencyKey  string
+	Session         Session
+	Output          PhaseOutput
+	NextTaskBudget  runbudget.Vector
+	NextBudgetClaim runbudget.Vector
 }
 
 type ResultResolver interface {
@@ -141,6 +147,7 @@ type Dependencies struct {
 	Store   agentloop.StateStore
 	Models  workflowbase.ModelProvider
 	Actions workflowbase.ActionAuthority
+	Budgets runbudget.Authority
 	Results ResultResolver
 	Clock   agentloop.Clock
 }

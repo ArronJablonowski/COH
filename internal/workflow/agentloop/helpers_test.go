@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
+	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
 
 const (
@@ -126,6 +127,33 @@ type actionStub struct {
 	receipt domain.ActionReceipt
 }
 
+type budgetStub struct {
+	reserveCalls int
+	settleCalls  int
+	reserveErr   error
+	settleErr    error
+}
+
+func (budget *budgetStub) Reserve(_ context.Context,
+	_ runbudget.ReservationRequest) (runbudget.Reservation, error) {
+	budget.reserveCalls++
+	if budget.reserveErr != nil {
+		return runbudget.Reservation{}, budget.reserveErr
+	}
+	return runbudget.Reservation{ReservationDigest: testDigestTwo, PlanDigest: testDigestThree,
+		ClaimDigest: testDigestOne, LedgerDigest: testDigestThree}, nil
+}
+
+func (budget *budgetStub) Settle(_ context.Context,
+	request runbudget.SettlementRequest) (runbudget.Settlement, error) {
+	budget.settleCalls++
+	if budget.settleErr != nil {
+		return runbudget.Settlement{}, budget.settleErr
+	}
+	return runbudget.Settlement{ReservationDigest: request.ReservationDigest,
+		SettlementDigest: testDigestOne, LedgerDigest: testDigestThree}, nil
+}
+
 func (action *actionStub) Submit(_ context.Context, _ domain.ToolIntent) (domain.ActionReceipt, error) {
 	action.calls++
 	if action.store != nil && action.store.current.Step.Status != StepDispatching {
@@ -140,7 +168,7 @@ func newTestLoop(t *testing.T) (*Loop, *memoryStore, *modelStub, *actionStub, *f
 	model := &modelStub{store: store, ref: domain.ArtifactRef{Digest: testDigestTwo, MediaType: "application/json", Classification: "internal", Length: 12}}
 	action := &actionStub{store: store}
 	clock := &fixedClock{value: mustTime(t, "2026-08-26T16:10:00.000000000Z")}
-	loop, err := New(store, model, action, clock)
+	loop, err := New(store, model, action, &budgetStub{}, clock)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -29,7 +29,7 @@
       "type": "object",
       "required": [
         "contract_version", "initiating_actor_id", "workflow_type", "workflow_version",
-        "policy_digest", "provider_route", "status", "current_step_id", "sequence",
+        "policy_digest", "provider_route", "budget_plan_digest", "status", "current_step_id", "sequence",
         "input_refs", "output_refs", "provenance_digest", "updated_at"
       ],
       "properties": {
@@ -39,6 +39,7 @@
         "workflow_version": {"const": "1.0.0"},
         "policy_digest": {"$ref": "#/$defs/digest"},
         "provider_route": {"$ref": "#/$defs/token"},
+        "budget_plan_digest": {"$ref": "#/$defs/digest"},
         "status": {"enum": ["running", "waiting", "succeeded", "failed", "denied", "canceled", "timeout", "uncertain"]},
         "current_step_id": {"$ref": "#/$defs/uuid_v7"},
         "sequence": {"type": "integer", "minimum": 1},
@@ -53,7 +54,8 @@
       "type": "object",
       "required": [
         "contract_version", "run_id", "activity_kind", "status", "attempt", "deadline",
-        "input_refs", "output_refs", "intent_digest", "receipt_digest", "provenance_digest", "updated_at"
+        "input_refs", "output_refs", "intent_digest", "receipt_digest", "budget_reservation_digest",
+        "budget_settlement_digest", "provenance_digest", "updated_at"
       ],
       "properties": {
         "contract_version": {"const": "coh.agent-loop/v1"},
@@ -66,6 +68,8 @@
         "output_refs": {"$ref": "#/$defs/references"},
         "intent_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
         "receipt_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "budget_reservation_digest": {"$ref": "#/$defs/digest"},
+        "budget_settlement_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
         "provenance_digest": {"$ref": "#/$defs/digest"},
         "updated_at": {"$ref": "#/$defs/timestamp"}
       },

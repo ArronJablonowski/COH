@@ -6,6 +6,7 @@ import (
 
 	workflowbase "github.com/ArronJablonowski/COH/internal/workflow"
 	"github.com/ArronJablonowski/COH/internal/workflow/agentloop"
+	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
 
 func TestCoordinatorDependencySurfaceHasNoActionBypass(t *testing.T) {
@@ -14,6 +15,7 @@ func TestCoordinatorDependencySurfaceHasNoActionBypass(t *testing.T) {
 		"Store":   reflect.TypeOf((*agentloop.StateStore)(nil)).Elem(),
 		"Models":  reflect.TypeOf((*workflowbase.ModelProvider)(nil)).Elem(),
 		"Actions": reflect.TypeOf((*workflowbase.ActionAuthority)(nil)).Elem(),
+		"Budgets": reflect.TypeOf((*runbudget.Authority)(nil)).Elem(),
 		"Results": reflect.TypeOf((*ResultResolver)(nil)).Elem(),
 		"Clock":   reflect.TypeOf((*agentloop.Clock)(nil)).Elem(),
 	}

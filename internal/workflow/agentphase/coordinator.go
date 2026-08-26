@@ -13,12 +13,12 @@ type Coordinator struct {
 }
 
 func New(dependencies Dependencies) (*Coordinator, error) {
-	if dependencies.Store == nil || dependencies.Models == nil || dependencies.Actions == nil ||
+	if dependencies.Store == nil || dependencies.Models == nil || dependencies.Actions == nil || dependencies.Budgets == nil ||
 		dependencies.Results == nil || dependencies.Clock == nil {
 		return nil, newError(InvalidInput, "new", "dependencies_required", false, nil)
 	}
 	model := &phaseModel{models: dependencies.Models, results: dependencies.Results}
-	loop, err := agentloop.New(dependencies.Store, model, dependencies.Actions, dependencies.Clock)
+	loop, err := agentloop.New(dependencies.Store, model, dependencies.Actions, dependencies.Budgets, dependencies.Clock)
 	if err != nil {
 		return nil, mapLoopError("new", err)
 	}
@@ -48,7 +48,8 @@ func (coordinator *Coordinator) Start(ctx context.Context, request StartRequest)
 		IdempotencyKey: request.IdempotencyKey, RunID: request.RunID, StepID: stepID,
 		Case: request.Case, ActorID: request.ActorID, PolicyDigest: request.PolicyDigest,
 		ProviderRoute: request.ProviderRoute, Activity: agentloop.PlanningActivity,
-		InputRefs: refs, Deadline: request.Deadline,
+		InputRefs: refs, Deadline: request.Deadline, BudgetPlan: request.BudgetPlan,
+		TaskBudget: request.TaskBudget, BudgetClaim: request.BudgetClaim,
 	})
 	if err != nil {
 		return Session{}, mapLoopError("start", err)
@@ -160,7 +161,8 @@ func (coordinator *Coordinator) Transition(ctx context.Context, request Transiti
 		IdempotencyKey: request.IdempotencyKey, Case: request.Session.Snapshot.Run.Case,
 		RunID: request.Session.Snapshot.Run.RunID, StepID: stepID, Activity: activity,
 		InputRefs: []string{request.Output.ArtifactDigest}, IntentDigest: intentDigest,
-		Deadline: request.Session.Snapshot.Step.Deadline,
+		Deadline: request.Session.Snapshot.Step.Deadline, TaskBudget: request.NextTaskBudget,
+		BudgetClaim: request.NextBudgetClaim,
 	})
 	if err != nil {
 		return Session{}, mapLoopError("schedule", err)

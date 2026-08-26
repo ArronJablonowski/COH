@@ -151,6 +151,7 @@ type runPayload struct {
 	WorkflowVersion   string   `json:"workflow_version"`
 	PolicyDigest      string   `json:"policy_digest"`
 	ProviderRoute     string   `json:"provider_route"`
+	BudgetPlanDigest  string   `json:"budget_plan_digest"`
 	Status            string   `json:"status"`
 	CurrentStepID     string   `json:"current_step_id"`
 	Sequence          uint64   `json:"sequence"`
@@ -173,18 +174,20 @@ type stepEnvelope struct {
 }
 
 type stepPayload struct {
-	ContractVersion  string   `json:"contract_version"`
-	RunID            string   `json:"run_id"`
-	ActivityKind     string   `json:"activity_kind"`
-	Status           string   `json:"status"`
-	Attempt          uint32   `json:"attempt"`
-	Deadline         string   `json:"deadline"`
-	InputRefs        []string `json:"input_refs"`
-	OutputRefs       []string `json:"output_refs"`
-	IntentDigest     string   `json:"intent_digest"`
-	ReceiptDigest    string   `json:"receipt_digest"`
-	ProvenanceDigest string   `json:"provenance_digest"`
-	UpdatedAt        string   `json:"updated_at"`
+	ContractVersion         string   `json:"contract_version"`
+	RunID                   string   `json:"run_id"`
+	ActivityKind            string   `json:"activity_kind"`
+	Status                  string   `json:"status"`
+	Attempt                 uint32   `json:"attempt"`
+	Deadline                string   `json:"deadline"`
+	InputRefs               []string `json:"input_refs"`
+	OutputRefs              []string `json:"output_refs"`
+	IntentDigest            string   `json:"intent_digest"`
+	ReceiptDigest           string   `json:"receipt_digest"`
+	BudgetReservationDigest string   `json:"budget_reservation_digest"`
+	BudgetSettlementDigest  string   `json:"budget_settlement_digest"`
+	ProvenanceDigest        string   `json:"provenance_digest"`
+	UpdatedAt               string   `json:"updated_at"`
 }
 
 func encodeRun(value Run) (workflowbase.MetadataRecord, error) {
@@ -196,7 +199,8 @@ func encodeRun(value Run) (workflowbase.MetadataRecord, error) {
 			ContractVersion: value.ContractVersion, InitiatingActorID: value.ActorID,
 			WorkflowType: WorkflowDefinition, WorkflowVersion: value.WorkflowVersion,
 			PolicyDigest: value.PolicyDigest, ProviderRoute: value.ProviderRoute, Status: string(value.Status),
-			CurrentStepID: value.CurrentStepID, Sequence: value.Sequence,
+			BudgetPlanDigest: value.BudgetPlanDigest,
+			CurrentStepID:    value.CurrentStepID, Sequence: value.Sequence,
 			InputRefs: value.InputRefs, OutputRefs: value.OutputRefs,
 			ProvenanceDigest: value.ProvenanceDigest, UpdatedAt: formatTime(value.UpdatedAt),
 		},
@@ -213,7 +217,9 @@ func encodeStep(value Step) (workflowbase.MetadataRecord, error) {
 			ContractVersion: value.ContractVersion, RunID: value.RunID, ActivityKind: string(value.Kind), Status: string(value.Status),
 			Attempt: value.Attempt, Deadline: formatTime(value.Deadline), InputRefs: value.InputRefs, OutputRefs: value.OutputRefs,
 			IntentDigest: value.IntentDigest, ReceiptDigest: value.ReceiptDigest,
-			ProvenanceDigest: value.ProvenanceDigest, UpdatedAt: formatTime(value.UpdatedAt),
+			BudgetReservationDigest: value.BudgetReservationDigest,
+			BudgetSettlementDigest:  value.BudgetSettlementDigest,
+			ProvenanceDigest:        value.ProvenanceDigest, UpdatedAt: formatTime(value.UpdatedAt),
 		},
 	}
 	return metadataRecord(value.Case, "task", value.StepID, value.Revision, envelope)
@@ -246,7 +252,8 @@ func decodeRun(input []byte) (Run, error) {
 		Case:    domain.CaseRef{OrganizationID: value.OrganizationID, TenantID: value.TenantID, CaseID: value.CaseID},
 		ActorID: value.Data.InitiatingActorID, WorkflowVersion: value.Data.WorkflowVersion,
 		PolicyDigest: value.Data.PolicyDigest, ProviderRoute: value.Data.ProviderRoute,
-		Status: RunStatus(value.Data.Status), CurrentStepID: value.Data.CurrentStepID, Sequence: value.Data.Sequence,
+		BudgetPlanDigest: value.Data.BudgetPlanDigest,
+		Status:           RunStatus(value.Data.Status), CurrentStepID: value.Data.CurrentStepID, Sequence: value.Data.Sequence,
 		InputRefs: value.Data.InputRefs, OutputRefs: value.Data.OutputRefs,
 		ProvenanceDigest: value.Data.ProvenanceDigest, CreatedAt: created, UpdatedAt: updated, Revision: value.Revision,
 	}
@@ -279,7 +286,9 @@ func decodeStep(input []byte) (Step, error) {
 		Kind: ActivityKind(value.Data.ActivityKind), Status: StepStatus(value.Data.Status), Attempt: value.Data.Attempt,
 		Deadline: deadline, InputRefs: value.Data.InputRefs, OutputRefs: value.Data.OutputRefs,
 		IntentDigest: value.Data.IntentDigest, ReceiptDigest: value.Data.ReceiptDigest,
-		ProvenanceDigest: value.Data.ProvenanceDigest, CreatedAt: created, UpdatedAt: updated, Revision: value.Revision,
+		BudgetReservationDigest: value.Data.BudgetReservationDigest,
+		BudgetSettlementDigest:  value.Data.BudgetSettlementDigest,
+		ProvenanceDigest:        value.Data.ProvenanceDigest, CreatedAt: created, UpdatedAt: updated, Revision: value.Revision,
 	}
 	if value.Schema != RecordSchema || value.Kind != "task" {
 		return Step{}, newError(Denied, "decode", "step_envelope_invalid", false, nil)

@@ -104,7 +104,7 @@ func validateTerminate(request TerminateRequest) error {
 }
 
 func validateRun(value Run) error {
-	if value.ContractVersion != ContractVersion || !uuidV7Pattern.MatchString(value.RunID) || !validateCase(value.Case) || !uuidV7Pattern.MatchString(value.ActorID) || value.WorkflowVersion != WorkflowVersion || !digestPattern.MatchString(value.PolicyDigest) || !tokenPattern.MatchString(value.ProviderRoute) || !uuidV7Pattern.MatchString(value.CurrentStepID) || value.Sequence == 0 || !validateReferences(value.InputRefs) || !validateReferences(value.OutputRefs) || !digestPattern.MatchString(value.ProvenanceDigest) || !validTimes(value.CreatedAt, value.UpdatedAt) || value.Revision == 0 {
+	if value.ContractVersion != ContractVersion || !uuidV7Pattern.MatchString(value.RunID) || !validateCase(value.Case) || !uuidV7Pattern.MatchString(value.ActorID) || value.WorkflowVersion != WorkflowVersion || !digestPattern.MatchString(value.PolicyDigest) || !tokenPattern.MatchString(value.ProviderRoute) || !digestPattern.MatchString(value.BudgetPlanDigest) || !uuidV7Pattern.MatchString(value.CurrentStepID) || value.Sequence == 0 || !validateReferences(value.InputRefs) || !validateReferences(value.OutputRefs) || !digestPattern.MatchString(value.ProvenanceDigest) || !validTimes(value.CreatedAt, value.UpdatedAt) || value.Revision == 0 {
 		return newError(Denied, "state", "run_record_invalid", false, nil)
 	}
 	switch value.Status {
@@ -116,7 +116,7 @@ func validateRun(value Run) error {
 }
 
 func validateStep(value Step) error {
-	if value.ContractVersion != ContractVersion || !uuidV7Pattern.MatchString(value.StepID) || !uuidV7Pattern.MatchString(value.RunID) || !validateCase(value.Case) || !validateActivity(value.Kind, value.IntentDigest) || value.Attempt == 0 || value.Attempt > 1000 || value.Deadline.Location() != time.UTC || !validateReferences(value.InputRefs) || !validateReferences(value.OutputRefs) || !digestPattern.MatchString(value.ProvenanceDigest) || !validTimes(value.CreatedAt, value.UpdatedAt) || value.Revision == 0 {
+	if value.ContractVersion != ContractVersion || !uuidV7Pattern.MatchString(value.StepID) || !uuidV7Pattern.MatchString(value.RunID) || !validateCase(value.Case) || !validateActivity(value.Kind, value.IntentDigest) || value.Attempt == 0 || value.Attempt > 1000 || value.Deadline.Location() != time.UTC || !validateReferences(value.InputRefs) || !validateReferences(value.OutputRefs) || !digestPattern.MatchString(value.BudgetReservationDigest) || value.BudgetSettlementDigest != "" && !digestPattern.MatchString(value.BudgetSettlementDigest) || !digestPattern.MatchString(value.ProvenanceDigest) || !validTimes(value.CreatedAt, value.UpdatedAt) || value.Revision == 0 {
 		return newError(Denied, "state", "step_record_invalid", false, nil)
 	}
 	if value.ReceiptDigest != "" && !digestPattern.MatchString(value.ReceiptDigest) {
@@ -124,6 +124,9 @@ func validateStep(value Step) error {
 	}
 	switch value.Status {
 	case StepPending, StepRunning, StepDispatching, StepSucceeded, StepFailed, StepDenied, StepCanceled, StepTimeout, StepUncertain:
+		if !terminalStep(value.Status) && value.BudgetSettlementDigest != "" {
+			return newError(Denied, "state", "step_budget_settlement_invalid", false, nil)
+		}
 		return nil
 	default:
 		return newError(Denied, "state", "step_status_invalid", false, nil)
@@ -152,7 +155,7 @@ func validInitialSnapshot(value Snapshot) bool {
 		value.Run.Status == RunRunning && value.Step.Status == StepPending && value.Step.Attempt == 1 &&
 		value.Run.CreatedAt == value.Run.UpdatedAt && value.Step.CreatedAt == value.Step.UpdatedAt &&
 		value.Run.CreatedAt == value.Step.CreatedAt && len(value.Run.OutputRefs) == 0 &&
-		len(value.Step.OutputRefs) == 0 && value.Step.ReceiptDigest == ""
+		len(value.Step.OutputRefs) == 0 && value.Step.ReceiptDigest == "" && value.Step.BudgetSettlementDigest == ""
 }
 
 func validStatusBinding(run RunStatus, step StepStatus) bool {
@@ -180,14 +183,17 @@ func validateTransition(prior, next Snapshot) error {
 	if prior.Run.ContractVersion != next.Run.ContractVersion || prior.Run.Case != next.Run.Case ||
 		prior.Run.RunID != next.Run.RunID || prior.Run.ActorID != next.Run.ActorID ||
 		prior.Run.WorkflowVersion != next.Run.WorkflowVersion || prior.Run.PolicyDigest != next.Run.PolicyDigest ||
-		prior.Run.ProviderRoute != next.Run.ProviderRoute || prior.Run.CreatedAt != next.Run.CreatedAt ||
+		prior.Run.ProviderRoute != next.Run.ProviderRoute || prior.Run.BudgetPlanDigest != next.Run.BudgetPlanDigest ||
+		prior.Run.CreatedAt != next.Run.CreatedAt ||
 		!slices.Equal(prior.Run.InputRefs, next.Run.InputRefs) || next.Run.UpdatedAt.Before(prior.Run.UpdatedAt) ||
 		prior.Run.ProvenanceDigest == next.Run.ProvenanceDigest || !referenceSubset(prior.Run.OutputRefs, next.Run.OutputRefs) {
 		return newError(Denied, "save", "run_transition_invalid", false, nil)
 	}
 	if prior.Step.StepID != next.Step.StepID {
 		if prior.Run.Status != RunWaiting || prior.Step.Status != StepSucceeded || next.Run.Status != RunRunning ||
-			next.Step.Status != StepPending || next.Step.Attempt != 1 || next.Step.ReceiptDigest != "" || len(next.Step.OutputRefs) != 0 ||
+			prior.Step.BudgetSettlementDigest == "" || next.Step.Status != StepPending || next.Step.Attempt != 1 ||
+			next.Step.ReceiptDigest != "" || next.Step.BudgetSettlementDigest != "" ||
+			!digestPattern.MatchString(next.Step.BudgetReservationDigest) || len(next.Step.OutputRefs) != 0 ||
 			next.Step.RunID != prior.Run.RunID || next.Step.Case != prior.Run.Case || next.Step.CreatedAt.Before(prior.Step.UpdatedAt) ||
 			!slices.Equal(prior.Run.OutputRefs, next.Run.OutputRefs) {
 			return newError(Denied, "save", "step_schedule_transition_invalid", false, nil)
@@ -196,10 +202,16 @@ func validateTransition(prior, next Snapshot) error {
 	}
 	if prior.Step.ContractVersion != next.Step.ContractVersion || prior.Step.RunID != next.Step.RunID ||
 		prior.Step.Case != next.Step.Case || prior.Step.Kind != next.Step.Kind || prior.Step.Deadline != next.Step.Deadline ||
-		prior.Step.IntentDigest != next.Step.IntentDigest || prior.Step.CreatedAt != next.Step.CreatedAt ||
+		prior.Step.IntentDigest != next.Step.IntentDigest ||
+		prior.Step.BudgetReservationDigest != next.Step.BudgetReservationDigest || prior.Step.CreatedAt != next.Step.CreatedAt ||
 		!slices.Equal(prior.Step.InputRefs, next.Step.InputRefs) || next.Step.UpdatedAt.Before(prior.Step.UpdatedAt) ||
 		!referenceSubset(prior.Step.OutputRefs, next.Step.OutputRefs) || !legalStepTransition(prior.Step, next.Step) {
 		return newError(Denied, "save", "step_transition_invalid", false, nil)
+	}
+	if prior.Step.BudgetSettlementDigest != next.Step.BudgetSettlementDigest &&
+		(prior.Step.BudgetSettlementDigest != "" || !digestPattern.MatchString(next.Step.BudgetSettlementDigest) ||
+			!terminalStep(prior.Step.Status) || prior.Step.Status != next.Step.Status) {
+		return newError(Denied, "save", "step_budget_transition_invalid", false, nil)
 	}
 	return nil
 }
@@ -220,6 +232,8 @@ func legalStepTransition(prior, next Step) bool {
 		return next.Attempt == prior.Attempt && oneOfStep(next.Status, StepSucceeded, StepFailed, StepDenied, StepCanceled, StepTimeout, StepUncertain)
 	case StepSucceeded:
 		return next.Attempt == prior.Attempt && oneOfStep(next.Status, StepSucceeded, StepFailed, StepDenied, StepCanceled, StepTimeout)
+	case StepFailed, StepDenied, StepCanceled, StepTimeout, StepUncertain:
+		return next.Attempt == prior.Attempt && next.Status == prior.Status
 	default:
 		return false
 	}

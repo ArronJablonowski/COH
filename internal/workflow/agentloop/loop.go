@@ -2,27 +2,31 @@ package agentloop
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
 	workflowbase "github.com/ArronJablonowski/COH/internal/workflow"
+	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
 
 type Loop struct {
 	store      StateStore
 	activities *Activities
+	budgets    runbudget.Authority
 	clock      Clock
 }
 
-func New(store StateStore, models workflowbase.ModelProvider, actions workflowbase.ActionAuthority, clock Clock) (*Loop, error) {
-	if store == nil || models == nil || actions == nil || clock == nil {
+func New(store StateStore, models workflowbase.ModelProvider, actions workflowbase.ActionAuthority,
+	budgets runbudget.Authority, clock Clock) (*Loop, error) {
+	if store == nil || models == nil || actions == nil || budgets == nil || clock == nil {
 		return nil, newError(InvalidInput, "new", "dependencies_required", false, nil)
 	}
 	activities, err := NewActivities(models, actions)
 	if err != nil {
 		return nil, err
 	}
-	return &Loop{store: store, activities: activities, clock: clock}, nil
+	return &Loop{store: store, activities: activities, budgets: budgets, clock: clock}, nil
 }
 
 func (loop *Loop) Start(ctx context.Context, request StartRequest) (Snapshot, error) {
@@ -39,13 +43,24 @@ func (loop *Loop) Start(ctx context.Context, request StartRequest) (Snapshot, er
 	if err := validateStart(request, now); err != nil {
 		return Snapshot{}, err
 	}
-	provenance, err := transitionDigest("", "start", request)
+	budget, err := loop.budgets.Reserve(ctx, runbudget.ReservationRequest{IdempotencyKey: request.IdempotencyKey,
+		RunID: request.RunID, TaskID: request.StepID, Case: request.Case, Activity: string(request.Activity),
+		PolicyDigest: request.PolicyDigest, ProviderRoute: request.ProviderRoute, Deadline: request.Deadline,
+		Plan: request.BudgetPlan, TaskLimits: request.TaskBudget, Claim: request.BudgetClaim})
+	if err != nil {
+		return Snapshot{}, mapBudgetError("start_budget", err)
+	}
+	provenance, err := transitionDigest("", "start", struct {
+		Request                 StartRequest `json:"request"`
+		BudgetPlanDigest        string       `json:"budget_plan_digest"`
+		BudgetReservationDigest string       `json:"budget_reservation_digest"`
+	}{request, budget.PlanDigest, budget.ReservationDigest})
 	if err != nil {
 		return Snapshot{}, err
 	}
 	inputRefs := append([]string{}, request.InputRefs...)
-	run := Run{ContractVersion: ContractVersion, RunID: request.RunID, Case: request.Case, ActorID: request.ActorID, WorkflowVersion: WorkflowVersion, PolicyDigest: request.PolicyDigest, ProviderRoute: request.ProviderRoute, Status: RunRunning, CurrentStepID: request.StepID, Sequence: 1, InputRefs: inputRefs, OutputRefs: []string{}, ProvenanceDigest: provenance, CreatedAt: now, UpdatedAt: now, Revision: 1}
-	step := Step{ContractVersion: ContractVersion, StepID: request.StepID, RunID: request.RunID, Case: request.Case, Kind: request.Activity, Status: StepPending, Attempt: 1, Deadline: request.Deadline, InputRefs: inputRefs, OutputRefs: []string{}, IntentDigest: request.IntentDigest, ProvenanceDigest: provenance, CreatedAt: now, UpdatedAt: now, Revision: 1}
+	run := Run{ContractVersion: ContractVersion, RunID: request.RunID, Case: request.Case, ActorID: request.ActorID, WorkflowVersion: WorkflowVersion, PolicyDigest: request.PolicyDigest, ProviderRoute: request.ProviderRoute, BudgetPlanDigest: budget.PlanDigest, Status: RunRunning, CurrentStepID: request.StepID, Sequence: 1, InputRefs: inputRefs, OutputRefs: []string{}, ProvenanceDigest: provenance, CreatedAt: now, UpdatedAt: now, Revision: 1}
+	step := Step{ContractVersion: ContractVersion, StepID: request.StepID, RunID: request.RunID, Case: request.Case, Kind: request.Activity, Status: StepPending, Attempt: 1, Deadline: request.Deadline, InputRefs: inputRefs, OutputRefs: []string{}, IntentDigest: request.IntentDigest, BudgetReservationDigest: budget.ReservationDigest, ProvenanceDigest: provenance, CreatedAt: now, UpdatedAt: now, Revision: 1}
 	return loop.create(ctx, request.IdempotencyKey, Snapshot{Run: run, Step: step})
 }
 
@@ -67,6 +82,9 @@ func (loop *Loop) Execute(ctx context.Context, request ExecuteRequest) (Snapshot
 		return Snapshot{}, newError(Denied, "execute", "scope_or_step_mismatch", false, nil)
 	}
 	if terminalRun(current.Run.Status) || terminalStep(current.Step.Status) {
+		if current.Step.BudgetSettlementDigest == "" {
+			return loop.settleAndBind(ctx, request.IdempotencyKey+":recovery", current)
+		}
 		current.Replayed = true
 		return current, nil
 	}
@@ -137,19 +155,55 @@ func (loop *Loop) Schedule(ctx context.Context, request ScheduleRequest) (Snapsh
 	if err != nil {
 		return Snapshot{}, err
 	}
-	if current.Run.Status != RunWaiting || current.Step.Status != StepSucceeded || current.Run.Case != request.Case || request.StepID == current.Step.StepID {
+	if current.Run.CurrentStepID == request.StepID {
+		if current.Step.Kind != request.Activity || current.Step.Deadline != request.Deadline ||
+			current.Step.IntentDigest != request.IntentDigest || !slices.Equal(current.Step.InputRefs, request.InputRefs) {
+			return Snapshot{}, newError(Denied, "schedule", "schedule_replay_binding_mismatch", false, nil)
+		}
+		budget, budgetErr := loop.reserveSchedule(ctx, request, current)
+		if budgetErr != nil {
+			return Snapshot{}, budgetErr
+		}
+		if budget.ReservationDigest != current.Step.BudgetReservationDigest {
+			return Snapshot{}, newError(Denied, "schedule", "budget_reservation_binding_mismatch", false, nil)
+		}
+		current.Replayed = true
+		return current, nil
+	}
+	if current.Run.Status != RunWaiting || current.Step.Status != StepSucceeded ||
+		current.Step.BudgetSettlementDigest == "" || current.Run.Case != request.Case {
 		return Snapshot{}, newError(Conflict, "schedule", "run_not_waiting", false, nil)
+	}
+	budget, err := loop.reserveSchedule(ctx, request, current)
+	if err != nil {
+		return Snapshot{}, err
 	}
 	next := cloneSnapshot(current)
 	next.Run.Status = RunRunning
 	next.Run.CurrentStepID = request.StepID
 	next.Run.Revision++
 	next.Run.Sequence++
-	next.Step = Step{ContractVersion: ContractVersion, StepID: request.StepID, RunID: request.RunID, Case: request.Case, Kind: request.Activity, Status: StepPending, Attempt: 1, Deadline: request.Deadline, InputRefs: append([]string{}, request.InputRefs...), OutputRefs: []string{}, IntentDigest: request.IntentDigest, CreatedAt: now, UpdatedAt: now, Revision: 1}
+	next.Step = Step{ContractVersion: ContractVersion, StepID: request.StepID, RunID: request.RunID, Case: request.Case, Kind: request.Activity, Status: StepPending, Attempt: 1, Deadline: request.Deadline, InputRefs: append([]string{}, request.InputRefs...), OutputRefs: []string{}, IntentDigest: request.IntentDigest, BudgetReservationDigest: budget.ReservationDigest, CreatedAt: now, UpdatedAt: now, Revision: 1}
 	if err := loop.stamp(&next, current.Run.ProvenanceDigest, "step_scheduled", now); err != nil {
 		return Snapshot{}, err
 	}
 	return loop.save(ctx, request.IdempotencyKey, current, next)
+}
+
+func (loop *Loop) reserveSchedule(ctx context.Context, request ScheduleRequest,
+	current Snapshot) (runbudget.Reservation, error) {
+	budget, err := loop.budgets.Reserve(ctx, runbudget.ReservationRequest{IdempotencyKey: request.IdempotencyKey,
+		RunID: request.RunID, TaskID: request.StepID, ParentTaskID: request.BudgetParentTaskID, Case: request.Case,
+		Activity: string(request.Activity), PolicyDigest: current.Run.PolicyDigest,
+		ProviderRoute: current.Run.ProviderRoute, Deadline: request.Deadline,
+		TaskLimits: request.TaskBudget, Claim: request.BudgetClaim})
+	if err != nil {
+		return runbudget.Reservation{}, mapBudgetError("schedule_budget", err)
+	}
+	if budget.PlanDigest != current.Run.BudgetPlanDigest {
+		return runbudget.Reservation{}, newError(Denied, "schedule", "budget_plan_binding_mismatch", false, nil)
+	}
+	return budget, nil
 }
 
 func (loop *Loop) Complete(ctx context.Context, request CompleteRequest) (Snapshot, error) {
@@ -167,7 +221,7 @@ func (loop *Loop) Complete(ctx context.Context, request CompleteRequest) (Snapsh
 		current.Replayed = true
 		return current, nil
 	}
-	if current.Run.Status != RunWaiting || current.Step.Status != StepSucceeded {
+	if current.Run.Status != RunWaiting || current.Step.Status != StepSucceeded || current.Step.BudgetSettlementDigest == "" {
 		return Snapshot{}, newError(Conflict, "complete", "run_not_completable", false, nil)
 	}
 	now, err := loop.now("complete")
@@ -197,6 +251,9 @@ func (loop *Loop) Resume(ctx context.Context, request ResumeRequest) (Snapshot, 
 		return Snapshot{}, err
 	}
 	if terminalRun(current.Run.Status) || current.Run.Status == RunWaiting {
+		if current.Step.BudgetSettlementDigest == "" {
+			return loop.settleAndBind(ctx, request.IdempotencyKey+":recovery", current)
+		}
 		current.Replayed = true
 		return current, nil
 	}
@@ -226,6 +283,9 @@ func (loop *Loop) Terminate(ctx context.Context, request TerminateRequest) (Snap
 		return Snapshot{}, newError(Denied, "terminate", "scope_or_step_mismatch", false, nil)
 	}
 	if terminalRun(current.Run.Status) {
+		if current.Step.BudgetSettlementDigest == "" {
+			return loop.settleAndBind(ctx, request.IdempotencyKey+":recovery", current)
+		}
 		current.Replayed = true
 		return current, nil
 	}
@@ -300,7 +360,68 @@ func (loop *Loop) finish(ctx context.Context, key string, current Snapshot, step
 	if err := loop.stamp(&next, current.Run.ProvenanceDigest, operation, now); err != nil {
 		return Snapshot{}, err
 	}
-	return loop.save(ctx, key, current, next)
+	saved, err := loop.save(ctx, key, current, next)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	if saved.Step.BudgetSettlementDigest != "" {
+		return saved, nil
+	}
+	return loop.settleAndBind(ctx, key+":budget", saved)
+}
+
+func (loop *Loop) settleAndBind(ctx context.Context, key string, current Snapshot) (Snapshot, error) {
+	if current.Step.BudgetSettlementDigest != "" {
+		current.Replayed = true
+		return current, nil
+	}
+	if !terminalStep(current.Step.Status) {
+		return Snapshot{}, newError(Conflict, "budget_settle", "step_not_terminal", false, nil)
+	}
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+	defer cancel()
+	settlementKey := "budget-settle:" + current.Run.RunID + ":" + current.Step.StepID
+	settlement, err := loop.budgets.Settle(persistCtx, runbudget.SettlementRequest{
+		IdempotencyKey: settlementKey, RunID: current.Run.RunID, TaskID: current.Step.StepID, Case: current.Run.Case,
+		ReservationDigest: current.Step.BudgetReservationDigest, Outcome: budgetOutcome(current.Step.Status),
+	})
+	if err != nil {
+		return current, mapBudgetError("budget_settle", err)
+	}
+	if settlement.ReservationDigest != current.Step.BudgetReservationDigest ||
+		!digestPattern.MatchString(settlement.SettlementDigest) {
+		return current, newError(Denied, "budget_settle", "budget_settlement_invalid", false, nil)
+	}
+	now, err := loop.now("budget_settle")
+	if err != nil {
+		return current, err
+	}
+	next := cloneSnapshot(current)
+	next.Run.Revision++
+	next.Run.Sequence++
+	next.Step.Revision++
+	next.Step.BudgetSettlementDigest = settlement.SettlementDigest
+	if err := loop.stamp(&next, current.Run.ProvenanceDigest, "budget_settled", now); err != nil {
+		return current, err
+	}
+	return loop.save(persistCtx, key+":bound", current, next)
+}
+
+func budgetOutcome(status StepStatus) string {
+	switch status {
+	case StepSucceeded:
+		return "succeeded"
+	case StepDenied:
+		return "denied"
+	case StepCanceled:
+		return "canceled"
+	case StepTimeout:
+		return "timeout"
+	case StepUncertain:
+		return "uncertain"
+	default:
+		return "failed"
+	}
 }
 
 func (loop *Loop) markUncertain(ctx context.Context, key string, current Snapshot, reason string) (Snapshot, error) {
@@ -315,17 +436,20 @@ func (loop *Loop) stamp(value *Snapshot, prior, operation string, now time.Time)
 	value.Run.UpdatedAt = now
 	value.Step.UpdatedAt = now
 	digest, err := transitionDigest(prior, operation, struct {
-		RunID         string     `json:"run_id"`
-		StepID        string     `json:"step_id"`
-		RunStatus     RunStatus  `json:"run_status"`
-		StepStatus    StepStatus `json:"step_status"`
-		Sequence      uint64     `json:"sequence"`
-		RunRevision   uint64     `json:"run_revision"`
-		StepRevision  uint64     `json:"step_revision"`
-		IntentDigest  string     `json:"intent_digest"`
-		ReceiptDigest string     `json:"receipt_digest"`
-		UpdatedAt     string     `json:"updated_at"`
-	}{value.Run.RunID, value.Step.StepID, value.Run.Status, value.Step.Status, value.Run.Sequence, value.Run.Revision, value.Step.Revision, value.Step.IntentDigest, value.Step.ReceiptDigest, formatTime(now)})
+		RunID                   string     `json:"run_id"`
+		StepID                  string     `json:"step_id"`
+		RunStatus               RunStatus  `json:"run_status"`
+		StepStatus              StepStatus `json:"step_status"`
+		Sequence                uint64     `json:"sequence"`
+		RunRevision             uint64     `json:"run_revision"`
+		StepRevision            uint64     `json:"step_revision"`
+		IntentDigest            string     `json:"intent_digest"`
+		ReceiptDigest           string     `json:"receipt_digest"`
+		BudgetPlanDigest        string     `json:"budget_plan_digest"`
+		BudgetReservationDigest string     `json:"budget_reservation_digest"`
+		BudgetSettlementDigest  string     `json:"budget_settlement_digest"`
+		UpdatedAt               string     `json:"updated_at"`
+	}{value.Run.RunID, value.Step.StepID, value.Run.Status, value.Step.Status, value.Run.Sequence, value.Run.Revision, value.Step.Revision, value.Step.IntentDigest, value.Step.ReceiptDigest, value.Run.BudgetPlanDigest, value.Step.BudgetReservationDigest, value.Step.BudgetSettlementDigest, formatTime(now)})
 	if err != nil {
 		return err
 	}

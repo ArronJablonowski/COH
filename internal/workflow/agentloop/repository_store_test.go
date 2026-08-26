@@ -91,7 +91,7 @@ func TestRepositoryStorePersistsCanonicalStateAndOutboxAtomically(t *testing.T) 
 		t.Fatal(err)
 	}
 	clock := &fixedClock{value: mustTime(t, "2026-08-26T16:10:00.000000000Z")}
-	loop, err := New(store, &modelStub{ref: domain.ArtifactRef{Digest: testDigestTwo, MediaType: "application/json", Classification: "internal", Length: 1}}, &actionStub{}, clock)
+	loop, err := New(store, &modelStub{ref: domain.ArtifactRef{Digest: testDigestTwo, MediaType: "application/json", Classification: "internal", Length: 1}}, &actionStub{}, &budgetStub{}, clock)
 	if err != nil {
 		t.Fatal(err)
 	}

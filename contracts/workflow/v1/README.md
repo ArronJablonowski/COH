@@ -34,3 +34,27 @@ unknowns, recommended next steps, and an accepted/revise disposition.
 The coordinator stores only these identities and references through the
 durable agent loop. Raw prompts, claim text, findings, evidence bytes, and
 provider/tool payloads remain behind immutable artifact references.
+
+## Run and task budgets
+
+`run-budget.schema.json` freezes `coh.run-budget/v1` plans and durable ledgers
+for run/task limits, atomic worst-case reservations, derived delegation
+hierarchy, exact settlement, and crash-safe replay. See
+`../../../docs/design/run-task-budget-enforcement.md` for the enforcement and
+recovery model. This implements CYB-65 / COH-E08-04 and FR-017. Every plan
+binds one tenant/case run to the exact policy and provider route. Integer-only
+limits cover tokens, cost micros, elapsed nanoseconds, tool calls, query rows,
+evidence bytes, delegation depth, fanout, and concurrency.
+
+Each task supplies a trusted worst-case claim. The budget authority atomically
+charges cumulative dimensions and reserves concurrency before the agent loop
+can persist the scheduled task. Claims, reservations, settlements,
+idempotency identities, and prior state are digest-bound into the ledger's
+provenance. Actual usage may be recorded only within the reservation; unused
+cumulative capacity is not refunded, while terminal settlement releases the
+renewable concurrency slot.
+
+The decoder rejects duplicate, unknown, missing, nested-missing, trailing,
+malformed, oversized, or unsupported records. The contract contains no prompt,
+price text, evidence content, credential, connector, policy callback, or model
+authority field.

@@ -12,6 +12,13 @@ persisted `running` state. An authorized action in `dispatching` without a
 durable receipt becomes `uncertain` on recovery and is never automatically
 replayed. Completed and terminal runs return idempotently.
 
+The loop calls only the narrow `runbudget.Authority` capability before it
+persists an initial or successor task. Run records bind the immutable budget
+plan digest; task records bind reservation and terminal settlement digests. A
+successor cannot be scheduled until the prior task is terminal and its
+settlement is durable. Recovery completes a missing settlement binding without
+repeating model or tool work.
+
 State is stored as canonical run/task metadata through the guarded repository.
 Each optimistic transaction writes the run plus current task and one outbox
 event atomically. Only bounded immutable references and digests are retained.
@@ -26,3 +33,10 @@ scope conflicts.
 `ActionAuthority`. The Temporal adapter registers those exact immutable names.
 There is no connector, runner, credential, shell, HTTP, generic callback, or
 policy-engine dependency in this package.
+
+Budget-bound records are a fail-closed workflow cutover. Records written by the
+earlier alpha shape without budget digests are rejected rather than assigned
+invented capacity. Before enabling this build against a non-empty pre-alpha
+store, operators must drain or cancel old in-flight runs and restart required
+work with a reviewed `coh.run-budget/v1` plan. No SQL migration is required;
+the generic metadata adapters already persist canonical run/task records.

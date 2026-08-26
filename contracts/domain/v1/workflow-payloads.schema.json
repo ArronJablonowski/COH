@@ -24,6 +24,7 @@
         "workflow_version": { "$ref": "#/$defs/version" },
         "policy_digest": { "$ref": "#/$defs/digest" },
         "provider_route": { "$ref": "#/$defs/token" },
+        "budget_plan_digest": { "$ref": "#/$defs/digest" },
         "status": { "enum": ["queued", "running", "waiting", "succeeded", "failed", "denied", "canceled", "cancelled", "timeout", "uncertain"] },
         "budget_units": { "type": "integer", "minimum": 1, "maximum": 1000000000 },
         "contract_version": { "type": "string", "pattern": "^coh[.]agent-loop/v1$" },
@@ -52,6 +53,8 @@
         "activity_kind": { "enum": ["planning", "authorized_action"] },
         "intent_digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "string", "maxLength": 0 }] },
         "receipt_digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "string", "maxLength": 0 }] },
+        "budget_reservation_digest": { "$ref": "#/$defs/digest" },
+        "budget_settlement_digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "string", "maxLength": 0 }] },
         "provenance_digest": { "$ref": "#/$defs/digest" },
         "updated_at": { "$ref": "#/$defs/timestamp" }
       },
