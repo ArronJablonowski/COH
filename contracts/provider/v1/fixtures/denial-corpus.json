@@ -1,0 +1,14 @@
+{
+  "schema_version": "coh.provider-contract-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name": "unknown-field", "document": "capability", "reason": "document_decoding", "covered_by": "TestStrictCapabilityAndQualificationDenials"},
+    {"name": "malformed-content-item", "document": "request", "reason": "message_content", "covered_by": "TestInferenceDenialCancellationAndRecovery"},
+    {"name": "unsupported-capability", "document": "capability", "reason": "capability_unqualified", "covered_by": "TestUnsupportedCapabilityFailsClosed"},
+    {"name": "provider-identity-drift", "document": "qualification", "reason": "provider_identity_drift", "covered_by": "TestStrictCapabilityAndQualificationDenials"},
+    {"name": "expired-qualification", "document": "qualification", "reason": "qualification_expired", "covered_by": "TestStrictCapabilityAndQualificationDenials"},
+    {"name": "exact-replay", "document": "signed_qualification", "reason": "exact_replay", "covered_by": "TestSignedQualificationVerificationReplayAndCollision"},
+    {"name": "changed-id-collision", "document": "signed_qualification", "reason": "qualification_id_collision", "covered_by": "TestSignedQualificationVerificationReplayAndCollision"},
+    {"name": "stream-sequence-tamper", "document": "stream_event", "reason": "stream_sequence", "covered_by": "TestInferenceRoundTripAndStreamState"}
+  ]
+}

@@ -23,6 +23,7 @@ vendor request, options map, headers map, or passthrough JSON field.
 | `inference-response.schema.json` | Typed output, terminal state, usage, and actual provenance |
 | `stream-event.schema.json` | Ordered deltas and exactly one terminal response or error |
 | `qualification-record.schema.json` | Time-bounded release-matrix conformance evidence |
+| `signed-qualification.schema.json` | Ed25519 envelope and current qualifier authority binding |
 
 All schemas use JSON Schema draft 2020-12, reject unknown members, and pin
 `schema_version` plus `contract_version`. Implementations must reject duplicate
@@ -43,6 +44,7 @@ COH-PROVIDER-REQUEST-V1\0
 COH-PROVIDER-RESPONSE-V1\0
 COH-PROVIDER-STREAM-EVENT-V1\0
 COH-PROVIDER-QUALIFICATION-V1\0
+COH-SIGNED-PROVIDER-QUALIFICATION-V1\0
 ```
 
 Set-like arrays identified by a schema must already be sorted and unique.
@@ -84,6 +86,14 @@ structured output, tool call, cancellation, identity/provenance, and policy
 route. Each case binds a fixture digest, outcome, trace digest, and duration.
 Every case must pass. Qualification cannot be inferred from endpoint health,
 successful decoding, adapter presence, or a compatible model name.
+
+The qualification payload is accepted only inside an Ed25519 envelope. The
+trusted control plane supplies the qualifier identity, key ID/revision,
+approval revision, current active/approved state, and public key. Request data
+cannot select or widen that authority. The signature covers the exact
+COH-CJ-1 payload bytes plus qualifier identity, key ID/revision, and approval
+revision under the signed-qualification domain. A digest or signature
+mismatch, unknown/stale key, inactive qualifier, or changed replay is denied.
 
 ## Streaming, cancellation, and recovery
 

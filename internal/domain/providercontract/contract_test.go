@@ -131,6 +131,57 @@ func TestInferenceDenialCancellationAndRecovery(t *testing.T) {
 	}
 }
 
+func TestUnsupportedCapabilityFailsClosed(t *testing.T) {
+	capabilityValue := decodeCapabilityFixture(t).Value()
+	capabilityValue.Features.ToolCalls = false
+	capabilityValue.Limits.MaximumTools = 0
+	capabilityValue.Limits.MaximumParallelToolCalls = 0
+	capability, err := DecodeCapability(context.Background(), marshal(t, capabilityValue))
+	if err != nil {
+		t.Fatal(err)
+	}
+	qualificationValue := decodeQualificationFixture(t).Value()
+	qualificationValue.CapabilityDigest = capability.Digest()
+	qualification, err := DecodeQualification(context.Background(), marshal(t, qualificationValue))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := AdmitQualification(capability, qualification, mustTime(t, "2026-08-26T06:00:00.000000000Z")); Code(err) != Unsupported || Reason(err) != "capability_unqualified" {
+		t.Fatalf("unsupported capability err=%v", err)
+	}
+}
+
+func TestDenialCorpusMapsEveryRequiredBoundary(t *testing.T) {
+	input, err := os.ReadFile("../../../contracts/provider/v1/fixtures/denial-corpus.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var corpus struct {
+		SchemaVersion   string `json:"schema_version"`
+		ContractVersion string `json:"contract_version"`
+		Cases           []struct {
+			Name      string `json:"name"`
+			Document  string `json:"document"`
+			Reason    string `json:"reason"`
+			CoveredBy string `json:"covered_by"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(input, &corpus); err != nil || corpus.SchemaVersion != "coh.provider-contract-denials/v1" ||
+		corpus.ContractVersion != ContractVersion || len(corpus.Cases) != 8 {
+		t.Fatalf("corpus=%+v err=%v", corpus, err)
+	}
+	seen := make(map[string]struct{}, len(corpus.Cases))
+	for _, denial := range corpus.Cases {
+		if denial.Name == "" || denial.Document == "" || !reasonPattern.MatchString(denial.Reason) || denial.CoveredBy == "" {
+			t.Fatalf("invalid denial=%+v", denial)
+		}
+		seen[denial.Name] = struct{}{}
+	}
+	if len(seen) != len(corpus.Cases) {
+		t.Fatal("duplicate denial name")
+	}
+}
+
 func TestPublicTypesHaveNoVendorPassthroughOrSecretSurface(t *testing.T) {
 	for _, value := range []any{CapabilitySnapshot{}, QualificationRecord{}, InferenceRequest{}, InferenceResponse{}, StreamEvent{}} {
 		typeOf := reflect.TypeOf(value)

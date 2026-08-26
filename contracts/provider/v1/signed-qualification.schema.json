@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/provider/v1/signed-qualification.schema.json",
+  "title": "COH signed provider qualification envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "contract_version", "qualification",
+    "qualification_digest", "qualifier_identity_digest", "qualifier_key_id",
+    "qualifier_key_revision", "qualifier_approval_revision",
+    "signature_algorithm", "signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "coh.signed-provider-qualification/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "qualification": {"$ref": "qualification-record.schema.json"},
+    "qualification_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+    "qualifier_identity_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+    "qualifier_key_id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._/+:-]*$"},
+    "qualifier_key_revision": {"type": "integer", "minimum": 1},
+    "qualifier_approval_revision": {"type": "integer", "minimum": 1},
+    "signature_algorithm": {"const": "ed25519"},
+    "signature": {"type": "string", "minLength": 86, "maxLength": 86, "pattern": "^[A-Za-z0-9_-]{86}$"}
+  }
+}
