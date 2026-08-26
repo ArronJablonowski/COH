@@ -3,6 +3,7 @@ package agentloop
 import (
 	"context"
 
+	"github.com/ArronJablonowski/COH/internal/workflow/retrievalguard"
 	"github.com/ArronJablonowski/COH/internal/workflow/skilldiscovery"
 )
 
@@ -17,13 +18,41 @@ type ProgressiveSkillDiscovery interface {
 	Resource(context.Context, skilldiscovery.ResourceRequest) (skilldiscovery.ResourceResult, error)
 }
 
-type SkillDiscoveryActivity struct{ discovery ProgressiveSkillDiscovery }
+// HostileContentGuard is the only content-release capability supplied to
+// model-facing retrieval activities. It returns immutable sanitized data refs.
+type HostileContentGuard interface {
+	Inspect(context.Context, retrievalguard.Request) (retrievalguard.Result, error)
+}
 
-func NewSkillDiscoveryActivity(discovery ProgressiveSkillDiscovery) (*SkillDiscoveryActivity, error) {
-	if discovery == nil {
-		return nil, newError(InvalidInput, "skill_discovery", "dependency_required", false, nil)
+type SkillResourceRequest struct {
+	Discovery                skilldiscovery.ResourceRequest
+	ActorRevision            uint64
+	InspectionIdempotencyKey string
+	InspectionProfile        retrievalguard.InspectionProfile
+}
+
+type SkillResourceResult struct {
+	SkillName              string
+	ManifestDigest         string
+	ResourceName           string
+	SourceDigest           string
+	SourceProvenanceDigest string
+	Inspection             retrievalguard.InspectionResult
+	AuditEventDigest       string
+	ProvenanceDigest       string
+	Replayed               bool
+}
+
+type SkillDiscoveryActivity struct {
+	discovery ProgressiveSkillDiscovery
+	guard     HostileContentGuard
+}
+
+func NewSkillDiscoveryActivity(discovery ProgressiveSkillDiscovery, guard HostileContentGuard) (*SkillDiscoveryActivity, error) {
+	if discovery == nil || guard == nil {
+		return nil, newError(InvalidInput, "skill_discovery", "dependencies_required", false, nil)
 	}
-	return &SkillDiscoveryActivity{discovery: discovery}, nil
+	return &SkillDiscoveryActivity{discovery: discovery, guard: guard}, nil
 }
 
 func (activity *SkillDiscoveryActivity) Search(ctx context.Context,
@@ -50,16 +79,32 @@ func (activity *SkillDiscoveryActivity) Detail(ctx context.Context,
 	return result, nil
 }
 
-func (activity *SkillDiscoveryActivity) Resource(ctx context.Context,
-	request skilldiscovery.ResourceRequest) (skilldiscovery.ResourceResult, error) {
-	if activity == nil || activity.discovery == nil {
-		return skilldiscovery.ResourceResult{}, newError(Unavailable, "skill_discovery", "activity_unavailable", true, nil)
+func (activity *SkillDiscoveryActivity) Resource(ctx context.Context, request SkillResourceRequest) (SkillResourceResult, error) {
+	if activity == nil || activity.discovery == nil || activity.guard == nil {
+		return SkillResourceResult{}, newError(Unavailable, "skill_discovery", "activity_unavailable", true, nil)
 	}
-	result, err := activity.discovery.Resource(ctx, request)
+	result, err := activity.discovery.Resource(ctx, request.Discovery)
 	if err != nil {
-		return skilldiscovery.ResourceResult{}, mapDiscoveryError(err)
+		return SkillResourceResult{}, mapDiscoveryError(err)
 	}
-	return result, nil
+	guarded, err := activity.guard.Inspect(ctx, retrievalguard.Request{
+		SchemaVersion: retrievalguard.RequestSchemaVersion, ContractVersion: retrievalguard.ContractVersion,
+		RequestID: request.Discovery.RequestID, IdempotencyKey: request.InspectionIdempotencyKey,
+		Case: request.Discovery.Case, TaskID: request.Discovery.TaskID, ActorID: request.Discovery.ActorID,
+		ActorRevision: request.ActorRevision,
+		Source: retrievalguard.Source{Kind: retrievalguard.DocumentSource, Artifact: result.Artifact,
+			Trust: retrievalguard.UntrustedContent, ProvenanceDigest: result.ProvenanceDigest},
+		Profile: request.InspectionProfile, PolicyDigest: request.Discovery.PolicyDigest,
+		Deadline: request.Discovery.Deadline,
+	})
+	if err != nil {
+		return SkillResourceResult{}, mapRetrievalError("skill_resource", err)
+	}
+	return SkillResourceResult{SkillName: result.SkillName, ManifestDigest: result.ManifestDigest,
+		ResourceName: result.ResourceName, SourceDigest: result.Artifact.Digest,
+		SourceProvenanceDigest: result.ProvenanceDigest, Inspection: guarded.Inspection,
+		AuditEventDigest: guarded.AuditEventDigest, ProvenanceDigest: guarded.ProvenanceDigest,
+		Replayed: result.Replayed || guarded.Replayed}, nil
 }
 
 func mapDiscoveryError(err error) error {

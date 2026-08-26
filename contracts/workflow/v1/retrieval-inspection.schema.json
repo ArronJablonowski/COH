@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/workflow/v1/retrieval-inspection.schema.json",
+  "title": "COH hostile-content retrieval inspection v1",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/decision" },
+    { "$ref": "#/$defs/inspection" },
+    { "$ref": "#/$defs/record" }
+  ],
+  "$defs": {
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": { "$ref": "#/$defs/uuid_v7" },
+        "tenant_id": { "$ref": "#/$defs/uuid_v7" },
+        "case_id": { "$ref": "#/$defs/uuid_v7" }
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "media_type": { "$ref": "#/$defs/media_type" },
+        "classification": { "$ref": "#/$defs/token" },
+        "length": { "type": "integer", "minimum": 1, "maximum": 67108864 }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["kind", "artifact", "trust", "provenance_digest"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/source_kind" },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "trust": { "const": "untrusted_content" },
+        "provenance_digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "profile": {
+      "type": "object",
+      "required": ["name", "revision", "maximum_bytes", "allowed_media_types", "deny_active_formats", "redact_secrets", "neutralize_directives", "profile_digest"],
+      "properties": {
+        "name": { "$ref": "#/$defs/token" },
+        "revision": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "maximum_bytes": { "type": "integer", "minimum": 1, "maximum": 67108864 },
+        "allowed_media_types": { "type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true, "items": { "$ref": "#/$defs/media_type" } },
+        "deny_active_formats": { "const": true },
+        "redact_secrets": { "const": true },
+        "neutralize_directives": { "const": true },
+        "profile_digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "case", "task_id", "actor_id", "actor_revision", "source", "profile", "policy_digest", "deadline"],
+      "properties": {
+        "schema_version": { "const": "coh.retrieval-inspection/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "idempotency_key": { "$ref": "#/$defs/opaque" },
+        "case": { "$ref": "#/$defs/case" },
+        "task_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_revision": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "source": { "$ref": "#/$defs/source" },
+        "profile": { "$ref": "#/$defs/profile" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "deadline": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "decision_id", "decision_digest", "request_digest", "case", "task_id", "actor_id", "actor_revision", "policy_digest", "revocation_digest", "outcome", "reason_code", "revision", "issued_at", "expires_at"],
+      "properties": {
+        "schema_version": { "const": "coh.retrieval-decision/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "decision_id": { "$ref": "#/$defs/uuid_v7" },
+        "decision_digest": { "$ref": "#/$defs/digest" },
+        "request_digest": { "$ref": "#/$defs/digest" },
+        "case": { "$ref": "#/$defs/case" },
+        "task_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_revision": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "revocation_digest": { "$ref": "#/$defs/digest" },
+        "outcome": { "enum": ["allow", "deny"] },
+        "reason_code": { "$ref": "#/$defs/token" },
+        "revision": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 },
+        "issued_at": { "$ref": "#/$defs/timestamp" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": ["code", "count"],
+      "properties": {
+        "code": { "enum": ["instruction_like", "scope_change_attempt", "authorization_forgery", "credential_request", "tool_directive", "exfiltration_attempt", "active_content", "encoded_payload", "secret_redacted"] },
+        "count": { "type": "integer", "minimum": 1, "maximum": 4294967295 }
+      },
+      "additionalProperties": false
+    },
+    "inspection": {
+      "type": "object",
+      "required": ["source_digest", "source_provenance_digest", "sanitized", "trust", "findings", "findings_digest", "redaction_count", "complete", "inspector_digest"],
+      "properties": {
+        "source_digest": { "$ref": "#/$defs/digest" },
+        "source_provenance_digest": { "$ref": "#/$defs/digest" },
+        "sanitized": { "$ref": "#/$defs/artifact" },
+        "trust": { "const": "untrusted_content" },
+        "findings": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/finding" } },
+        "findings_digest": { "$ref": "#/$defs/digest" },
+        "redaction_count": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "complete": { "const": true },
+        "inspector_digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request", "intent_digest", "idempotency_digest", "decision_digest", "revocation_digest", "inspection", "audit_event_digest", "previous_provenance_digest", "provenance_digest", "created_at", "revision"],
+      "properties": {
+        "schema_version": { "const": "coh.retrieval-record/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request": { "$ref": "#/$defs/request" },
+        "intent_digest": { "$ref": "#/$defs/digest" },
+        "idempotency_digest": { "$ref": "#/$defs/digest" },
+        "decision_digest": { "$ref": "#/$defs/digest" },
+        "revocation_digest": { "$ref": "#/$defs/digest" },
+        "inspection": { "$ref": "#/$defs/inspection" },
+        "audit_event_digest": { "$ref": "#/$defs/digest" },
+        "previous_provenance_digest": { "$ref": "#/$defs/digest" },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "revision": { "const": 1 }
+      },
+      "additionalProperties": false
+    },
+    "source_kind": { "enum": ["log", "document", "feed", "query_output", "tool_output", "tool_error", "memory", "report", "attachment"] },
+    "uuid_v7": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "token": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$" },
+    "opaque": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "media_type": { "type": "string", "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$" },
+    "timestamp": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{9}Z$" }
+  }
+}

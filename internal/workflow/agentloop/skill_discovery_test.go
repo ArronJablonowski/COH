@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/ArronJablonowski/COH/internal/domain"
+	"github.com/ArronJablonowski/COH/internal/workflow/retrievalguard"
 	"github.com/ArronJablonowski/COH/internal/workflow/skilldiscovery"
 )
 
@@ -36,7 +38,7 @@ func TestSkillDiscoveryActivityExposesOnlyProgressivePhases(t *testing.T) {
 		Skills: []skilldiscovery.CompactSkill{{SkillName: "timeline_builder", SkillVersion: "1.0.0",
 			ManifestDigest: testDigestOne, ProvenanceDigest: testDigestTwo}},
 		SnapshotDigest: testDigestThree, ResultDigest: testDigestOne}}
-	activity, err := NewSkillDiscoveryActivity(stub)
+	activity, err := NewSkillDiscoveryActivity(stub, &retrievalGuardStub{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +48,7 @@ func TestSkillDiscoveryActivityExposesOnlyProgressivePhases(t *testing.T) {
 		t.Fatalf("progressive search was not passed exactly: %#v %v", result, err)
 	}
 	typeOf := reflect.TypeOf(SkillDiscoveryActivity{})
-	if typeOf.NumField() != 1 || typeOf.Field(0).Name != "discovery" {
+	if typeOf.NumField() != 2 || typeOf.Field(0).Name != "discovery" || typeOf.Field(1).Name != "guard" {
 		t.Fatalf("activity gained another capability: %v", typeOf)
 	}
 	interfaceType := reflect.TypeOf((*ProgressiveSkillDiscovery)(nil)).Elem()
@@ -62,8 +64,39 @@ func TestSkillDiscoveryActivityExposesOnlyProgressivePhases(t *testing.T) {
 
 func TestSkillDiscoveryActivityMapsDenialAndTimeout(t *testing.T) {
 	stub := &discoveryStub{err: context.DeadlineExceeded}
-	activity, _ := NewSkillDiscoveryActivity(stub)
+	activity, _ := NewSkillDiscoveryActivity(stub, &retrievalGuardStub{})
 	if _, err := activity.Detail(context.Background(), skilldiscovery.DetailRequest{}); Code(err) != Timeout {
 		t.Fatalf("timeout not preserved: %v", err)
+	}
+}
+
+func TestSkillResourceIsInspectedBeforeModelFacingRelease(t *testing.T) {
+	resource := skilldiscovery.ResourceResult{SkillName: "timeline_builder", ManifestDigest: testDigestOne,
+		ResourceName: "references/timeline.md", Artifact: domain.ArtifactRef{Digest: testDigestOne,
+			MediaType: "text/plain", Classification: "restricted", Length: 256},
+		ProvenanceDigest: testDigestTwo}
+	discovery := &discoveryStub{resourceResult: resource}
+	guard := &retrievalGuardStub{result: guardedResult()}
+	activity, err := NewSkillDiscoveryActivity(discovery, guard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := skilldiscovery.ResourceRequest{RequestID: testRun, IdempotencyKey: "resource-1",
+		Case: testScope(), TaskID: testPlanStep, ActorID: testActor, PolicyDigest: testDigestOne,
+		Deadline: mustTime(t, "2026-08-26T17:10:00.000000000Z")}
+	result, err := activity.Resource(context.Background(), SkillResourceRequest{Discovery: request,
+		ActorRevision: 4, InspectionIdempotencyKey: "inspect-resource-1",
+		InspectionProfile: retrievalguard.InspectionProfile{Name: "strict_data"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if guard.request.Source.Kind != retrievalguard.DocumentSource || guard.request.Source.Trust != retrievalguard.UntrustedContent ||
+		guard.request.Source.Artifact != resource.Artifact || guard.request.Source.ProvenanceDigest != resource.ProvenanceDigest ||
+		guard.request.ActorRevision != 4 || result.Inspection.Sanitized.Digest != testDigestThree || result.SourceDigest != testDigestOne {
+		t.Fatalf("guard request=%+v result=%+v", guard.request, result)
+	}
+	resultType := reflect.TypeOf(result)
+	if _, exposed := resultType.FieldByName("Artifact"); exposed {
+		t.Fatal("raw skill resource artifact is model-facing")
 	}
 }

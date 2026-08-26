@@ -9,8 +9,28 @@ import (
 
 	"github.com/ArronJablonowski/COH/internal/domain"
 	workflowbase "github.com/ArronJablonowski/COH/internal/workflow"
+	"github.com/ArronJablonowski/COH/internal/workflow/retrievalguard"
 	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
+
+type retrievalGuardStub struct {
+	request retrievalguard.Request
+	result  retrievalguard.Result
+	err     error
+}
+
+func (stub *retrievalGuardStub) Inspect(_ context.Context, request retrievalguard.Request) (retrievalguard.Result, error) {
+	stub.request = request
+	return stub.result, stub.err
+}
+
+func guardedResult() retrievalguard.Result {
+	return retrievalguard.Result{Inspection: retrievalguard.InspectionResult{
+		SourceDigest: testDigestOne, SourceProvenanceDigest: testDigestTwo,
+		Sanitized: domain.ArtifactRef{Digest: testDigestThree, MediaType: "application/json", Classification: "restricted", Length: 128},
+		Trust:     retrievalguard.UntrustedContent, Complete: true, FindingsDigest: testDigestOne,
+		InspectorDigest: testDigestTwo}, AuditEventDigest: testDigestThree, ProvenanceDigest: testDigestOne}
+}
 
 const (
 	testOrganization = "0199a213-81c0-7800-8aa1-bbab2a035a70"

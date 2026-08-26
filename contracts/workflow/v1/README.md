@@ -114,3 +114,16 @@ authority, idempotency receipts, optimistic revisions, and chained provenance
 are revalidated at every controller boundary. See
 `../../../docs/design/session-case-memory-namespaces.md` for the isolation,
 retention, restart, and migration model.
+
+## Hostile-content retrieval
+
+`retrieval-inspection.schema.json` freezes CYB-75 / COH-E09-04 request,
+authorization decision, completed inspection, and durable replay records.
+Every log, document, feed, query or tool result, tool error, memory value,
+report, and attachment remains `untrusted_content`. Strict profiles bind byte
+and media limits, active-content neutralization, secret redaction, directive
+neutralization, policy, revocation, deadline, audit proof, and chained
+provenance. Model-facing skill-resource and memory adapters return only the
+verified sanitized artifact produced by this boundary. See
+`../../../docs/design/hostile-content-retrieval.md` for authority separation,
+failure behavior, integration, restart recovery, deployment, and rollback.
