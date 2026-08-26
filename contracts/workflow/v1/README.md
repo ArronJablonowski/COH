@@ -58,3 +58,23 @@ The decoder rejects duplicate, unknown, missing, nested-missing, trailing,
 malformed, oversized, or unsupported records. The contract contains no prompt,
 price text, evidence content, credential, connector, policy callback, or model
 authority field.
+
+## Evidence-safe context compaction
+
+`context-compaction.schema.json` freezes `coh.context-compaction/v1` intent and
+durable state records for CYB-66 / COH-E08-05, FR-027, and SEC-016. Every
+ordered source retains a resolvable evidence ID and digest, source and
+normalized time, original timezone, precision, clock uncertainty, order
+confidence, negative/gap/conflict state, completeness, uncertainty, and a
+fixed untrusted-data label.
+
+A data-only resolver verifies every evidence ID in the bound case against its
+exact immutable digest before a new compaction is persisted or summarized.
+
+Summary content is written as a separate immutable JSON artifact. Durable
+compaction state keeps only its bounded artifact reference, the complete
+ordered source manifest, and a canonical digest that prevents manifest
+substitution in the workflow result. Both source and summary references remain
+explicitly `untrusted_evidence`. The record has no prompt, raw evidence, instruction,
+tool, policy authority, approval, credential, connector, callback, or executor
+field.
