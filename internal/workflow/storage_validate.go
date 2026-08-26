@@ -28,7 +28,7 @@ var (
 		"action": {}, "approval": {}, "artifact_manifest": {}, "case": {},
 		"claim": {}, "evidence": {}, "finding": {}, "model": {},
 		"query": {}, "risk": {}, "roe": {}, "run": {}, "skill": {},
-		"task": {}, "timeline_event": {}, "vulnerability": {},
+		"task": {}, "timeline_event": {}, "vulnerability": {}, "memory": {},
 	}
 )
 
@@ -54,7 +54,7 @@ func validateCase(operation, field string, value domain.CaseRef, optionalCase bo
 }
 
 func validateRecordKey(operation, field string, key RecordKey) error {
-	optionalCase := key.Kind == "model" || key.Kind == "skill"
+	optionalCase := key.Kind == "model" || key.Kind == "skill" || key.Kind == "memory"
 	if err := validateCase(operation, field+".case", key.Case, optionalCase); err != nil {
 		return err
 	}

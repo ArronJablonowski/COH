@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/workflow/v1/memory-namespace.schema.json",
+  "title": "COH memory namespace v1",
+  "oneOf": [
+    { "$ref": "#/$defs/put_request" },
+    { "$ref": "#/$defs/get_request" },
+    { "$ref": "#/$defs/access_request" },
+    { "$ref": "#/$defs/access_decision" },
+    { "$ref": "#/$defs/review_request" },
+    { "$ref": "#/$defs/review_decision" },
+    { "$ref": "#/$defs/record" }
+  ],
+  "$defs": {
+    "scope": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id", "session_id", "subject_actor_id"],
+      "properties": {
+        "organization_id": { "$ref": "#/$defs/uuid_v7" },
+        "tenant_id": { "$ref": "#/$defs/uuid_v7" },
+        "case_id": { "$ref": "#/$defs/optional_uuid_v7" },
+        "session_id": { "$ref": "#/$defs/optional_uuid_v7" },
+        "subject_actor_id": { "$ref": "#/$defs/optional_uuid_v7" }
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "media_type": { "type": "string", "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$" },
+        "classification": { "$ref": "#/$defs/token" },
+        "length": { "type": "integer", "minimum": 1, "maximum": 1073741824 }
+      },
+      "additionalProperties": false
+    },
+    "retention": {
+      "type": "object",
+      "required": ["class", "policy_digest", "expires_at"],
+      "properties": {
+        "class": { "enum": ["session_ephemeral", "case_record", "analyst_preference", "reviewed_organization"] },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "required": ["review_id", "reviewer_actor_id", "revision", "authority_digest", "reviewed_at", "valid_until"],
+      "properties": {
+        "review_id": { "$ref": "#/$defs/optional_uuid_v7" },
+        "reviewer_actor_id": { "$ref": "#/$defs/optional_uuid_v7" },
+        "revision": { "type": "integer", "minimum": 0 },
+        "authority_digest": { "$ref": "#/$defs/optional_digest" },
+        "reviewed_at": { "$ref": "#/$defs/optional_timestamp" },
+        "valid_until": { "$ref": "#/$defs/optional_timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "put_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "actor_id", "namespace", "scope", "key", "value", "value_type", "retention", "review", "policy_digest", "expected_revision", "deadline"],
+      "properties": {
+        "schema_version": { "const": "coh.memory-write/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "idempotency_key": { "$ref": "#/$defs/opaque" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "namespace": { "$ref": "#/$defs/namespace" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "key": { "$ref": "#/$defs/token" },
+        "value": { "$ref": "#/$defs/artifact" },
+        "value_type": { "$ref": "#/$defs/value_type" },
+        "retention": { "$ref": "#/$defs/retention" },
+        "review": { "$ref": "#/$defs/review" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+        "deadline": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "get_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "actor_id", "namespace", "scope", "key", "policy_digest", "deadline"],
+      "properties": {
+        "schema_version": { "const": "coh.memory-read/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "namespace": { "$ref": "#/$defs/namespace" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "key": { "$ref": "#/$defs/token" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "deadline": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "access_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "actor_id", "operation", "namespace", "scope", "key", "value_digest", "retention_digest", "policy_digest", "deadline"],
+      "properties": {
+        "schema_version": { "const": "coh.memory-access/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "namespace": { "$ref": "#/$defs/namespace" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "key": { "$ref": "#/$defs/token" },
+        "value_digest": { "$ref": "#/$defs/digest" },
+        "retention_digest": { "$ref": "#/$defs/digest" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "deadline": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "access_decision": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "allowed", "reason_code", "access_request_digest", "decision_digest", "decided_at", "expires_at"],
+      "properties": {
+        "schema_version": { "const": "coh.memory-access/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "allowed": { "type": "boolean" },
+        "reason_code": { "$ref": "#/$defs/token" },
+        "access_request_digest": { "$ref": "#/$defs/digest" },
+        "decision_digest": { "$ref": "#/$defs/digest" },
+        "decided_at": { "$ref": "#/$defs/timestamp" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "review_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "actor_id", "writer_actor_id", "operation", "scope", "key", "value_digest", "review", "policy_digest", "deadline"],
+      "properties": {
+        "schema_version": { "const": "coh.memory-review/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "request_id": { "$ref": "#/$defs/uuid_v7" },
+        "actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "writer_actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "key": { "$ref": "#/$defs/token" },
+        "value_digest": { "$ref": "#/$defs/digest" },
+        "review": { "$ref": "#/$defs/review" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "deadline": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "review_decision": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "allowed", "reason_code", "review_request_digest", "decision_digest", "decided_at", "expires_at"],
+      "properties": {
+        "schema_version": { "const": "coh.memory-review/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "allowed": { "type": "boolean" },
+        "reason_code": { "$ref": "#/$defs/token" },
+        "review_request_digest": { "$ref": "#/$defs/digest" },
+        "decision_digest": { "$ref": "#/$defs/digest" },
+        "decided_at": { "$ref": "#/$defs/timestamp" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "namespace", "scope", "key", "value", "value_type", "retention", "review", "writer_actor_id", "policy_digest", "intent_digest", "idempotency_digest", "access_decision_digest", "review_decision_digest", "previous_provenance_digest", "provenance_digest", "created_at", "updated_at", "revision"],
+      "properties": {
+        "schema_version": { "const": "coh.memory-namespace/v1" },
+        "contract_version": { "const": "1.0.0" },
+        "namespace": { "$ref": "#/$defs/namespace" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "key": { "$ref": "#/$defs/token" },
+        "value": { "$ref": "#/$defs/artifact" },
+        "value_type": { "$ref": "#/$defs/value_type" },
+        "retention": { "$ref": "#/$defs/retention" },
+        "review": { "$ref": "#/$defs/review" },
+        "writer_actor_id": { "$ref": "#/$defs/uuid_v7" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "intent_digest": { "$ref": "#/$defs/digest" },
+        "idempotency_digest": { "$ref": "#/$defs/digest" },
+        "access_decision_digest": { "$ref": "#/$defs/digest" },
+        "review_decision_digest": { "$ref": "#/$defs/optional_digest" },
+        "previous_provenance_digest": { "$ref": "#/$defs/optional_digest" },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" },
+        "revision": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 }
+      },
+      "additionalProperties": false
+    },
+    "namespace": { "enum": ["session", "case", "analyst_preference", "reviewed_organization"] },
+    "operation": { "enum": ["read", "write"] },
+    "value_type": { "enum": ["session_state_reference", "case_memory_reference", "analyst_preference_reference", "reviewed_organization_reference"] },
+    "uuid_v7": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "optional_uuid_v7": { "oneOf": [{ "$ref": "#/$defs/uuid_v7" }, { "type": "string", "maxLength": 0 }] },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "optional_digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "string", "maxLength": 0 }] },
+    "token": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$" },
+    "opaque": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "timestamp": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{9}Z$" },
+    "optional_timestamp": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "string", "maxLength": 0 }] }
+  }
+}

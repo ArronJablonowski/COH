@@ -103,3 +103,14 @@ provider-managed primary state, or invalid/expired qualification.
 
 See `../../../docs/design/recovery-cancellation-provider-fallback.md` for the
 state transitions, trust boundaries, migration plan, and verification model.
+
+## Memory namespaces
+
+`memory-namespace.schema.json` freezes the CYB-72 / COH-E09-03 records for
+session, case, analyst-preference, and independently reviewed organization
+memory. Values are bounded immutable artifact references, never embedded
+content. Namespace-specific scope, retention, read/write decisions, review
+authority, idempotency receipts, optimistic revisions, and chained provenance
+are revalidated at every controller boundary. See
+`../../../docs/design/session-case-memory-namespaces.md` for the isolation,
+retention, restart, and migration model.
