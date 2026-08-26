@@ -1,0 +1,21 @@
+{
+  "parameters": "temperature 0.2\nnum_ctx 32768",
+  "license": "Apache-2.0",
+  "modified_at": "2026-08-20T10:00:00Z",
+  "details": {
+    "parent_model": "",
+    "format": "gguf",
+    "family": "qwen3",
+    "families": ["qwen3"],
+    "parameter_size": "8.2B",
+    "quantization_level": "Q4_K_M"
+  },
+  "template": "{{ .System }}{{ range .Messages }}{{ .Role }}: {{ .Content }}{{ end }}",
+  "capabilities": ["completion", "thinking", "tools"],
+  "model_info": {
+    "general.architecture": "qwen3",
+    "qwen3.context_length": 32768,
+    "tokenizer.ggml.model": "gpt2",
+    "tokenizer.ggml.pre": "qwen2"
+  }
+}

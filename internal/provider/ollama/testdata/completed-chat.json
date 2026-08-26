@@ -1,0 +1,27 @@
+{
+  "model": "qwen3:8b",
+  "created_at": "2026-08-26T06:10:01Z",
+  "message": {
+    "role": "assistant",
+    "content": "Host is clean.",
+    "thinking": "I checked the supplied evidence.",
+    "tool_calls": [
+      {
+        "type": "function",
+        "function": {
+          "index": 0,
+          "name": "query_host",
+          "arguments": {"host": "srv-1"}
+        }
+      }
+    ]
+  },
+  "done": true,
+  "done_reason": "stop",
+  "total_duration": 1000000000,
+  "load_duration": 100000000,
+  "prompt_eval_count": 100,
+  "prompt_eval_duration": 200000000,
+  "eval_count": 20,
+  "eval_duration": 700000000
+}
