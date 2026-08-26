@@ -1,0 +1,8 @@
+be19a4228ba1db5c9b7c06e41e8afb748162a411c709ca199482dc2a3d08b59a  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/codex-runtime.w3rJmT/codex-runtime.log
+07f52543cc8ee50c3927cc4ffbbd129624e2e2881216fe4f16aa294d2041ccdb  /Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.dHgpxt/quality-report.json
+c970e21051b40c6a0fd987c5d639851364163ca65cd7d525e1048204bc225ea7  embedded:quality-report
+cbbc537717f922757f6cb8985037b7c4ab1e07e7da136b2d02e256a0896276c8  docs/evidence/CYB-61-codex-runtime-report.md
+747b9d9635092f68b286f9cd7b5906b2a71aa07f9da4d06f56fc28d78a752551  docs/evidence/CYB-61-redacted-error-trace.json
+ccb1be8488134b8b60470e1b687473fcc34f4e349befb41ed5c7c46b1e2ecc61  contracts/provider/codex-runtime/v1/capability.json
+ed35e155fc3ec4128958a58c43771407ce7328ab378be84b890aa1d072c75ece  internal/provider/codexruntime/testdata/app-server.jsonl
+bd95c2bbca9c861de77b7db5deacf79e6c13fa1f304716eb819476c647473fe0  internal/provider/codexruntime/testdata/exec.jsonl

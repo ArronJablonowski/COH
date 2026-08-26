@@ -1,0 +1,36 @@
+{
+  "schema_version": "coh.redacted-provider-error-examples/v1",
+  "issue": "CYB-61",
+  "requirements": ["FR-036", "FR-039"],
+  "provider_kind": "codex_runtime",
+  "redaction": {
+    "raw_protocol_documents_retained_in_messages": false,
+    "credentials_retained": false,
+    "prompt_or_tool_values_retained": false,
+    "vendor_error_detail_retained": false,
+    "bounded_trace_digest_retained_after_protocol_activity": true
+  },
+  "examples": [
+    {"condition":"runtime, protocol, model, route, sandbox, config, credential, tool, web, mutation, or environment tuple not attested","code":"denied","reason":"runtime_attestation_failed","retryable":false,"protocol_started":false},
+    {"condition":"App Server initialized with a different Codex home","code":"denied","reason":"initialize_identity_invalid","retryable":false,"trace_digest":"sha256:[redacted-example]"},
+    {"condition":"unknown App Server field or malformed exact document","code":"invalid_input","reason":"vendor_document_malformed","retryable":false,"trace_digest":"sha256:[redacted-example]"},
+    {"condition":"native command, file, MCP, web, mutation, approval, or unknown runtime request","code":"denied","reason":"native_tool_not_authorized","retryable":false,"runtime_response":"cancel"},
+    {"condition":"runtime rerouted the requested model","code":"denied","reason":"model_rerouted","retryable":false,"trace_digest":"sha256:[redacted-example]"},
+    {"condition":"dynamic tool start/request/completion identity or argument drift","code":"conflict","reason":"tool_call_lifecycle","retryable":false,"broker_called":false},
+    {"condition":"broker result digest mismatch","code":"denied","reason":"tool_result_digest","retryable":false},
+    {"condition":"broker denied an authorized dynamic tool request","outcome":"succeeded","tool_result_outcome":"denied","result_digest":"sha256:[redacted-example]","provider_value":"[not retained]"},
+    {"condition":"unsupported sampling tuple","code":"unsupported","reason":"sampling_profile","retryable":false,"protocol_started":false},
+    {"condition":"signed qualification expired","code":"unsupported","reason":"qualification_expired","retryable":false,"protocol_started":false},
+    {"condition":"usage exceeded qualified or request limits","code":"denied","reason":"usage_limit_exceeded","retryable":false},
+    {"condition":"bounded trace ceiling exceeded","code":"denied","reason":"trace_limit","retryable":false},
+    {"condition":"active request deadline exceeded","code":"timeout","reason":"request_timeout","retryable":false,"interrupt":"turn/interrupt"},
+    {"condition":"active request canceled","code":"canceled","reason":"request_canceled","retryable":false,"interrupt":"turn/interrupt"},
+    {"condition":"App Server disconnected before a terminal turn","code":"unavailable","reason":"rpc_disconnected","retryable":true,"trace_digest":"sha256:[redacted-example]"},
+    {"condition":"App Server reported a failed turn","code":"unavailable","reason":"turn_failed","retryable":false,"vendor_error":"[not retained]","trace_digest":"sha256:[redacted-example]"},
+    {"condition":"exec JSONL contained an unknown event","code":"unsupported","reason":"exec_event_not_supported","retryable":false},
+    {"condition":"exec JSONL contained a native command or non-agent item","code":"denied","reason":"exec_item_not_supported","retryable":false},
+    {"condition":"exec JSONL ended without the required terminal event","code":"conflict","reason":"exec_terminal_missing","retryable":false},
+    {"condition":"exec batch request included tools whose broker mediation could not be proven","code":"unsupported","reason":"batch_tools_not_supported","retryable":false,"batch_started":false},
+    {"condition":"App Server launch failed","code":"unavailable","reason":"app_server_launch_failed","retryable":true,"automatic_exec_fallback":false}
+  ]
+}
