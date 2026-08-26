@@ -23,7 +23,7 @@ type attempt struct {
 type Executor struct {
 	resolver      Resolver
 	authorizer    Authorizer
-	network       NetworkBroker
+	network       *ContainmentNetworkBroker
 	runtime       Runtime
 	clock         Clock
 	registrations map[string]Registration
@@ -31,7 +31,7 @@ type Executor struct {
 	attempts      map[string]*attempt
 }
 
-func New(resolver Resolver, authorizer Authorizer, network NetworkBroker, runtime Runtime, clock Clock,
+func New(resolver Resolver, authorizer Authorizer, network *ContainmentNetworkBroker, runtime Runtime, clock Clock,
 	registrations []Registration) (*Executor, error) {
 	if resolver == nil || authorizer == nil || network == nil || runtime == nil || clock == nil ||
 		len(registrations) == 0 || len(registrations) > MaximumRegistrations {

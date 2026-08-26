@@ -169,9 +169,17 @@ func testExecutor() (*Executor, *fakeResolver, *fakeAuthorizer, *fakeNetworkBrok
 		ValidUntil: formatTime(testNow.Add(time.Minute))}}
 	network := &fakeNetworkBroker{clock: fixedClock{testNow}}
 	runtime := &fakeRuntime{}
-	executor, err := New(resolver, authorizer, network, runtime, fixedClock{testNow}, []Registration{testRegistration()})
+	executor, err := New(resolver, authorizer, testContainmentNetwork(network), runtime, fixedClock{testNow}, []Registration{testRegistration()})
 	if err != nil {
 		panic(err)
 	}
 	return executor, resolver, authorizer, network, runtime
+}
+
+func testContainmentNetwork(inner NetworkBroker) *ContainmentNetworkBroker {
+	broker, err := NewContainmentNetworkBroker(inner, &mutableStopGuard{})
+	if err != nil {
+		panic(err)
+	}
+	return broker
 }

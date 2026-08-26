@@ -19,7 +19,7 @@ func TestExecutorUsesActualSignedRegistryAndLivePublisherAuthority(t *testing.T)
 		ValidUntil: formatTime(testNow.Add(time.Minute))}}
 	network := &fakeNetworkBroker{clock: fixedClock{testNow}}
 	runtime := &fakeRuntime{}
-	executor, err := New(registry, authorizer, network, runtime, fixedClock{testNow}, []Registration{testRegistration()})
+	executor, err := New(registry, authorizer, testContainmentNetwork(network), runtime, fixedClock{testNow}, []Registration{testRegistration()})
 	if err != nil {
 		t.Fatal(err)
 	}
