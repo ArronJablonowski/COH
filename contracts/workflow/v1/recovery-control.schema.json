@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/workflow/v1/recovery-control.schema.json",
+  "title": "COH recovery, cancellation, and provider fallback durable record v1",
+  "type": "object",
+  "required": ["schema_version", "contract_version", "control_id", "kind", "case", "run_id", "task_id", "policy_digest", "intent_digest", "idempotency_digest", "expected_provenance_digest", "reason_digest", "operation", "input_refs", "budget_reservation_digest", "observed_work", "result_work", "targets", "acknowledgments", "route", "attempts", "result_artifact", "status", "reason_code", "previous_provenance_digest", "provenance_digest", "created_at", "deadline", "updated_at", "revision"],
+  "properties": {
+    "schema_version": { "const": "coh.recovery-control/v1" },
+    "contract_version": { "const": "1.0.0" },
+    "control_id": { "$ref": "#/$defs/uuid_v7" },
+    "kind": { "enum": ["recovery", "cancellation", "fallback"] },
+    "case": { "$ref": "#/$defs/case" },
+    "run_id": { "$ref": "#/$defs/uuid_v7" },
+    "task_id": { "$ref": "#/$defs/uuid_v7" },
+    "policy_digest": { "$ref": "#/$defs/digest" },
+    "intent_digest": { "$ref": "#/$defs/digest" },
+    "idempotency_digest": { "$ref": "#/$defs/digest" },
+    "expected_provenance_digest": { "$ref": "#/$defs/optional_digest" },
+    "reason_digest": { "$ref": "#/$defs/optional_digest" },
+    "operation": { "$ref": "#/$defs/operation_slot" },
+    "input_refs": { "$ref": "#/$defs/references" },
+    "budget_reservation_digest": { "$ref": "#/$defs/optional_digest" },
+    "observed_work": { "$ref": "#/$defs/work_slot" },
+    "result_work": { "$ref": "#/$defs/work_slot" },
+    "targets": { "type": "array", "maxItems": 512, "items": { "$ref": "#/$defs/cancel_target" } },
+    "acknowledgments": { "type": "array", "maxItems": 512, "items": { "$ref": "#/$defs/cancellation_ack" } },
+    "route": { "$ref": "#/$defs/route_slot" },
+    "attempts": { "type": "array", "maxItems": 2, "items": { "$ref": "#/$defs/provider_attempt" } },
+    "result_artifact": { "$ref": "#/$defs/artifact_slot" },
+    "status": { "enum": ["recovery_prepared", "cancellation_active", "primary_attempting", "primary_unavailable", "fallback_attempting", "completed", "failed", "denied", "canceled", "timeout", "uncertain"] },
+    "reason_code": { "$ref": "#/$defs/token" },
+    "previous_provenance_digest": { "$ref": "#/$defs/optional_digest" },
+    "provenance_digest": { "$ref": "#/$defs/digest" },
+    "created_at": { "$ref": "#/$defs/timestamp" },
+    "deadline": { "$ref": "#/$defs/timestamp" },
+    "updated_at": { "$ref": "#/$defs/timestamp" },
+    "revision": { "type": "integer", "minimum": 1, "maximum": 9223372036854775807 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "recovery" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "expected_provenance_digest": { "$ref": "#/$defs/digest" },
+          "reason_digest": { "const": "" },
+          "operation": { "$ref": "#/$defs/empty_operation" },
+          "input_refs": { "type": "array", "maxItems": 0 },
+          "budget_reservation_digest": { "const": "" },
+          "observed_work": { "$ref": "#/$defs/work" },
+          "targets": { "type": "array", "maxItems": 0 },
+          "acknowledgments": { "type": "array", "maxItems": 0 },
+          "route": { "$ref": "#/$defs/empty_route" },
+          "attempts": { "type": "array", "maxItems": 0 },
+          "result_artifact": { "$ref": "#/$defs/empty_artifact" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "cancellation" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "expected_provenance_digest": { "$ref": "#/$defs/digest" },
+          "reason_digest": { "$ref": "#/$defs/digest" },
+          "operation": { "$ref": "#/$defs/empty_operation" },
+          "input_refs": { "type": "array", "maxItems": 0 },
+          "budget_reservation_digest": { "const": "" },
+          "observed_work": { "$ref": "#/$defs/empty_work" },
+          "result_work": { "$ref": "#/$defs/empty_work" },
+          "targets": { "minItems": 1 },
+          "route": { "$ref": "#/$defs/empty_route" },
+          "attempts": { "type": "array", "maxItems": 0 },
+          "result_artifact": { "$ref": "#/$defs/empty_artifact" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "fallback" } }, "required": ["kind"] },
+      "then": {
+        "properties": {
+          "expected_provenance_digest": { "const": "" },
+          "reason_digest": { "const": "" },
+          "operation": { "$ref": "#/$defs/operation" },
+          "budget_reservation_digest": { "$ref": "#/$defs/digest" },
+          "observed_work": { "$ref": "#/$defs/empty_work" },
+          "result_work": { "$ref": "#/$defs/empty_work" },
+          "targets": { "type": "array", "maxItems": 0 },
+          "acknowledgments": { "type": "array", "maxItems": 0 },
+          "route": { "$ref": "#/$defs/route" },
+          "attempts": { "minItems": 1 },
+          "result_artifact": { "$ref": "#/$defs/artifact_slot" }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": { "$ref": "#/$defs/uuid_v7" },
+        "tenant_id": { "$ref": "#/$defs/uuid_v7" },
+        "case_id": { "$ref": "#/$defs/uuid_v7" }
+      },
+      "additionalProperties": false
+    },
+    "empty_case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": { "const": "" },
+        "tenant_id": { "const": "" },
+        "case_id": { "const": "" }
+      },
+      "additionalProperties": false
+    },
+    "operation_slot": {
+      "oneOf": [
+        { "$ref": "#/$defs/operation" },
+        { "$ref": "#/$defs/empty_operation" }
+      ]
+    },
+    "operation": {
+      "type": "object",
+      "required": ["id", "case", "kind", "version"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid_v7" },
+        "case": { "$ref": "#/$defs/case" },
+        "kind": { "$ref": "#/$defs/token" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "additionalProperties": false
+    },
+    "empty_operation": {
+      "type": "object",
+      "required": ["id", "case", "kind", "version"],
+      "properties": {
+        "id": { "const": "" },
+        "case": { "$ref": "#/$defs/empty_case" },
+        "kind": { "const": "" },
+        "version": { "const": "" }
+      },
+      "additionalProperties": false
+    },
+    "work_slot": {
+      "oneOf": [
+        { "$ref": "#/$defs/work" },
+        { "$ref": "#/$defs/empty_work" }
+      ]
+    },
+    "work": {
+      "type": "object",
+      "required": ["case", "run_id", "task_id", "status", "side_effect", "intent_digest", "receipt_digest", "provenance_digest", "terminal_evidence_digest"],
+      "properties": {
+        "case": { "$ref": "#/$defs/case" },
+        "run_id": { "$ref": "#/$defs/uuid_v7" },
+        "task_id": { "$ref": "#/$defs/uuid_v7" },
+        "status": { "enum": ["pending", "running", "waiting", "succeeded", "failed", "denied", "canceled", "timeout", "uncertain"] },
+        "side_effect": { "enum": ["none", "confirmed", "indeterminate"] },
+        "intent_digest": { "$ref": "#/$defs/optional_digest" },
+        "receipt_digest": { "$ref": "#/$defs/optional_digest" },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "terminal_evidence_digest": { "$ref": "#/$defs/optional_digest" }
+      },
+      "additionalProperties": false
+    },
+    "empty_work": {
+      "type": "object",
+      "required": ["case", "run_id", "task_id", "status", "side_effect", "intent_digest", "receipt_digest", "provenance_digest", "terminal_evidence_digest"],
+      "properties": {
+        "case": { "$ref": "#/$defs/empty_case" },
+        "run_id": { "const": "" },
+        "task_id": { "const": "" },
+        "status": { "const": "" },
+        "side_effect": { "const": "" },
+        "intent_digest": { "const": "" },
+        "receipt_digest": { "const": "" },
+        "provenance_digest": { "const": "" },
+        "terminal_evidence_digest": { "const": "" }
+      },
+      "additionalProperties": false
+    },
+    "cancel_target": {
+      "type": "object",
+      "required": ["sequence", "kind", "target_id", "expected_provenance_digest"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "kind": { "enum": ["child_task", "tool_job"] },
+        "target_id": { "$ref": "#/$defs/uuid_v7" },
+        "expected_provenance_digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "cancellation_ack": {
+      "type": "object",
+      "required": ["sequence", "kind", "target_id", "outcome", "evidence_digest", "provenance_digest"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "kind": { "enum": ["child_task", "tool_job"] },
+        "target_id": { "$ref": "#/$defs/uuid_v7" },
+        "outcome": { "enum": ["canceled", "already_terminal", "uncertain"] },
+        "evidence_digest": { "$ref": "#/$defs/digest" },
+        "provenance_digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "capability_profile": {
+      "type": "object",
+      "required": ["capability_digest", "qualification_digest", "data_route", "state_mode", "message_roles", "content_kinds", "state_modes", "tool_calls", "structured_output", "streaming", "cancellation", "usage", "maximum_input_tokens", "maximum_output_tokens", "maximum_messages", "maximum_tools", "maximum_parallel_tool_calls", "maximum_stream_seconds", "context_limit"],
+      "properties": {
+        "capability_digest": { "$ref": "#/$defs/digest" },
+        "qualification_digest": { "$ref": "#/$defs/digest" },
+        "data_route": { "enum": ["air_gapped", "local", "approved_external"] },
+        "state_mode": { "enum": ["stateless", "client_managed", "provider_managed"] },
+        "message_roles": { "$ref": "#/$defs/tokens" },
+        "content_kinds": { "$ref": "#/$defs/tokens" },
+        "state_modes": { "$ref": "#/$defs/tokens" },
+        "tool_calls": { "type": "boolean" },
+        "structured_output": { "type": "boolean" },
+        "streaming": { "type": "boolean" },
+        "cancellation": { "type": "boolean" },
+        "usage": { "type": "boolean" },
+        "maximum_input_tokens": { "type": "integer", "minimum": 1, "maximum": 16777216 },
+        "maximum_output_tokens": { "type": "integer", "minimum": 1, "maximum": 1048576 },
+        "maximum_messages": { "type": "integer", "minimum": 1, "maximum": 16384 },
+        "maximum_tools": { "type": "integer", "minimum": 0, "maximum": 1024 },
+        "maximum_parallel_tool_calls": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "maximum_stream_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+        "context_limit": { "type": "integer", "minimum": 1, "maximum": 16777216 }
+      },
+      "additionalProperties": false
+    },
+    "empty_capability": {
+      "type": "object",
+      "required": ["capability_digest", "qualification_digest", "data_route", "state_mode", "message_roles", "content_kinds", "state_modes", "tool_calls", "structured_output", "streaming", "cancellation", "usage", "maximum_input_tokens", "maximum_output_tokens", "maximum_messages", "maximum_tools", "maximum_parallel_tool_calls", "maximum_stream_seconds", "context_limit"],
+      "properties": {
+        "capability_digest": { "const": "" },
+        "qualification_digest": { "const": "" },
+        "data_route": { "const": "" },
+        "state_mode": { "const": "" },
+        "message_roles": { "type": "array", "maxItems": 0 },
+        "content_kinds": { "type": "array", "maxItems": 0 },
+        "state_modes": { "type": "array", "maxItems": 0 },
+        "tool_calls": { "const": false },
+        "structured_output": { "const": false },
+        "streaming": { "const": false },
+        "cancellation": { "const": false },
+        "usage": { "const": false },
+        "maximum_input_tokens": { "const": 0 },
+        "maximum_output_tokens": { "const": 0 },
+        "maximum_messages": { "const": 0 },
+        "maximum_tools": { "const": 0 },
+        "maximum_parallel_tool_calls": { "const": 0 },
+        "maximum_stream_seconds": { "const": 0 },
+        "context_limit": { "const": 0 }
+      },
+      "additionalProperties": false
+    },
+    "route_slot": {
+      "oneOf": [
+        { "$ref": "#/$defs/route" },
+        { "$ref": "#/$defs/empty_route" }
+      ]
+    },
+    "route": {
+      "type": "object",
+      "required": ["decision_id", "policy_digest", "requested_route", "primary_route", "fallback_route", "approval_digest", "primary", "fallback", "issued_at", "expires_at"],
+      "properties": {
+        "decision_id": { "$ref": "#/$defs/uuid_v7" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "requested_route": { "$ref": "#/$defs/token" },
+        "primary_route": { "$ref": "#/$defs/token" },
+        "fallback_route": { "$ref": "#/$defs/token" },
+        "approval_digest": { "$ref": "#/$defs/digest" },
+        "primary": { "$ref": "#/$defs/capability_profile" },
+        "fallback": { "$ref": "#/$defs/capability_profile" },
+        "issued_at": { "$ref": "#/$defs/timestamp" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "empty_route": {
+      "type": "object",
+      "required": ["decision_id", "policy_digest", "requested_route", "primary_route", "fallback_route", "approval_digest", "primary", "fallback", "issued_at", "expires_at"],
+      "properties": {
+        "decision_id": { "const": "" },
+        "policy_digest": { "const": "" },
+        "requested_route": { "const": "" },
+        "primary_route": { "const": "" },
+        "fallback_route": { "const": "" },
+        "approval_digest": { "const": "" },
+        "primary": { "$ref": "#/$defs/empty_capability" },
+        "fallback": { "$ref": "#/$defs/empty_capability" },
+        "issued_at": { "const": "" },
+        "expires_at": { "const": "" }
+      },
+      "additionalProperties": false
+    },
+    "provider_attempt": {
+      "type": "object",
+      "required": ["sequence", "attempt_id", "route", "capability_digest", "status", "outcome", "artifact", "evidence_digest"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 2 },
+        "attempt_id": { "$ref": "#/$defs/digest" },
+        "route": { "$ref": "#/$defs/token" },
+        "capability_digest": { "$ref": "#/$defs/digest" },
+        "status": { "enum": ["primary_attempting", "primary_unavailable", "fallback_attempting", "completed", "failed", "denied", "canceled", "timeout", "uncertain"] },
+        "outcome": { "enum": ["pending", "unavailable", "succeeded", "failed", "denied", "canceled", "timeout", "uncertain"] },
+        "artifact": { "$ref": "#/$defs/artifact_slot" },
+        "evidence_digest": { "$ref": "#/$defs/optional_digest" }
+      },
+      "additionalProperties": false
+    },
+    "artifact_slot": {
+      "oneOf": [
+        { "$ref": "#/$defs/artifact_ref" },
+        { "$ref": "#/$defs/empty_artifact" }
+      ]
+    },
+    "artifact_ref": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "media_type": { "const": "application/json" },
+        "classification": { "$ref": "#/$defs/token" },
+        "length": { "type": "integer", "minimum": 1, "maximum": 1073741824 }
+      },
+      "additionalProperties": false
+    },
+    "empty_artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": { "const": "" },
+        "media_type": { "const": "" },
+        "classification": { "const": "" },
+        "length": { "const": 0 }
+      },
+      "additionalProperties": false
+    },
+    "references": {
+      "type": "array",
+      "maxItems": 512,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/digest" }
+    },
+    "tokens": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/token" }
+    },
+    "uuid_v7": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "optional_digest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "string", "maxLength": 0 }] },
+    "token": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$" },
+    "timestamp": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9][.][0-9]{9}Z$" }
+  }
+}

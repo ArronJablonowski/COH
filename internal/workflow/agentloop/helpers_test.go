@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
+	workflowbase "github.com/ArronJablonowski/COH/internal/workflow"
 	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
 
@@ -90,14 +91,16 @@ func (store *memoryStore) Save(_ context.Context, _ string, prior, next Snapshot
 }
 
 type modelStub struct {
-	store *memoryStore
-	calls int
-	err   error
-	ref   domain.ArtifactRef
+	store       *memoryStore
+	calls       int
+	err         error
+	ref         domain.ArtifactRef
+	lastRequest workflowbase.ModelRequest
 }
 
-func (model *modelStub) Invoke(ctx context.Context, _ domain.Operation) (domain.ArtifactRef, error) {
+func (model *modelStub) Invoke(ctx context.Context, request workflowbase.ModelRequest) (domain.ArtifactRef, error) {
 	model.calls++
+	model.lastRequest = request
 	if model.store != nil && model.store.current.Step.Status != StepRunning {
 		return domain.ArtifactRef{}, errors.New("planning exposed before durable running state")
 	}
@@ -114,7 +117,7 @@ func (model *modelStub) Invoke(ctx context.Context, _ domain.Operation) (domain.
 
 type blockingModel struct{ calls int }
 
-func (model *blockingModel) Invoke(ctx context.Context, _ domain.Operation) (domain.ArtifactRef, error) {
+func (model *blockingModel) Invoke(ctx context.Context, _ workflowbase.ModelRequest) (domain.ArtifactRef, error) {
 	model.calls++
 	<-ctx.Done()
 	return domain.ArtifactRef{}, ctx.Err()

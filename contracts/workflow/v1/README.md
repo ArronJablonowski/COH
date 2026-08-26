@@ -10,14 +10,24 @@ responses, or executable callbacks.
 
 Every transition is committed atomically with a durable outbox event through
 the guarded workflow repository. Planning calls only the bounded
-`ModelProvider` port through `coh.agent-loop.plan.v1`. Consequential work calls
-only `ActionAuthority` through `coh.agent-loop.authorized-action.v1`; a crash
+`ModelProvider` port through `coh.agent-loop.plan.v2`. The v2 activity payload
+binds the exact durable run, operation, policy, provider route, input references,
+budget reservation, creation time, and deadline required for approved provider
+routing and crash-safe recovery. Consequential work calls only
+`ActionAuthority` through `coh.agent-loop.authorized-action.v1`; a crash
 after dispatch but before receipt persistence becomes `uncertain` and is not
 automatically submitted again.
 
 The versioned `coh.agent-loop.v1` definition remains behind `WorkflowEngine`
 and has a retained Temporal replay fixture. Incompatible logic requires a new
 workflow definition and migration/replay evidence.
+
+The v1 persisted record and lifecycle definition remain unchanged by the
+planning activity v2 cutover. Before registering v2, operators drain queued v1
+planning activities on the old worker. A v1 request is not upgraded in place,
+because its payload cannot prove the new policy, route, budget, and time
+bindings. Retained lifecycle histories continue to replay under
+`coh.agent-loop.v1`.
 
 This contract implements CYB-60 / COH-E08-01 for FR-011, FR-012, and FR-014.
 
@@ -78,3 +88,18 @@ substitution in the workflow result. Both source and summary references remain
 explicitly `untrusted_evidence`. The record has no prompt, raw evidence, instruction,
 tool, policy authority, approval, credential, connector, callback, or executor
 field.
+
+## Recovery, cancellation, and provider fallback
+
+`recovery-control.schema.json` freezes `coh.recovery-control/v1` recovery,
+cancellation, and provider-fallback records for CYB-67 / COH-E08-06. Recovery
+preserves terminal and uncertain outcomes and resumes only work proven to have
+no indeterminate side effect. Cancellation persists the complete ordered target
+tree before propagation and retains evidence-bound acknowledgments for child
+tasks and tool jobs. Provider fallback persists the approved route and exact
+attempt before invocation, permits fallback only after a definitive primary
+unavailability, and denies broader exposure, capability downgrade,
+provider-managed primary state, or invalid/expired qualification.
+
+See `../../../docs/design/recovery-cancellation-provider-fallback.md` for the
+state transitions, trust boundaries, migration plan, and verification model.

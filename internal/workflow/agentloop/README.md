@@ -28,7 +28,9 @@ The repository rejects illegal state transitions in addition to revision and
 scope conflicts.
 
 `Activities` exposes exactly two versioned Temporal-compatible methods:
-`coh.agent-loop.plan.v1` invokes `ModelProvider`, and
+`coh.agent-loop.plan.v2` invokes `ModelProvider` with the exact durable run,
+operation, policy, provider-route, input-reference, budget-reservation, and
+time bindings needed by recovery-controlled provider routing, and
 `coh.agent-loop.authorized-action.v1` submits a digest-bound `ToolIntent` to
 `ActionAuthority`. The Temporal adapter registers those exact immutable names.
 There is no connector, runner, credential, shell, HTTP, generic callback, or
@@ -40,3 +42,10 @@ invented capacity. Before enabling this build against a non-empty pre-alpha
 store, operators must drain or cancel old in-flight runs and restart required
 work with a reviewed `coh.run-budget/v1` plan. No SQL migration is required;
 the generic metadata adapters already persist canonical run/task records.
+
+The planning activity v2 cutover does not change the frozen agent-loop record
+shape or the replay-stable `coh.agent-loop.v1` lifecycle workflow. Operators
+must drain `coh.agent-loop.plan.v1` activity tasks on the old worker before
+deploying workers that register v2. New and resumed planning work then uses v2;
+v1 payloads are never widened by inventing missing policy, budget, route, or
+deadline bindings.

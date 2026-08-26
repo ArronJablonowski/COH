@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
+	workflowbase "github.com/ArronJablonowski/COH/internal/workflow"
 	"github.com/ArronJablonowski/COH/internal/workflow/agentloop"
 	"github.com/ArronJablonowski/COH/internal/workflow/runbudget"
 )
@@ -91,8 +92,8 @@ type phaseModelStub struct {
 	artifacts map[string]domain.ArtifactRef
 }
 
-func (model *phaseModelStub) Invoke(ctx context.Context, operation domain.Operation) (domain.ArtifactRef, error) {
-	model.calls = append(model.calls, operation)
+func (model *phaseModelStub) Invoke(ctx context.Context, request workflowbase.ModelRequest) (domain.ArtifactRef, error) {
+	model.calls = append(model.calls, request.Operation)
 	if model.block {
 		<-ctx.Done()
 		return domain.ArtifactRef{}, ctx.Err()
@@ -105,7 +106,7 @@ func (model *phaseModelStub) Invoke(ctx context.Context, operation domain.Operat
 		return domain.ArtifactRef{}, ctx.Err()
 	default:
 	}
-	return model.artifacts[operation.Kind], nil
+	return model.artifacts[request.Operation.Kind], nil
 }
 
 type phaseActionStub struct {

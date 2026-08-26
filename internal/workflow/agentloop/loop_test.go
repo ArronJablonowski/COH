@@ -3,6 +3,7 @@ package agentloop
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -21,6 +22,15 @@ func TestDurablePlanActionLoopPersistsBeforeActivities(t *testing.T) {
 	}
 	if planned.Run.Status != RunWaiting || planned.Step.Status != StepSucceeded || model.calls != 1 || len(planned.Run.OutputRefs) != 1 || store.history[1].Step.Status != StepRunning {
 		t.Fatalf("planned=%+v calls=%d history=%+v", planned, model.calls, store.history)
+	}
+	if model.lastRequest.RunID != started.Run.RunID || model.lastRequest.Operation.ID != started.Step.StepID ||
+		model.lastRequest.Operation.Case != started.Run.Case || model.lastRequest.Operation.Kind != "agent_plan" ||
+		model.lastRequest.Operation.Version != WorkflowDefinition || model.lastRequest.PolicyDigest != started.Run.PolicyDigest ||
+		model.lastRequest.ProviderRoute != started.Run.ProviderRoute ||
+		!reflect.DeepEqual(model.lastRequest.InputRefs, started.Step.InputRefs) ||
+		model.lastRequest.BudgetReservationDigest != started.Step.BudgetReservationDigest ||
+		!model.lastRequest.CreatedAt.Equal(started.Step.CreatedAt) || !model.lastRequest.Deadline.Equal(started.Step.Deadline) {
+		t.Fatalf("model request lost durable bindings: request=%+v started=%+v", model.lastRequest, started)
 	}
 	intent, intentDigest := testIntent(t)
 	action.receipt = domain.ActionReceipt{IntentDigest: intentDigest, Outcome: "succeeded", Evidence: domain.ArtifactRef{Digest: testDigestThree, MediaType: "application/json", Classification: "internal", Length: 8}}

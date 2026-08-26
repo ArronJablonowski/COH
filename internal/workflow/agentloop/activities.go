@@ -2,6 +2,7 @@ package agentloop
 
 import (
 	"context"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
 	"github.com/ArronJablonowski/COH/internal/domain/toolroute"
@@ -9,13 +10,20 @@ import (
 )
 
 const (
-	PlanningActivityName         = "coh.agent-loop.plan.v1"
+	PlanningActivityName         = "coh.agent-loop.plan.v2"
 	AuthorizedActionActivityName = "coh.agent-loop.authorized-action.v1"
 )
 
 // PlanningRequest is the bounded, reference-only input to model planning.
 type PlanningRequest struct {
-	Operation domain.Operation
+	Operation               domain.Operation
+	RunID                   string
+	PolicyDigest            string
+	ProviderRoute           string
+	InputRefs               []string
+	BudgetReservationDigest string
+	CreatedAt               time.Time
+	Deadline                time.Time
 }
 
 // PlanningResult returns only an immutable artifact reference.
@@ -57,10 +65,16 @@ func (activities *Activities) Plan(ctx context.Context, request PlanningRequest)
 		return PlanningResult{}, err
 	}
 	if !uuidV7Pattern.MatchString(request.Operation.ID) || !validateCase(request.Operation.Case) ||
-		request.Operation.Kind != "agent_plan" || request.Operation.Version != WorkflowDefinition {
+		request.Operation.Kind != "agent_plan" || request.Operation.Version != WorkflowDefinition ||
+		!uuidV7Pattern.MatchString(request.RunID) || !digestPattern.MatchString(request.PolicyDigest) ||
+		!tokenPattern.MatchString(request.ProviderRoute) || !validateReferences(request.InputRefs) ||
+		!digestPattern.MatchString(request.BudgetReservationDigest) || !validTimes(request.CreatedAt, request.Deadline) {
 		return PlanningResult{}, newError(InvalidInput, "plan_activity", "request_invalid", false, nil)
 	}
-	artifact, err := activities.models.Invoke(ctx, request.Operation)
+	artifact, err := activities.models.Invoke(ctx, workflowbase.ModelRequest{RunID: request.RunID,
+		Operation: request.Operation, PolicyDigest: request.PolicyDigest, ProviderRoute: request.ProviderRoute,
+		InputRefs: append([]string{}, request.InputRefs...), BudgetReservationDigest: request.BudgetReservationDigest,
+		CreatedAt: request.CreatedAt, Deadline: request.Deadline})
 	if err != nil {
 		return PlanningResult{}, err
 	}

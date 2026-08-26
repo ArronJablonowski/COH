@@ -5,13 +5,27 @@ package workflow
 
 import (
 	"context"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
 )
 
+// ModelRequest carries only trusted workflow bindings and immutable references.
+// It cannot carry prompt text, credentials, policy authority, or tools.
+type ModelRequest struct {
+	RunID                   string
+	Operation               domain.Operation
+	PolicyDigest            string
+	ProviderRoute           string
+	InputRefs               []string
+	BudgetReservationDigest string
+	CreatedAt               time.Time
+	Deadline                time.Time
+}
+
 // ModelProvider is the bounded model inference port.
 type ModelProvider interface {
-	Invoke(context.Context, domain.Operation) (domain.ArtifactRef, error)
+	Invoke(context.Context, ModelRequest) (domain.ArtifactRef, error)
 }
 
 // ActionAuthority is the sole side-effect route available to workflows. Its

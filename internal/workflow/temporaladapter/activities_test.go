@@ -27,7 +27,7 @@ func (registry *activityRegistryStub) RegisterActivityWithOptions(handler any, o
 
 type activityModelStub struct{}
 
-func (activityModelStub) Invoke(context.Context, domain.Operation) (domain.ArtifactRef, error) {
+func (activityModelStub) Invoke(context.Context, core.ModelRequest) (domain.ArtifactRef, error) {
 	return domain.ArtifactRef{}, nil
 }
 

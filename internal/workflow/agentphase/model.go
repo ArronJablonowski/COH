@@ -13,14 +13,14 @@ type phaseModel struct {
 	results ResultResolver
 }
 
-func (model *phaseModel) Invoke(ctx context.Context, operation domain.Operation) (domain.ArtifactRef, error) {
-	phase, err := phaseFromStepID(operation.ID)
+func (model *phaseModel) Invoke(ctx context.Context, request workflowbase.ModelRequest) (domain.ArtifactRef, error) {
+	phase, err := phaseFromStepID(request.Operation.ID)
 	if err != nil || phase == ActPhase {
 		return domain.ArtifactRef{}, newError(Denied, "phase_model", "phase_identity_invalid", false, nil)
 	}
-	operation.Kind = "agent_" + string(phase)
-	operation.Version = ContractVersion
-	artifact, err := model.models.Invoke(ctx, operation)
+	request.Operation.Kind = "agent_" + string(phase)
+	request.Operation.Version = ContractVersion
+	artifact, err := model.models.Invoke(ctx, request)
 	if err != nil {
 		return domain.ArtifactRef{}, mapContextOrUnavailable("phase_model", err)
 	}

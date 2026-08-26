@@ -302,7 +302,12 @@ func (loop *Loop) Terminate(ctx context.Context, request TerminateRequest) (Snap
 }
 
 func (loop *Loop) executePlanning(ctx context.Context, key string, active Snapshot) (Snapshot, error) {
-	result, err := loop.activities.Plan(ctx, PlanningRequest{Operation: domain.Operation{ID: active.Step.StepID, Case: active.Run.Case, Kind: "agent_plan", Version: WorkflowDefinition}})
+	result, err := loop.activities.Plan(ctx, PlanningRequest{
+		Operation: domain.Operation{ID: active.Step.StepID, Case: active.Run.Case, Kind: "agent_plan", Version: WorkflowDefinition},
+		RunID:     active.Run.RunID, PolicyDigest: active.Run.PolicyDigest, ProviderRoute: active.Run.ProviderRoute,
+		InputRefs:               append([]string{}, active.Step.InputRefs...),
+		BudgetReservationDigest: active.Step.BudgetReservationDigest,
+		CreatedAt:               active.Step.CreatedAt, Deadline: active.Step.Deadline})
 	if err != nil {
 		status, runStatus, mapped := planningFailure(ctx, err)
 		return loop.finishAfterActivity(ctx, key+":finished", active, status, runStatus, nil, "", Reason(mapped), mapped)
