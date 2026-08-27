@@ -210,10 +210,14 @@ func validateDefinition(value Definition) error {
 			return denied("definition sort duplicate")
 		}
 		seenSort[sort.Name] = struct{}{}
+		if !slices.Contains(value.DefaultProjection, sort.Name) {
+			return denied("definition stable sort projection invalid")
+		}
 	}
-	for _, required := range []string{value.TimestampField, value.TenantField, value.SourceField} {
+	for index, required := range []string{value.TimestampField, value.TenantField, value.SourceField} {
 		if required != "" {
-			if _, ok := fields[required]; !ok {
+			field, ok := fields[required]
+			if !ok || index == 0 && field.Type != "timestamp" || index > 0 && !field.Filterable {
 				return denied("definition mandatory field invalid")
 			}
 		}
@@ -222,18 +226,21 @@ func validateDefinition(value Definition) error {
 }
 
 func validatePlan(value Plan) error {
+	earliest, earliestErr := time.Parse("2006-01-02T15:04:05.000000000Z", value.Earliest)
+	latest, latestErr := time.Parse("2006-01-02T15:04:05.000000000Z", value.Latest)
 	if value.SchemaVersion != PlanVersion || value.ContractVersion != ContractVersion ||
 		value.ValidatorVersion != ValidatorVersion || !uuidPattern.MatchString(value.QueryID) ||
 		!namePattern.MatchString(value.SourceID) || !validNames(value.ResourceIDs, 1, 256) ||
 		len(value.CanonicalSPL) == 0 || len(value.CanonicalSPL) > MaximumInputBytes ||
 		strings.ContainsAny(value.CanonicalSPL, "`\x00\r\n") || len(value.Columns) == 0 || len(value.Columns) > MaximumProjection ||
 		len(value.Aggregations) > MaximumAggregations || len(value.Sort) > MaximumSortFields ||
+		earliestErr != nil || latestErr != nil || !earliest.Before(latest) ||
 		value.MaximumRows == 0 || value.MaximumRows > 100000 || value.MaximumBytes == 0 || value.MaximumBytes > MaximumDocumentBytes ||
 		value.MaximumDurationMillis == 0 || value.MaximumDurationMillis > 120000 ||
 		value.SubsearchCount > MaximumSubsearches || value.CommandCount == 0 || value.CommandCount > MaximumCommands*(value.SubsearchCount+1) ||
 		!validDigests(value.QueryDigest, value.CapabilityDigest, value.SchemaDigest, value.Authority.AuthorizationDigest,
 			value.Authority.PolicyDecisionDigest, value.Authority.AuditReservationDigest, value.RegistryDigest,
-			value.MandatoryFilterDigest, value.PlanDigest) || !uuidPattern.MatchString(value.Authority.ActorID) {
+			value.MandatoryFilterDigest, value.PlanDigest) || !uuidPattern.MatchString(value.Authority.ActorID) || value.PlanDigest != planDigest(value) {
 		return denied("plan invalid")
 	}
 	columnNames := map[string]struct{}{}
@@ -250,7 +257,7 @@ func validatePlan(value Plan) error {
 	for _, aggregation := range value.Aggregations {
 		if !oneOf(aggregation.Function, "avg", "count", "dc", "max", "min", "sum") ||
 			(aggregation.Function != "count" && (!namePattern.MatchString(aggregation.InputLogical) || !vendorPattern.MatchString(aggregation.InputVendor))) ||
-			!namePattern.MatchString(aggregation.OutputName) || !oneOf(aggregation.OutputType, "integer", "string") {
+			!namePattern.MatchString(aggregation.OutputName) || !oneOf(aggregation.OutputType, "string", "integer", "boolean", "timestamp", "ip", "bytes") {
 			return denied("plan aggregation invalid")
 		}
 	}
@@ -303,6 +310,7 @@ func decodeExact(input []byte, output any) error {
 
 func RegistryDigest(value CommandRegistry) string { return registryDigest(value) }
 func DecisionDigest(value PolicyDecision) string  { return decisionDigest(value) }
+func PlanDigest(value Plan) string                { return planDigest(value) }
 
 func registryDigest(value CommandRegistry) string {
 	value.Digest = ""
@@ -312,6 +320,11 @@ func registryDigest(value CommandRegistry) string {
 func decisionDigest(value PolicyDecision) string {
 	value.Digest = ""
 	return hash("COH-SPLUNK-PARSER-DECISION-V1\x00", value)
+}
+
+func planDigest(value Plan) string {
+	value.PlanDigest = ""
+	return hash("COH-SPLUNK-PLAN-V1\x00", value)
 }
 
 func hash(domain string, value any) string {

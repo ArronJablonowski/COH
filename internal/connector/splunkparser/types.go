@@ -73,6 +73,8 @@ type Plan struct {
 	Columns               []Column         `json:"columns"`
 	Aggregations          []Aggregation    `json:"aggregations"`
 	Sort                  []SortRule       `json:"sort"`
+	Earliest              string           `json:"earliest"`
+	Latest                string           `json:"latest"`
 	MaximumRows           uint64           `json:"maximum_rows"`
 	MaximumBytes          uint64           `json:"maximum_bytes"`
 	MaximumDurationMillis uint64           `json:"maximum_duration_millis"`

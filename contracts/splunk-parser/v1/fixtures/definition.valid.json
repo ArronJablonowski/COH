@@ -9,8 +9,11 @@
   ],
   "fields": [
     {"name": "action", "vendor_name": "action", "type": "string", "projectable": true, "filterable": true, "sortable": true, "aggregatable": true},
+    {"name": "bytes", "vendor_name": "bytes", "type": "bytes", "projectable": true, "filterable": true, "sortable": true, "aggregatable": true},
+    {"name": "enabled", "vendor_name": "enabled", "type": "boolean", "projectable": true, "filterable": true, "sortable": false, "aggregatable": false},
     {"name": "event_time", "vendor_name": "_time", "type": "timestamp", "projectable": true, "filterable": true, "sortable": true, "aggregatable": false},
     {"name": "host", "vendor_name": "host", "type": "string", "projectable": true, "filterable": true, "sortable": true, "aggregatable": true},
+    {"name": "ip_address", "vendor_name": "src_ip", "type": "ip", "projectable": true, "filterable": true, "sortable": true, "aggregatable": true},
     {"name": "source", "vendor_name": "source", "type": "string", "projectable": true, "filterable": true, "sortable": true, "aggregatable": true},
     {"name": "tenant", "vendor_name": "tenant_id", "type": "string", "projectable": false, "filterable": true, "sortable": false, "aggregatable": false}
   ],

@@ -209,6 +209,13 @@ func TestFixtureDigests(t *testing.T) {
 	if decision.Digest == "DIGEST_PENDING" {
 		t.Fatalf("decision digest pending; expected %s", DecisionDigest(decision))
 	}
+	var plan Plan
+	if err := json.Unmarshal(readFixture(t, "plan.snapshot.json"), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if plan.PlanDigest == "DIGEST_PENDING" {
+		t.Fatalf("plan digest pending; expected %s", PlanDigest(plan))
+	}
 }
 
 func readFixture(t *testing.T, name string) []byte {

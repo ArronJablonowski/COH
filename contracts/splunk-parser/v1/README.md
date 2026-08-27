@@ -14,3 +14,7 @@ Public policy/audit evidence contains identities, outcomes, reason codes, and
 digests only. Native SPL, literals, parser bodies, credentials, and SIDs are
 never audit metadata. See `docs/design/splunk-parser-policy.md` for grammar,
 limits, threat model, compatibility, recovery, and migration decisions.
+
+Every internal plan carries the exact UTC half-open `earliest`/`latest` range
+and a self-verifying plan digest. Time is submitted through the future typed
+job request and is never accepted from inline SPL.
