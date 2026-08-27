@@ -164,6 +164,13 @@ func (store *RepositoryStore) commitTracked(ctx context.Context,
 	}
 	mutations := []workflowbase.Mutation{{Kind: workflowbase.MutationPut, Key: receiptKey,
 		ExpectedRevision: 0, Record: &receiptMetadata}}
+	indexKey := ingestionReceiptIndexKey(receipt.Case, receipt.ReceiptDigest)
+	indexMetadata, err := ingestionIndexMetadata(indexKey, receipt)
+	if err != nil {
+		return workflowbase.CommitResult{}, err
+	}
+	mutations = append(mutations, workflowbase.Mutation{Kind: workflowbase.MutationPut,
+		Key: indexKey, ExpectedRevision: 0, Record: &indexMetadata})
 	for _, candidate := range pending {
 		mutations = append(mutations, workflowbase.Mutation{Kind: workflowbase.MutationDelete,
 			Key: pendingRecordKey(receipt.Case, receipt.IdempotencyDigest, candidate.Role), ExpectedRevision: 1})

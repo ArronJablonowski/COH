@@ -55,7 +55,7 @@ func TestRepositoryStoreCommitsRecoversAndRejectsChangedReplay(t *testing.T) {
 	receipt := validReceipt(command, authorization, decision, manifest)
 	trackReceiptObjects(t, store, command, authorization.IntentDigest, receipt)
 	stored, replayed, err := store.Commit(t.Context(), command.IdempotencyKey, authorization.IntentDigest, receipt)
-	if err != nil || replayed || stored.ReceiptDigest != receipt.ReceiptDigest || len(memory.records) != 3 {
+	if err != nil || replayed || stored.ReceiptDigest != receipt.ReceiptDigest || len(memory.records) != 4 {
 		t.Fatalf("stored=%+v replayed=%v records=%d err=%v", stored, replayed, len(memory.records), err)
 	}
 	for _, record := range memory.records {
@@ -66,6 +66,11 @@ func TestRepositoryStoreCommitsRecoversAndRejectsChangedReplay(t *testing.T) {
 	recovered, found, err := store.Recover(t.Context(), command.Case, receipt.IdempotencyDigest)
 	if err != nil || !found || recovered.ReceiptDigest != receipt.ReceiptDigest {
 		t.Fatalf("recovered=%+v found=%v err=%v", recovered, found, err)
+	}
+	resolved, found, err := store.ResolveReceipt(t.Context(), command.Case, receipt.ReceiptDigest)
+	if err != nil || !found || resolved.ReceiptDigest != receipt.ReceiptDigest ||
+		resolved.ManifestProvenanceDigest != receipt.ManifestProvenanceDigest {
+		t.Fatalf("resolved=%+v found=%v err=%v", resolved, found, err)
 	}
 	if pending, pendingErr := store.RecoverPending(t.Context(), command.Case,
 		receipt.IdempotencyDigest); pendingErr != nil || len(pending) != 0 {
@@ -105,10 +110,18 @@ func TestRepositoryStoreFailsClosedOnTamperedCanonicalReceipt(t *testing.T) {
 	if _, _, err := store.Commit(t.Context(), command.IdempotencyKey, authorization.IntentDigest, receipt); err != nil {
 		t.Fatal(err)
 	}
-	for key, record := range memory.records {
-		record.Canonical[len(record.Canonical)/2] ^= 1
-		memory.records[key] = record
+	indexKey := ingestionReceiptIndexKey(command.Case, receipt.ReceiptDigest)
+	indexRecord := memory.records[indexKey]
+	indexRecord.Canonical[len(indexRecord.Canonical)/2] ^= 1
+	memory.records[indexKey] = indexRecord
+	if _, found, err := store.ResolveReceipt(t.Context(), command.Case,
+		receipt.ReceiptDigest); found || CodeOf(err) != Denied {
+		t.Fatalf("tampered index found=%v code=%s err=%v", found, CodeOf(err), err)
 	}
+	receiptKey := ingestionReceiptKey(command.Case, receipt.IdempotencyDigest)
+	receiptRecord := memory.records[receiptKey]
+	receiptRecord.Canonical[len(receiptRecord.Canonical)/2] ^= 1
+	memory.records[receiptKey] = receiptRecord
 	if _, _, err := store.Recover(t.Context(), command.Case, receipt.IdempotencyDigest); CodeOf(err) != Denied {
 		t.Fatalf("tamper code=%s err=%v", CodeOf(err), err)
 	}

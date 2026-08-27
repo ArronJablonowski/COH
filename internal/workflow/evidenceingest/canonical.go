@@ -85,6 +85,20 @@ func CanonicalManifest(value ArtifactManifest) ([]byte, error) {
 	return canonicalValue(manifestToWire(value))
 }
 
+// DecodeManifest strictly decodes the canonical plaintext stored in the
+// encrypted CAS and revalidates its complete provenance binding.
+func DecodeManifest(data []byte) (ArtifactManifest, error) {
+	var wire manifestWire
+	if err := decodeIngestionRecord(data, &wire); err != nil {
+		return ArtifactManifest{}, err
+	}
+	value, err := manifestFromWire(wire)
+	if err != nil || validateManifest(value) != nil {
+		return ArtifactManifest{}, newError(Denied, "manifest_decode_invalid", false, err)
+	}
+	return value, nil
+}
+
 func ManifestProvenanceDigest(value ArtifactManifest) (string, error) {
 	copyValue := value
 	copyValue.ProvenanceDigest = ""

@@ -19,7 +19,9 @@ import (
 	"github.com/ArronJablonowski/COH/internal/persistence/sqlite"
 	"github.com/ArronJablonowski/COH/internal/workflow"
 	"github.com/ArronJablonowski/COH/internal/workflow/caselifecycle"
+	"github.com/ArronJablonowski/COH/internal/workflow/evidencecatalog"
 	"github.com/ArronJablonowski/COH/internal/workflow/evidenceingest"
+	"github.com/ArronJablonowski/COH/internal/workflow/evidencelifecycle"
 )
 
 type evidenceClock struct{ now time.Time }
@@ -126,10 +128,84 @@ func TestEvidenceReceiptAndEncryptedObjectsSurviveSQLiteRestart(t *testing.T) {
 	if err != nil || result.Replayed || auditor.count() != 1 {
 		t.Fatalf("ingest=%+v audit=%d err=%v", result, auditor.count(), err)
 	}
+	guarded, err := workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipts, err := evidenceingest.NewRepositoryStore(guarded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nativeCAS := openEvidenceCAS(t, casRoot, wrappingKey[:], now)
+	catalog, err := evidencecatalog.New(guarded, receipts, nativeCAS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := evidencelifecycle.ManifestArtifact{Ordinal: 1, Role: evidencelifecycle.SourceArtifact,
+		Reference: evidencelifecycle.EvidenceReference{Artifact: result.Artifact, Manifest: result.Manifest,
+			ManifestProvenanceDigest: result.Receipt.ManifestProvenanceDigest,
+			IngestionReceiptDigest:   result.Receipt.ReceiptDigest},
+		ParentArtifactDigests: []string{}, ParentManifestDigests: []string{}}
+	registered, replayedSet, err := catalog.Register(t.Context(),
+		evidencecatalog.Registration{Case: command.Case, Artifacts: []evidencelifecycle.ManifestArtifact{entry}})
+	if err != nil || replayedSet || len(registered.Components) != 1 ||
+		registered.Components[0].Kind != "policy" || registered.Components[0].Digest != command.PolicyDigest {
+		t.Fatalf("registered=%+v replayed=%v err=%v", registered, replayedSet, err)
+	}
+	substituted := entry
+	substituted.Reference.Artifact.Length++
+	if _, _, err = catalog.Register(t.Context(), evidencecatalog.Registration{Case: command.Case,
+		Artifacts: []evidencelifecycle.ManifestArtifact{substituted}}); evidencelifecycle.CodeOf(err) != evidencelifecycle.Denied {
+		t.Fatalf("substituted artifact code=%s err=%v", evidencelifecycle.CodeOf(err), err)
+	}
+	foreign := command.Case
+	foreign.CaseID = caseUUID("foreign-evidence-catalog-case")
+	if _, _, err = catalog.Register(t.Context(), evidencecatalog.Registration{Case: foreign,
+		Artifacts: []evidencelifecycle.ManifestArtifact{entry}}); evidencelifecycle.CodeOf(err) != evidencelifecycle.NotFound {
+		t.Fatalf("foreign scope code=%s err=%v", evidencelifecycle.CodeOf(err), err)
+	}
+	derivedPlaintext := []byte("derived immutable evidence with authenticated lineage")
+	derivedCommand := evidenceCommand(create, derivedPlaintext, now)
+	derivedCommand.RequestID = caseUUID("derived-evidence-request")
+	derivedCommand.IdempotencyKey = "sqlite-derived-evidence-ingest"
+	derivedCommand.Source.Kind = evidenceingest.DerivedSource
+	derivedCommand.Source.Identity = "coh-redaction:verified-lineage"
+	derivedCommand.Source.IdentityDigest = evidenceingest.SourceIdentityDigest(derivedCommand.Source.Identity)
+	derivedCommand.Source.CollectionMethod = "governed_redaction"
+	derivedCommand.ParentArtifacts = []domain.ArtifactRef{result.Artifact}
+	derivedCommand.ParentManifestDigests = []string{result.Manifest.Digest}
+	derivedCommand.Components = []evidenceingest.ComponentVersion{{Kind: evidenceingest.ToolComponent,
+		Name: "redaction_engine", Version: "1.0.0", Digest: caseDigest("redaction-engine")}}
+	derived, err := controller.Execute(t.Context(), derivedCommand, &evidenceSource{value: derivedPlaintext})
+	if err != nil {
+		t.Fatal(err)
+	}
+	redactionReceipt, mappingDigest := caseDigest("redaction-receipt"), caseDigest("redaction-mapping")
+	derivedEntry := evidencelifecycle.ManifestArtifact{Ordinal: 2, Role: evidencelifecycle.DerivedArtifact,
+		Reference: evidencelifecycle.EvidenceReference{Artifact: derived.Artifact, Manifest: derived.Manifest,
+			ManifestProvenanceDigest: derived.Receipt.ManifestProvenanceDigest,
+			IngestionReceiptDigest:   derived.Receipt.ReceiptDigest},
+		ParentArtifactDigests:  []string{result.Artifact.Digest},
+		ParentManifestDigests:  []string{result.Manifest.Digest},
+		RedactionReceiptDigest: &redactionReceipt, MappingDigest: &mappingDigest}
+	registeredLineage, replayedLineage, err := catalog.Register(t.Context(), evidencecatalog.Registration{
+		Case: command.Case, Artifacts: []evidencelifecycle.ManifestArtifact{entry, derivedEntry}})
+	if err != nil || replayedLineage || len(registeredLineage.Artifacts) != 2 ||
+		len(registeredLineage.Components) != 3 {
+		t.Fatalf("registered lineage=%+v replayed=%v err=%v", registeredLineage, replayedLineage, err)
+	}
+	brokenLineage := derivedEntry
+	brokenLineage.ParentArtifactDigests = []string{}
+	brokenLineage.ParentManifestDigests = []string{}
+	if _, _, err = catalog.Register(t.Context(), evidencecatalog.Registration{Case: command.Case,
+		Artifacts: []evidencelifecycle.ManifestArtifact{entry, brokenLineage}}); evidencelifecycle.CodeOf(err) != evidencelifecycle.Denied {
+		t.Fatalf("broken lineage code=%s err=%v", evidencelifecycle.CodeOf(err), err)
+	}
 	if err = driver.Close(); err != nil {
 		t.Fatal(err)
 	}
-	assertSensitiveBytesAbsent(t, databasePath, casRoot, plaintext, []byte(command.Source.Identity))
+	assertSensitiveBytesAbsent(t, databasePath, casRoot, plaintext, derivedPlaintext,
+		[]byte(command.Source.Identity), []byte(derivedCommand.Source.Identity))
 
 	driver = openCaseSQLite(t, databasePath, backupPath, now)
 	defer driver.Close()
@@ -140,6 +216,46 @@ func TestEvidenceReceiptAndEncryptedObjectsSurviveSQLiteRestart(t *testing.T) {
 	if err != nil || !replayed.Replayed || replayed.Receipt.ReceiptDigest != result.Receipt.ReceiptDigest ||
 		restartedAuditor.count() != 2 {
 		t.Fatalf("replay=%+v audit=%d err=%v", replayed, restartedAuditor.count(), err)
+	}
+	guarded, err = workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipts, err = evidenceingest.NewRepositoryStore(guarded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, found, err := receipts.ResolveReceipt(t.Context(), command.Case, result.Receipt.ReceiptDigest)
+	if err != nil || !found || resolved.ReceiptDigest != result.Receipt.ReceiptDigest {
+		t.Fatalf("resolved receipt=%+v found=%v err=%v", resolved, found, err)
+	}
+	nativeCAS = openEvidenceCAS(t, casRoot, wrappingKey[:], now)
+	manifest, err := nativeCAS.ResolveArtifactManifest(t.Context(), resolved)
+	if err != nil || manifest.Case != command.Case || manifest.Artifact != result.Artifact ||
+		manifest.ProvenanceDigest != result.Receipt.ManifestProvenanceDigest ||
+		manifest.Source.Identity != command.Source.Identity {
+		t.Fatalf("resolved manifest=%+v err=%v", manifest, err)
+	}
+	catalog, err = evidencecatalog.New(guarded, receipts, nativeCAS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolvedSet, err := catalog.ResolveEvidenceSet(t.Context(), command.Case, registered.ArtifactSetDigest)
+	if err != nil || resolvedSet.ArtifactSetDigest != registered.ArtifactSetDigest ||
+		resolvedSet.LineageDigest != registered.LineageDigest ||
+		resolvedSet.ComponentSetDigest != registered.ComponentSetDigest || len(resolvedSet.Artifacts) != 1 {
+		t.Fatalf("resolved set=%+v err=%v", resolvedSet, err)
+	}
+	resolvedLineage, err := catalog.ResolveEvidenceSet(t.Context(), command.Case,
+		registeredLineage.ArtifactSetDigest)
+	if err != nil || len(resolvedLineage.Artifacts) != 2 || len(resolvedLineage.Components) != 3 ||
+		resolvedLineage.LineageDigest != registeredLineage.LineageDigest {
+		t.Fatalf("resolved lineage=%+v err=%v", resolvedLineage, err)
+	}
+	replayedSetValue, replayedSet, err := catalog.Register(t.Context(),
+		evidencecatalog.Registration{Case: command.Case, Artifacts: []evidencelifecycle.ManifestArtifact{entry}})
+	if err != nil || !replayedSet || replayedSetValue.ArtifactSetDigest != registered.ArtifactSetDigest {
+		t.Fatalf("replayed set=%+v replayed=%v err=%v", replayedSetValue, replayedSet, err)
 	}
 }
 

@@ -1,11 +1,35 @@
 package evidenceingest
 
 import (
+	"bytes"
 	"context"
 	"reflect"
 	"sort"
 	"testing"
 )
+
+func TestDecodeManifestRequiresExactCanonicalProvenanceBoundBytes(t *testing.T) {
+	command := validCommand()
+	authorization := validAuthorization(command)
+	manifest := validManifest(command, authorization, validDecision(command, authorization))
+	canonical, err := CanonicalManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := DecodeManifest(canonical)
+	decodedCanonical, canonicalErr := CanonicalManifest(decoded)
+	if err != nil || canonicalErr != nil || !bytes.Equal(decodedCanonical, canonical) {
+		t.Fatalf("decoded=%+v err=%v", decoded, err)
+	}
+	if _, err = DecodeManifest(append(append([]byte(nil), canonical...), ' ')); CodeOf(err) != Denied {
+		t.Fatalf("noncanonical code=%s err=%v", CodeOf(err), err)
+	}
+	tampered := bytes.Replace(canonical, []byte(manifest.ProvenanceDigest),
+		[]byte(testDigest("substituted-provenance")), 1)
+	if _, err = DecodeManifest(tampered); CodeOf(err) != Denied {
+		t.Fatalf("tampered code=%s err=%v", CodeOf(err), err)
+	}
+}
 
 func TestCanonicalBindingsCoverIdentityTransportManifestAndReceipt(t *testing.T) {
 	command := validCommand()

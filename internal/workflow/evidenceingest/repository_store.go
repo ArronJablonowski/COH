@@ -39,18 +39,33 @@ func NewRepositoryStore(repository workflowbase.MetadataStore) (*RepositoryStore
 
 func (store *RepositoryStore) Recover(ctx context.Context, scope domain.CaseRef,
 	idempotency string) (Receipt, bool, error) {
+	return store.loadReceipt(ctx, ingestionReceiptKey(scope, idempotency), scope,
+		"receipt", idempotency, "")
+}
+
+// ResolveReceipt loads an immutable ingestion receipt by its canonical digest.
+// The index is only a lookup path: the complete receipt is decoded and
+// validated again before it is returned.
+func (store *RepositoryStore) ResolveReceipt(ctx context.Context, scope domain.CaseRef,
+	receiptDigest string) (Receipt, bool, error) {
+	return store.loadReceipt(ctx, ingestionReceiptIndexKey(scope, receiptDigest), scope,
+		"receipt_index", "", receiptDigest)
+}
+
+func (store *RepositoryStore) loadReceipt(ctx context.Context, key workflowbase.RecordKey,
+	scope domain.CaseRef, entryType, idempotency, receiptDigest string) (Receipt, bool, error) {
 	if err := contextError(ctx); err != nil {
 		return Receipt{}, false, err
 	}
-	if !validCase(scope) || !digestPattern.MatchString(idempotency) {
+	if !validCase(scope) || idempotency != "" && !digestPattern.MatchString(idempotency) ||
+		receiptDigest != "" && !digestPattern.MatchString(receiptDigest) {
 		return Receipt{}, false, newError(InvalidInput, "receipt_key_invalid", false, nil)
 	}
-	key := ingestionReceiptKey(scope, idempotency)
 	metadata, found, err := store.loadMetadata(ctx, key)
 	if err != nil || !found {
 		return Receipt{}, found, err
 	}
-	envelope, err := decodeIngestionEnvelope(metadata, key, "receipt")
+	envelope, err := decodeIngestionEnvelope(metadata, key, entryType)
 	if err != nil {
 		return Receipt{}, false, err
 	}
@@ -60,7 +75,8 @@ func (store *RepositoryStore) Recover(ctx context.Context, scope domain.CaseRef,
 	}
 	value, err := receiptFromWire(wire)
 	if err != nil || validateReceipt(value) != nil || value.Case != scope ||
-		value.IdempotencyDigest != idempotency || envelope.Revision != 1 ||
+		idempotency != "" && value.IdempotencyDigest != idempotency ||
+		receiptDigest != "" && value.ReceiptDigest != receiptDigest || envelope.Revision != 1 ||
 		envelope.CreatedAt != formatTime(value.CreatedAt) {
 		return Receipt{}, false, newError(Denied, "receipt_record_invalid", false, err)
 	}
@@ -81,7 +97,7 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 		if recovered, found, err := store.Recover(ctx, receipt.Case, receipt.IdempotencyDigest); err != nil {
 			return Receipt{}, false, err
 		} else if found {
-			if recovered.IntentDigest != intent {
+			if recovered.IntentDigest != intent || recovered.ReceiptDigest != receipt.ReceiptDigest {
 				return Receipt{}, false, newError(Denied, "changed_replay", false, nil)
 			}
 			return recovered, true, nil
@@ -98,7 +114,7 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 			if recoverErr != nil {
 				return Receipt{}, false, recoverErr
 			}
-			if !found || recovered.IntentDigest != intent {
+			if !found || recovered.IntentDigest != intent || recovered.ReceiptDigest != receipt.ReceiptDigest {
 				return Receipt{}, false, newError(Denied, "replayed_receipt_invalid", false, nil)
 			}
 			return recovered, true, nil
@@ -137,6 +153,15 @@ func decodeIngestionEnvelope(metadata workflowbase.MetadataRecord,
 }
 
 func ingestionMetadata(key workflowbase.RecordKey, receipt Receipt) (workflowbase.MetadataRecord, error) {
+	return ingestionReceiptMetadata(key, "receipt", receipt)
+}
+
+func ingestionIndexMetadata(key workflowbase.RecordKey, receipt Receipt) (workflowbase.MetadataRecord, error) {
+	return ingestionReceiptMetadata(key, "receipt_index", receipt)
+}
+
+func ingestionReceiptMetadata(key workflowbase.RecordKey, entryType string,
+	receipt Receipt) (workflowbase.MetadataRecord, error) {
 	encoded, err := canonicalValue(receiptToWire(receipt))
 	if err != nil {
 		return workflowbase.MetadataRecord{}, err
@@ -144,7 +169,7 @@ func ingestionMetadata(key workflowbase.RecordKey, receipt Receipt) (workflowbas
 	caseID := key.Case.CaseID
 	envelope := repositoryEnvelope{Schema: repositoryRecordSchema, Kind: repositoryKind, ID: key.ID,
 		OrganizationID: key.Case.OrganizationID, TenantID: key.Case.TenantID, CaseID: &caseID,
-		Revision: 1, CreatedAt: formatTime(receipt.CreatedAt), EntryType: "receipt", Data: encoded}
+		Revision: 1, CreatedAt: formatTime(receipt.CreatedAt), EntryType: entryType, Data: encoded}
 	canonical, err := canonicalValue(envelope)
 	if err != nil {
 		return workflowbase.MetadataRecord{}, err
@@ -157,6 +182,12 @@ func ingestionReceiptKey(scope domain.CaseRef, idempotency string) workflowbase.
 	return workflowbase.RecordKey{Case: scope, Kind: repositoryKind,
 		ID: deterministicUUID("COH-EVIDENCE-INGEST-RECEIPT-ID-V1\x00", scope.OrganizationID+"\x00"+
 			scope.TenantID+"\x00"+scope.CaseID+"\x00"+idempotency)}
+}
+
+func ingestionReceiptIndexKey(scope domain.CaseRef, receiptDigest string) workflowbase.RecordKey {
+	return workflowbase.RecordKey{Case: scope, Kind: repositoryKind,
+		ID: deterministicUUID("COH-EVIDENCE-INGEST-RECEIPT-INDEX-ID-V1\x00", scope.OrganizationID+"\x00"+
+			scope.TenantID+"\x00"+scope.CaseID+"\x00"+receiptDigest)}
 }
 
 func decodeIngestionRecord(data []byte, output any) error {
