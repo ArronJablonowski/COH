@@ -1,6 +1,7 @@
 package sqlite_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -14,6 +15,21 @@ import (
 )
 
 type redactionLostResponseStore struct{ workflow.MetadataStore }
+
+type redactionTamperStore struct {
+	workflow.MetadataStore
+	from []byte
+	to   []byte
+}
+
+func (store redactionTamperStore) Get(ctx context.Context,
+	key workflow.RecordKey) (workflow.MetadataRecord, error) {
+	record, err := store.MetadataStore.Get(ctx, key)
+	if err == nil {
+		record.Canonical = bytes.ReplaceAll(append([]byte(nil), record.Canonical...), store.from, store.to)
+	}
+	return record, err
+}
 
 func (store redactionLostResponseStore) Transact(ctx context.Context,
 	transaction workflow.Transaction) (workflow.CommitResult, error) {
@@ -131,6 +147,30 @@ func TestRedactionSQLiteConcurrentExactProgressAndCommitConverge(t *testing.T) {
 	changed.IntentDigest = caseDigest("redaction-changed-intent")
 	if _, _, err := store.Advance(context.Background(), command.IdempotencyKey, 0, changed); redaction.CodeOf(err) != redaction.Denied {
 		t.Fatalf("changed replay err=%v", err)
+	}
+}
+
+func TestRedactionSQLiteRejectsTamperedMappingInDurableReceipt(t *testing.T) {
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	root := t.TempDir()
+	backup := filepath.Join(root, "backups")
+	if err := os.MkdirAll(backup, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	driver := openCaseSQLite(t, filepath.Join(root, "coh.sqlite3"), backup, now)
+	defer driver.Close()
+	guarded, _ := workflow.GuardStorage(driver)
+	store, _ := redaction.NewRepositoryStore(guarded)
+	command, phases, record, receipt := redactionSQLiteFixture(t, now)
+	advanceRedactionPhases(t, store, command.IdempotencyKey, phases)
+	if _, _, err := store.Commit(context.Background(), command.IdempotencyKey,
+		record.IntentDigest, record, receipt); err != nil {
+		t.Fatal(err)
+	}
+	tampered, _ := redaction.NewRepositoryStore(redactionTamperStore{MetadataStore: guarded,
+		from: []byte(receipt.MappingDigest), to: []byte(caseDigest("redaction-mapping-tampered"))})
+	if _, found, err := tampered.Recover(context.Background(), command.Case, receipt.IdempotencyDigest); found || redaction.CodeOf(err) != redaction.Denied {
+		t.Fatalf("tampered mapping found=%v err=%v", found, err)
 	}
 }
 

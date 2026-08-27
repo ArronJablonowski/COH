@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
 	"github.com/ArronJablonowski/COH/internal/domain/tamperaudit"
@@ -51,7 +52,9 @@ func TestOrchestratorWithholdsReleaseOnCustodyOrAuditFailure(t *testing.T) {
 		{"custody verify", func(d *preflightDeps, _ *orchestrationAuditor) {
 			d.custody.verifyErr = errors.New("custody verify offline")
 		}},
+		{"custody proof", func(d *preflightDeps, _ *orchestrationAuditor) { d.custody.proof.Sequence = 0 }},
 		{"audit append", func(_ *preflightDeps, a *orchestrationAuditor) { a.appendErr = errors.New("audit offline") }},
+		{"audit proof", func(_ *preflightDeps, a *orchestrationAuditor) { a.invalidAppend = true }},
 		{"audit verify", func(_ *preflightDeps, a *orchestrationAuditor) { a.verifyErr = errors.New("audit verify offline") }},
 	}
 	for _, test := range tests {
@@ -77,6 +80,23 @@ func TestOrchestratorWithholdsReleaseOnCustodyOrAuditFailure(t *testing.T) {
 				t.Fatalf("audit reached after custody failure: %v", *calls)
 			}
 		})
+	}
+}
+
+func TestOrchestratorTimesOutDuringTransformationWithoutPublicationOrRelease(t *testing.T) {
+	fixture := newBindingFixture(t)
+	dependencies, calls := preflightDependencies(fixture)
+	preflightService, _ := newPreflight(dependencies.authority, dependencies.approvals, dependencies.cases,
+		dependencies.plans, dependencies.sources, dependencies.custody, dependencies.clock)
+	derivationService, _ := newDerivationService(waitingTransformer{}, &publisherStub{calls: calls})
+	service, _ := newOrchestrator(preflightService, derivationService, dependencies.custody,
+		&orchestrationStore{}, &orchestrationAuditor{calls: calls}, dependencies.clock)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+	result, err := service.execute(ctx, fixture.command)
+	if CodeOf(err) != Timeout || result.Receipt.ReceiptDigest != "" || containsCall(*calls, "publish:derived") ||
+		containsCall(*calls, "custody_record") {
+		t.Fatalf("result=%+v err=%v calls=%v", result, err, *calls)
 	}
 }
 
@@ -197,11 +217,12 @@ func (store *orchestrationStore) Commit(_ context.Context, _, _ string,
 }
 
 type orchestrationAuditor struct {
-	calls     *[]string
-	event     tamperaudit.Event
-	proof     AuditProof
-	appendErr error
-	verifyErr error
+	calls         *[]string
+	event         tamperaudit.Event
+	proof         AuditProof
+	appendErr     error
+	verifyErr     error
+	invalidAppend bool
 }
 
 func (auditor *orchestrationAuditor) AppendRedactionEvent(_ context.Context, event tamperaudit.Event) (AuditProof, error) {
@@ -213,7 +234,17 @@ func (auditor *orchestrationAuditor) AppendRedactionEvent(_ context.Context, eve
 	canonical, _ := tamperaudit.CanonicalEvent(event)
 	auditor.proof = AuditProof{EventDigest: digest("COH-REDACTION-AUDIT-EVENT-V1\x00", canonical),
 		Sequence: 12, ChainHash: testDigest("e")}
+	if auditor.invalidAppend {
+		auditor.proof.Sequence = 0
+	}
 	return auditor.proof, nil
+}
+
+type waitingTransformer struct{}
+
+func (waitingTransformer) Derive(ctx context.Context, _ DerivationRequest) (Derivation, DerivedSource, error) {
+	<-ctx.Done()
+	return Derivation{}, nil, ctx.Err()
 }
 
 func (auditor *orchestrationAuditor) VerifyRedactionEvent(_ context.Context, _ domain.CaseRef,

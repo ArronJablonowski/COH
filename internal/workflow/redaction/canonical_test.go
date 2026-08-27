@@ -120,6 +120,25 @@ func TestBindingOperationsDoNotMutateCallerOwnedSlices(t *testing.T) {
 	}
 }
 
+func TestPlanValidationRejectsInvalidAndOverlappingSpans(t *testing.T) {
+	tests := map[string]func(*ApprovedPlan){
+		"zero length":       func(value *ApprovedPlan) { value.Spans[0].SourceEnd = value.Spans[0].SourceStart },
+		"out of range":      func(value *ApprovedPlan) { value.Spans[1].SourceEnd = value.Source.Artifact.Length + 1 },
+		"overlap":           func(value *ApprovedPlan) { value.Spans[1].SourceStart = value.Spans[0].SourceEnd - 1 },
+		"unsorted":          func(value *ApprovedPlan) { value.Spans[1].SourceStart = value.Spans[0].SourceStart - 1 },
+		"duplicate ordinal": func(value *ApprovedPlan) { value.Spans[1].Ordinal = value.Spans[0].Ordinal },
+	}
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			value := clonePlan(newBindingFixture(t).plan)
+			mutate(&value)
+			if err := ValidatePlan(value); err == nil {
+				t.Fatal("invalid span plan accepted")
+			}
+		})
+	}
+}
+
 func newBindingFixture(t *testing.T) bindingFixture {
 	t.Helper()
 	at := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)

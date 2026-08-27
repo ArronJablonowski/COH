@@ -39,6 +39,7 @@ func (service *derivationService) deriveAndPublish(ctx context.Context, state au
 	if digestErr != nil || want != derivation.DerivationDigest || derivedSource == nil {
 		return publicationResult{}, newError(Denied, string(ReasonTransformInvalid), false, digestErr)
 	}
+	defer derivedSource.Close()
 	derivedRequest := publicationRequest(state, DerivedPublication, derivation.DerivedArtifact,
 		[]EvidenceReference{state.Command.Source})
 	derived, err := service.publisher.Publish(ctx, derivedRequest, derivedSource)

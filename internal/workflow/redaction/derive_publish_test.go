@@ -3,6 +3,7 @@ package redaction
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"testing"
 
@@ -53,6 +54,29 @@ func TestDerivationServiceRejectsSubstitutedDerivedPublication(t *testing.T) {
 	}
 }
 
+func TestDerivationServiceClearsPlaintextAndWithholdsOnPublicationFailure(t *testing.T) {
+	for _, role := range []PublicationRole{DerivedPublication, MappingPublication} {
+		t.Run(string(role), func(t *testing.T) {
+			fixture := newBindingFixture(t)
+			state, derivation := publicationFixture(t, fixture)
+			calls := []string{}
+			transformer := &transformerStub{derivation: derivation,
+				output: bytes.Repeat([]byte("x"), int(derivation.DerivedArtifact.Length)), calls: &calls}
+			publisher := &publisherStub{calls: &calls, failRole: role}
+			service, _ := newDerivationService(transformer, publisher)
+			if result, err := service.deriveAndPublish(context.Background(), state); err == nil ||
+				result.Derived.Reference.Artifact.Digest != "" {
+				t.Fatalf("result=%+v err=%v", result, err)
+			}
+			for _, source := range publisher.sources {
+				if source != nil && source.value != nil {
+					t.Fatal("publication failure retained plaintext source")
+				}
+			}
+		})
+	}
+}
+
 func publicationFixture(t *testing.T, fixture bindingFixture) (authorizedState, Derivation) {
 	t.Helper()
 	mapping := cloneMapping(fixture.mapping)
@@ -88,6 +112,7 @@ type publisherStub struct {
 	values     [][]byte
 	sources    []*sensitiveBytes
 	substitute bool
+	failRole   PublicationRole
 }
 
 func (stub *publisherStub) Publish(ctx context.Context, request PublicationRequest, source DerivedSource) (PublishedEvidence, error) {
@@ -96,6 +121,9 @@ func (stub *publisherStub) Publish(ctx context.Context, request PublicationReque
 	value := []byte{}
 	owned, _ := source.(*sensitiveBytes)
 	stub.sources = append(stub.sources, owned)
+	if request.Role == stub.failRole {
+		return PublishedEvidence{}, errors.New("publication unavailable")
+	}
 	for {
 		count, err := source.ReadContext(ctx, buffer)
 		value = append(value, buffer[:count]...)
