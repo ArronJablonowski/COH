@@ -212,6 +212,8 @@ func validateRecording(vendor string, recording Recording) error {
 		if step.Sequence != index+1 || !namePattern.MatchString(step.Operation) ||
 			!slices.Contains([]string{"ok", "error", "canceled", "timeout", "unavailable"}, step.Outcome) ||
 			step.HTTPStatus < 0 || step.HTTPStatus > 599 || len(step.RowIDs) > 1000 || len(step.SortKeys) > 1000 ||
+			step.TotalHits < 0 || step.TotalHits > 1000000 || step.RequestedLimit < 0 || step.RequestedLimit > 1000000 ||
+			step.OmittedCount < 0 || step.OmittedCount > 1000000 ||
 			(step.TotalRelation != "" && !slices.Contains([]string{"eq", "gte", "unknown", "not_applicable"}, step.TotalRelation)) ||
 			(step.PITToken != "" && !namePattern.MatchString(step.PITToken)) ||
 			(step.ErrorCode != "" && !namePattern.MatchString(step.ErrorCode)) || !validTokens(step.RowIDs) || duplicateAny(step.RowIDs) ||

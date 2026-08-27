@@ -48,6 +48,8 @@ type RecordingStep struct {
 	RowIDs         []string `json:"row_ids,omitempty"`
 	SortKeys       []string `json:"sort_keys,omitempty"`
 	TotalHits      int      `json:"total_hits,omitempty"`
+	RequestedLimit int      `json:"requested_limit,omitempty"`
+	OmittedCount   int      `json:"omitted_count,omitempty"`
 	TotalRelation  string   `json:"total_relation,omitempty"`
 	HasMore        bool     `json:"has_more,omitempty"`
 	PITToken       string   `json:"pit_token,omitempty"`

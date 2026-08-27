@@ -66,6 +66,38 @@ func TestElasticRecordingsAreStrictSanitizedAndComplete(t *testing.T) {
 	}
 }
 
+func TestSecurityOnionRecordingsAreStrictSanitizedAndComplete(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join("testdata", "1.0.0", "security-onion-recordings.json")
+	input, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordings, err := DecodeRecordings(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recordings.Vendor != "security_onion" || len(recordings.Recordings) != 10 {
+		t.Fatalf("recordings = %+v", recordings)
+	}
+	lower := strings.ToLower(string(input))
+	for _, forbidden := range []string{"authorization", "credential", "password", "api_key", "://"} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("recording contains forbidden sensitive/network marker %q", forbidden)
+		}
+	}
+	required := map[string]bool{"undocumented_cap": false, "documented_cap": false, "embedded_error": false,
+		"cancel": false, "timeout": false, "lost_state": false}
+	for _, recording := range recordings.Recordings {
+		required[recording.Fault] = true
+	}
+	for fault, covered := range required {
+		if !covered {
+			t.Fatalf("required Security Onion fault %q is missing", fault)
+		}
+	}
+}
+
 func TestDecodersFailClosed(t *testing.T) {
 	t.Parallel()
 

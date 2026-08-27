@@ -25,6 +25,8 @@
         "row_ids": {"type": "array", "maxItems": 1000, "uniqueItems": true, "items": {"$ref": "#/$defs/token"}},
         "sort_keys": {"type": "array", "maxItems": 1000, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
         "total_hits": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "requested_limit": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "omitted_count": {"type": "integer", "minimum": 0, "maximum": 1000000},
         "total_relation": {"enum": ["eq", "gte", "unknown", "not_applicable"]},
         "has_more": {"type": "boolean"},
         "pit_token": {"$ref": "#/$defs/token"},

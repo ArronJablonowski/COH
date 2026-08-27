@@ -1,0 +1,73 @@
+{
+  "schema_version": "coh.connector-truncation-recording/v1",
+  "recording_version": "1.0.0",
+  "vendor": "security_onion",
+  "sanitized": true,
+  "network": "disabled",
+  "recordings": [
+    {
+      "id": "security-onion-undocumented-event-cap", "mode": "oql_events", "boundary": "limit.undocumented_backend", "fault": "undocumented_cap",
+      "steps": [{"sequence": 1, "operation": "oql.events", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "total_hits": 5, "requested_limit": 100, "total_relation": "eq", "has_more": true, "truncated": true}],
+      "expected": {"outcome": "partial", "completeness_status": "partial", "reason_codes": ["securityonion_event_limit_reached"], "truncated": true, "partial": true, "vendor_confirmed": true, "rows_returned": 2, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["request.sent", "backend_limit.detected", "rows.accepted", "completeness.partial"]
+    },
+    {
+      "id": "security-onion-total-count-mismatch", "mode": "oql_events", "boundary": "response.total_mismatch", "fault": "undocumented_cap",
+      "steps": [{"sequence": 1, "operation": "oql.events", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "total_hits": 3, "requested_limit": 10, "total_relation": "eq", "has_more": true, "truncated": true}],
+      "expected": {"outcome": "partial", "completeness_status": "partial", "reason_codes": ["securityonion_event_limit_reached"], "truncated": true, "partial": true, "vendor_confirmed": true, "rows_returned": 2, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["request.sent", "response.counted", "total_mismatch.detected", "completeness.partial"]
+    },
+    {
+      "id": "security-onion-aggregation-bucket-cap", "mode": "oql_metrics", "boundary": "limit.aggregation_bucket", "fault": "documented_cap",
+      "steps": [{"sequence": 1, "operation": "oql.metrics", "outcome": "ok", "http_status": 200, "row_ids": ["bucket-a", "bucket-b"], "total_hits": 10, "requested_limit": 2, "omitted_count": 3, "total_relation": "not_applicable", "has_more": true, "truncated": true}],
+      "expected": {"outcome": "partial", "completeness_status": "partial", "reason_codes": ["securityonion_metric_limit_reached"], "truncated": true, "partial": true, "vendor_confirmed": true, "rows_returned": 2, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["request.sent", "aggregation.decoded", "omitted_bucket_count.detected", "completeness.partial"]
+    },
+    {
+      "id": "security-onion-metrics-unconfirmed", "mode": "oql_metrics", "boundary": "response.metrics_completion", "fault": "none",
+      "steps": [{"sequence": 1, "operation": "oql.metrics", "outcome": "ok", "http_status": 200, "row_ids": ["bucket-a"], "total_hits": 2, "requested_limit": 10, "omitted_count": 0, "total_relation": "not_applicable", "has_more": false}],
+      "expected": {"outcome": "partial", "completeness_status": "partial", "reason_codes": ["securityonion_completion_unconfirmed"], "truncated": false, "partial": true, "vendor_confirmed": false, "rows_returned": 1, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["request.sent", "aggregation.decoded", "completion.unconfirmed", "completeness.partial"]
+    },
+    {
+      "id": "security-onion-embedded-error", "mode": "oql_events", "boundary": "response.embedded_error", "fault": "embedded_error",
+      "steps": [{"sequence": 1, "operation": "oql.events", "outcome": "error", "http_status": 200, "error_code": "securityonion_oql_response_error"}],
+      "expected": {"outcome": "denied", "completeness_status": "not_applicable", "reason_codes": ["securityonion_oql_response_error"], "truncated": false, "partial": false, "vendor_confirmed": false, "rows_returned": 0, "pages_returned": 0, "adaptive_slicing": "not_requested"},
+      "trajectory": ["request.sent", "embedded_error.detected", "response.denied"]
+    },
+    {
+      "id": "security-onion-cancel-confirmed", "mode": "oql_events", "boundary": "cancellation.confirmed", "fault": "cancel",
+      "steps": [{"sequence": 1, "operation": "oql.cancel", "outcome": "canceled", "error_code": "securityonion_cancel_confirmed"}],
+      "expected": {"outcome": "canceled", "completeness_status": "not_applicable", "reason_codes": ["securityonion_cancel_confirmed"], "truncated": false, "partial": false, "vendor_confirmed": false, "rows_returned": 0, "pages_returned": 0, "adaptive_slicing": "not_requested"},
+      "trajectory": ["cancellation.requested", "cancellation.confirmed", "execution.canceled"]
+    },
+    {
+      "id": "security-onion-cancel-lost-state", "mode": "oql_events", "boundary": "cancellation.lost_state", "fault": "lost_state",
+      "steps": [{"sequence": 1, "operation": "oql.cancel", "outcome": "unavailable", "error_code": "securityonion_cancel_uncertain"}],
+      "expected": {"outcome": "unknown", "completeness_status": "unknown", "reason_codes": ["securityonion_cancel_uncertain"], "truncated": false, "partial": false, "vendor_confirmed": false, "rows_returned": 0, "pages_returned": 0, "adaptive_slicing": "not_requested"},
+      "trajectory": ["cancellation.requested", "job_state.missing", "automatic_retry.denied", "cancellation.uncertain"]
+    },
+    {
+      "id": "security-onion-backend-outage", "mode": "oql_events", "boundary": "response.backend_outage", "fault": "timeout",
+      "steps": [{"sequence": 1, "operation": "oql.events", "outcome": "timeout", "error_code": "securityonion_transport_timeout"}],
+      "expected": {"outcome": "unknown", "completeness_status": "unknown", "reason_codes": ["securityonion_transport_timeout"], "truncated": false, "partial": false, "vendor_confirmed": false, "rows_returned": 0, "pages_returned": 0, "adaptive_slicing": "not_requested"},
+      "trajectory": ["request.sent", "transport.timeout", "automatic_retry.denied", "completeness.unknown"]
+    },
+    {
+      "id": "security-onion-recovery-after-outage", "mode": "oql_events", "boundary": "recovery.durable_request", "fault": "lost_state",
+      "steps": [
+        {"sequence": 1, "operation": "oql.events", "outcome": "unavailable", "error_code": "securityonion_transport_unavailable"},
+        {"sequence": 2, "operation": "state.recover", "outcome": "ok"},
+        {"sequence": 3, "operation": "oql.events", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "total_hits": 2, "requested_limit": 10, "total_relation": "eq", "has_more": false}
+      ],
+      "expected": {"outcome": "completed", "completeness_status": "complete", "reason_codes": [], "truncated": false, "partial": false, "vendor_confirmed": true, "rows_returned": 2, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["transport.unavailable", "durable_request.loaded", "operator_retry.authorized", "response.complete", "completeness.complete"]
+    },
+    {
+      "id": "security-onion-empty-events-complete", "mode": "oql_events", "boundary": "response.empty_complete", "fault": "none",
+      "steps": [{"sequence": 1, "operation": "oql.events", "outcome": "ok", "http_status": 200, "row_ids": [], "total_hits": 0, "requested_limit": 10, "total_relation": "eq", "has_more": false}],
+      "expected": {"outcome": "completed", "completeness_status": "complete", "reason_codes": [], "truncated": false, "partial": false, "vendor_confirmed": true, "rows_returned": 0, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["request.sent", "response.empty", "total.confirmed_zero", "completeness.complete"]
+    }
+  ]
+}
