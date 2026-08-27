@@ -38,17 +38,21 @@ type CalibrationResolver interface {
 type RecordStore interface {
 	LoadReceipt(context.Context, string) (Receipt, bool, error)
 	LoadCommandDigest(context.Context, string) (string, bool, error)
+	Begin(context.Context, Command, string) (bool, error)
 	Commit(context.Context, Commit) error
+	CommitComparison(context.Context, ComparisonCommit) error
 }
 
 // AuditBuilder creates a data-only audit record for atomic persistence by the
 // store. Closed codes prevent source text from leaking into audit messages.
 type AuditBuilder interface {
 	BuildAudit(context.Context, string, string, Outcome, Reason) (AuditRecord, error)
+	BuildComparisonAudit(context.Context, Comparison) (string, error)
 }
 
 type ProvenanceBuilder interface {
 	BuildProvenance(context.Context, string, string, string) (ProvenanceRecord, error)
+	BuildComparisonProvenance(context.Context, Comparison, string) (string, string, error)
 }
 
 type Clock interface {

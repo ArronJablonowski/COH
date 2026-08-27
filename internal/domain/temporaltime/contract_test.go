@@ -104,6 +104,86 @@ func TestSkewArithmeticOverflowIsDenied(t *testing.T) {
 	}
 }
 
+func TestStrictParserRegistryAcceptsOnlyPinnedExplicitFormats(t *testing.T) {
+	identity := testCommand().Parser
+	registry, err := NewStrictParserRegistry([]ParserSpec{{Identity: identity, Kind: BuiltinStrictParser}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parser, err := registry.ResolveParser(context.Background(), identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := parser.Parse(context.Background(), "2026-11-01T01:30:00-06:00", "rfc3339", Second)
+	if err != nil || parsed.SourceOffsetMinutes == nil || *parsed.SourceOffsetMinutes != -360 || parsed.Hour != 1 || parsed.Precision != Second {
+		t.Fatalf("parsed=%+v err=%v", parsed, err)
+	}
+	if _, err := parser.Parse(context.Background(), "2026/11/01 01:30", "dynamic_layout", Minute); Code(err) != DeniedError || ErrorReason(err) != FormatNotSupported {
+		t.Fatalf("dynamic format err=%v", err)
+	}
+	changed := identity
+	changed.Version = "1.0.1"
+	if _, err := registry.ResolveParser(context.Background(), changed); Code(err) != DeniedError || ErrorReason(err) != ParserNotRegistered {
+		t.Fatalf("unpinned parser err=%v", err)
+	}
+}
+
+func TestPinnedTimezoneResolverPreservesDSTGapFoldAndDayWidth(t *testing.T) {
+	location, err := time.LoadLocation("America/Denver")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertion := ianaAssertion()
+	resolver, err := NewPinnedTimezoneResolver(assertion.TZDataVersion, assertion.TZDataDigest, map[string]*time.Location{assertion.Name: location})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gap, err := resolver.ResolveCivil(context.Background(), CivilTime{Year: 2026, Month: time.March, Day: 8, Hour: 2, Minute: 30, Precision: Minute}, assertion)
+	if err != nil || gap.DSTState != DSTGapState || len(gap.Intervals) != 0 {
+		t.Fatalf("gap=%+v err=%v", gap, err)
+	}
+	foldCivil := CivilTime{Year: 2026, Month: time.November, Day: 1, Hour: 1, Minute: 30, Precision: Minute}
+	fold, err := resolver.ResolveCivil(context.Background(), foldCivil, assertion)
+	if err != nil || fold.DSTState != DSTFold || len(fold.Intervals) != 2 || fold.Intervals[0].OffsetMinutes != -360 || fold.Intervals[1].OffsetMinutes != -420 {
+		t.Fatalf("fold=%+v err=%v", fold, err)
+	}
+	selectedOffset := int16(-360)
+	assertion.OffsetMinutes = &selectedOffset
+	selected, err := resolver.ResolveCivil(context.Background(), foldCivil, assertion)
+	if err != nil || selected.DSTState != DSTFold || len(selected.Intervals) != 1 || selected.Intervals[0].OffsetMinutes != -360 {
+		t.Fatalf("selected fold=%+v err=%v", selected, err)
+	}
+	assertion.OffsetMinutes = nil
+	day, err := resolver.ResolveCivil(context.Background(), CivilTime{Year: 2026, Month: time.March, Day: 8, Precision: Day}, assertion)
+	if err != nil || day.DSTState != DSTExact || len(day.Intervals) != 1 || day.Intervals[0].LatestUTC.Sub(day.Intervals[0].EarliestUTC) != 23*time.Hour-time.Nanosecond {
+		t.Fatalf("day=%+v width=%v err=%v", day, day.Intervals[0].LatestUTC.Sub(day.Intervals[0].EarliestUTC), err)
+	}
+	changed := assertion
+	changed.TZDataVersion = "unverified"
+	if _, err := resolver.ResolveCivil(context.Background(), foldCivil, changed); Code(err) != DeniedError || ErrorReason(err) != TimezoneMismatch {
+		t.Fatalf("tzdata mismatch err=%v", err)
+	}
+}
+
+func TestSourceOffsetMustBindTimezoneAssertion(t *testing.T) {
+	command := testCommand()
+	command.Timezone = ianaAssertion()
+	sourceOffset := int16(-360)
+	civil := testCivil()
+	civil.SourceOffsetMinutes = &sourceOffset
+	resolution := TimezoneResolution{DSTState: DSTFold, Intervals: []ResolvedInterval{{
+		EarliestUTC: mustTime("2026-11-01T07:30:00.000000000Z"), LatestUTC: mustTime("2026-11-01T07:30:00.999999999Z"), OffsetMinutes: -360,
+	}}}
+	if _, err := BuildRecord(context.Background(), command, civil, resolution, command.Calibration, testNow()); Code(err) != ConflictError || ErrorReason(err) != TimezoneMismatch {
+		t.Fatalf("unbound source offset err=%v", err)
+	}
+	command.Timezone.OffsetMinutes = &sourceOffset
+	record, err := BuildRecord(context.Background(), command, civil, resolution, command.Calibration, testNow())
+	if err != nil || record.Outcome != Normalized || record.TimezoneResult.DSTState != DSTFold || record.NormalizedUTC == nil {
+		t.Fatalf("bound fold record=%+v err=%v", record, err)
+	}
+}
+
 func TestComparisonNeverOrdersOverlappingOrUnresolvedIntervals(t *testing.T) {
 	left := exactRecordFixture(t, "0199a401-1000-7000-8000-000000000021", "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "2026-08-27T19:00:00.000000000Z")
 	right := exactRecordFixture(t, "0199a401-1000-7000-8000-000000000022", "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "2026-08-27T19:00:01.000000000Z")

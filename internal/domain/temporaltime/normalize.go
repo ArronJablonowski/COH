@@ -34,6 +34,11 @@ func BuildRecord(ctx context.Context, command Command, civil CivilTime, resoluti
 	if !validCalibration(calibration) || !sameCalibration(calibration, command.Calibration) {
 		return Record{}, newError(ConflictError, CalibrationUnresolved, nil)
 	}
+	if civil.SourceOffsetMinutes != nil {
+		if command.Timezone.Kind == MissingTimezone || command.Timezone.OffsetMinutes == nil || *command.Timezone.OffsetMinutes != *civil.SourceOffsetMinutes {
+			return Record{}, newError(ConflictError, TimezoneMismatch, nil)
+		}
+	}
 	if err := validateResolution(command.Timezone, resolution); err != nil {
 		return Record{}, err
 	}
@@ -47,7 +52,7 @@ func BuildRecord(ctx context.Context, command Command, civil CivilTime, resoluti
 	}
 	record.CandidateUTC = candidates
 	record.Interval = aggregateInterval(corrected)
-	if resolution.DSTState == DSTFold {
+	if resolution.DSTState == DSTFold && len(resolution.Intervals) > 1 {
 		record.Outcome = Unresolved
 		record.ReasonCode = TimezoneUnresolved
 		return record, nil
@@ -80,18 +85,18 @@ func unresolvedRecord(record Record, reason Reason, state DSTState) Record {
 }
 
 func validateResolution(assertion TimezoneAssertion, value TimezoneResolution) error {
-	wanted := 0
+	minimum, maximum := 0, 0
 	switch value.DSTState {
 	case DSTExact, DSTNotApplicable:
-		wanted = 1
+		minimum, maximum = 1, 1
 	case DSTFold:
-		wanted = 2
+		minimum, maximum = 1, 2
 	case DSTGapState:
-		wanted = 0
+		minimum, maximum = 0, 0
 	default:
 		return newError(ConflictError, TimezoneMismatch, nil)
 	}
-	if len(value.Intervals) != wanted || assertion.Kind == ExplicitOffset && value.DSTState != DSTNotApplicable || assertion.Kind == IANA && value.DSTState == DSTNotApplicable {
+	if len(value.Intervals) < minimum || len(value.Intervals) > maximum || assertion.Kind == ExplicitOffset && value.DSTState != DSTNotApplicable || assertion.Kind == IANA && value.DSTState == DSTNotApplicable {
 		return newError(ConflictError, TimezoneMismatch, nil)
 	}
 	for index, interval := range value.Intervals {

@@ -179,6 +179,20 @@ type CivilTime struct {
 	Second     int
 	Nanosecond int
 	Precision  Precision
+	// SourceOffsetMinutes is present only when the source text itself carried
+	// an offset. Metadata-supplied timezone assertions remain separate.
+	SourceOffsetMinutes *int16
+}
+
+type ParserKind string
+
+const (
+	BuiltinStrictParser ParserKind = "builtin_strict"
+)
+
+type ParserSpec struct {
+	Identity ParserIdentity
+	Kind     ParserKind
 }
 
 type ResolvedInterval struct {
@@ -334,4 +348,12 @@ type Commit struct {
 	Receipt    Receipt
 	Audit      AuditRecord
 	Provenance ProvenanceRecord
+}
+
+type ComparisonCommit struct {
+	Comparison               Comparison
+	ComparisonDigest         string
+	AuditDigest              string
+	PreviousProvenanceDigest string
+	ProvenanceDigest         string
 }
