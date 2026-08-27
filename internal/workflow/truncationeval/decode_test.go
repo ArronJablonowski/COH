@@ -45,7 +45,7 @@ func TestElasticRecordingsAreStrictSanitizedAndComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recordings.Vendor != "elastic" || len(recordings.Recordings) != 9 {
+	if recordings.Vendor != "elastic" || len(recordings.Recordings) != 10 {
 		t.Fatalf("recordings = %+v", recordings)
 	}
 	lower := strings.ToLower(string(input))
@@ -77,7 +77,7 @@ func TestSecurityOnionRecordingsAreStrictSanitizedAndComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recordings.Vendor != "security_onion" || len(recordings.Recordings) != 10 {
+	if recordings.Vendor != "security_onion" || len(recordings.Recordings) != 11 {
 		t.Fatalf("recordings = %+v", recordings)
 	}
 	lower := strings.ToLower(string(input))
@@ -95,6 +95,45 @@ func TestSecurityOnionRecordingsAreStrictSanitizedAndComplete(t *testing.T) {
 		if !covered {
 			t.Fatalf("required Security Onion fault %q is missing", fault)
 		}
+	}
+}
+
+func TestAdaptiveSlicingProofFailsClosed(t *testing.T) {
+	t.Parallel()
+	input, err := os.ReadFile(filepath.Join("testdata", "1.0.0", "elastic-recordings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordings, err := DecodeRecordings(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var proof Recording
+	for _, recording := range recordings.Recordings {
+		if recording.Mode == "adaptive_slice" {
+			proof = recording
+		}
+	}
+	mutations := map[string]func(*Recording){
+		"closed end":        func(value *Recording) { value.Steps[0].EndExclusive = false },
+		"coverage gap":      func(value *Recording) { value.Steps[1].SliceStart = "2026-01-01T00:31:00Z" },
+		"boundary overlap":  func(value *Recording) { value.Steps[0].RowTimestamps[0] = value.Steps[0].SliceEnd },
+		"duplicate row":     func(value *Recording) { value.Steps[1].RowIDs[0] = value.Steps[0].RowIDs[0] },
+		"hidden cap":        func(value *Recording) { value.Steps[0].HasMore = true },
+		"unstable identity": func(value *Recording) { value.Steps[0].StableIdentity = false },
+	}
+	for name, mutate := range mutations {
+		t.Run(name, func(t *testing.T) {
+			copy := proof
+			copy.Steps = append([]RecordingStep(nil), proof.Steps...)
+			copy.Steps[0].RowIDs = append([]string(nil), proof.Steps[0].RowIDs...)
+			copy.Steps[0].RowTimestamps = append([]string(nil), proof.Steps[0].RowTimestamps...)
+			copy.Steps[1].RowIDs = append([]string(nil), proof.Steps[1].RowIDs...)
+			mutate(&copy)
+			if err := validateRecording("elastic", copy); err == nil {
+				t.Fatal("invalid adaptive proof accepted")
+			}
+		})
 	}
 }
 

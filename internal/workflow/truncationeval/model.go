@@ -47,6 +47,7 @@ type RecordingStep struct {
 	HTTPStatus     int      `json:"http_status,omitempty"`
 	RowIDs         []string `json:"row_ids,omitempty"`
 	SortKeys       []string `json:"sort_keys,omitempty"`
+	RowTimestamps  []string `json:"row_timestamps,omitempty"`
 	TotalHits      int      `json:"total_hits,omitempty"`
 	RequestedLimit int      `json:"requested_limit,omitempty"`
 	OmittedCount   int      `json:"omitted_count,omitempty"`
@@ -57,6 +58,11 @@ type RecordingStep struct {
 	Truncated      bool     `json:"truncated,omitempty"`
 	ErrorCode      string   `json:"error_code,omitempty"`
 	CloseConfirmed bool     `json:"close_confirmed,omitempty"`
+	SliceStart     string   `json:"slice_start,omitempty"`
+	SliceEnd       string   `json:"slice_end,omitempty"`
+	EndExclusive   bool     `json:"end_exclusive,omitempty"`
+	StableIdentity bool     `json:"stable_identity,omitempty"`
+	StableSort     bool     `json:"stable_sort,omitempty"`
 }
 
 type Recording struct {

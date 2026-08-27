@@ -24,6 +24,7 @@
         "http_status": {"type": "integer", "minimum": 0, "maximum": 599},
         "row_ids": {"type": "array", "maxItems": 1000, "uniqueItems": true, "items": {"$ref": "#/$defs/token"}},
         "sort_keys": {"type": "array", "maxItems": 1000, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+        "row_timestamps": {"type": "array", "maxItems": 1000, "items": {"type": "string", "format": "date-time"}},
         "total_hits": {"type": "integer", "minimum": 0, "maximum": 1000000},
         "requested_limit": {"type": "integer", "minimum": 0, "maximum": 1000000},
         "omitted_count": {"type": "integer", "minimum": 0, "maximum": 1000000},
@@ -33,7 +34,12 @@
         "partial": {"type": "boolean"},
         "truncated": {"type": "boolean"},
         "error_code": {"$ref": "#/$defs/token"},
-        "close_confirmed": {"type": "boolean"}
+        "close_confirmed": {"type": "boolean"},
+        "slice_start": {"type": "string", "format": "date-time"},
+        "slice_end": {"type": "string", "format": "date-time"},
+        "end_exclusive": {"type": "boolean"},
+        "stable_identity": {"type": "boolean"},
+        "stable_sort": {"type": "boolean"}
       }
     },
     "expected": {

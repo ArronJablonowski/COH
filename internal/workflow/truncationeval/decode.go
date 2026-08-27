@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/helper/domaincontract"
 )
@@ -211,7 +212,7 @@ func validateRecording(vendor string, recording Recording) error {
 	for index, step := range recording.Steps {
 		if step.Sequence != index+1 || !namePattern.MatchString(step.Operation) ||
 			!slices.Contains([]string{"ok", "error", "canceled", "timeout", "unavailable"}, step.Outcome) ||
-			step.HTTPStatus < 0 || step.HTTPStatus > 599 || len(step.RowIDs) > 1000 || len(step.SortKeys) > 1000 ||
+			step.HTTPStatus < 0 || step.HTTPStatus > 599 || len(step.RowIDs) > 1000 || len(step.SortKeys) > 1000 || len(step.RowTimestamps) > 1000 ||
 			step.TotalHits < 0 || step.TotalHits > 1000000 || step.RequestedLimit < 0 || step.RequestedLimit > 1000000 ||
 			step.OmittedCount < 0 || step.OmittedCount > 1000000 ||
 			(step.TotalRelation != "" && !slices.Contains([]string{"eq", "gte", "unknown", "not_applicable"}, step.TotalRelation)) ||
@@ -221,6 +222,52 @@ func validateRecording(vendor string, recording Recording) error {
 			(step.Outcome != "ok" && step.ErrorCode == "") {
 			return denied("recording step invalid")
 		}
+	}
+	if recording.Mode == "adaptive_slice" {
+		if recording.Expected.AdaptiveSlicing == "proven" {
+			if err := validateAdaptiveProof(recording); err != nil {
+				return err
+			}
+		} else if recording.Expected.AdaptiveSlicing != "unsupported" || recording.Fault != "unproven_slice" ||
+			recording.Expected.Outcome != "denied" || recording.Expected.CompletenessStatus != "not_applicable" {
+			return denied("adaptive slicing decision invalid")
+		}
+	} else if recording.Expected.AdaptiveSlicing != "not_requested" {
+		return denied("adaptive slicing decision on ordinary recording")
+	}
+	return nil
+}
+
+func validateAdaptiveProof(recording Recording) error {
+	if recording.Fault != "none" || len(recording.Steps) < 2 || recording.Expected.CompletenessStatus != "complete" ||
+		recording.Expected.PagesReturned != len(recording.Steps) {
+		return denied("adaptive slicing proof incomplete")
+	}
+	seenRows := make(map[string]struct{})
+	previousEnd := ""
+	for _, step := range recording.Steps {
+		start, startErr := time.Parse(time.RFC3339, step.SliceStart)
+		end, endErr := time.Parse(time.RFC3339, step.SliceEnd)
+		if startErr != nil || endErr != nil || !start.Before(end) || (previousEnd != "" && step.SliceStart != previousEnd) ||
+			step.Operation != "slice.query" || step.Outcome != "ok" || !step.EndExclusive || !step.StableIdentity || !step.StableSort ||
+			step.Partial || step.Truncated || step.HasMore || step.OmittedCount != 0 || step.TotalRelation != "eq" ||
+			step.TotalHits != len(step.RowIDs) || len(step.RowTimestamps) != len(step.RowIDs) || len(step.SortKeys) != len(step.RowIDs) {
+			return denied("adaptive slicing proof incomplete")
+		}
+		for index, rowID := range step.RowIDs {
+			rowTime, err := time.Parse(time.RFC3339, step.RowTimestamps[index])
+			if err != nil || rowTime.Before(start) || !rowTime.Before(end) {
+				return denied("adaptive slice row outside half-open interval")
+			}
+			if _, exists := seenRows[rowID]; exists {
+				return denied("adaptive slice duplicate row")
+			}
+			seenRows[rowID] = struct{}{}
+		}
+		previousEnd = step.SliceEnd
+	}
+	if len(seenRows) != recording.Expected.RowsReturned {
+		return denied("adaptive slice expected count mismatch")
 	}
 	return nil
 }

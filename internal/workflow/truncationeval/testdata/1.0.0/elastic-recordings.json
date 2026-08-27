@@ -85,6 +85,15 @@
       ],
       "expected": {"outcome": "completed", "completeness_status": "complete", "reason_codes": [], "truncated": false, "partial": false, "vendor_confirmed": true, "rows_returned": 4, "pages_returned": 2, "adaptive_slicing": "not_requested"},
       "trajectory": ["transport.unavailable", "durable_cursor.loaded", "pit.reopened", "deduplication.enforced", "page.accepted", "pit.close_confirmed", "completeness.complete"]
+    },
+    {
+      "id": "elastic-adaptive-half-open", "mode": "adaptive_slice", "boundary": "slicing.half_open_coverage", "fault": "none",
+      "steps": [
+        {"sequence": 1, "operation": "slice.query", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "sort_keys": ["2026-01-01t00:00:00z|event-a", "2026-01-01t00:29:59z|event-b"], "row_timestamps": ["2026-01-01T00:00:00Z", "2026-01-01T00:29:59Z"], "total_hits": 2, "total_relation": "eq", "requested_limit": 3, "has_more": false, "slice_start": "2026-01-01T00:00:00Z", "slice_end": "2026-01-01T00:30:00Z", "end_exclusive": true, "stable_identity": true, "stable_sort": true},
+        {"sequence": 2, "operation": "slice.query", "outcome": "ok", "http_status": 200, "row_ids": ["event-c", "event-d"], "sort_keys": ["2026-01-01t00:30:00z|event-c", "2026-01-01t00:59:59z|event-d"], "row_timestamps": ["2026-01-01T00:30:00Z", "2026-01-01T00:59:59Z"], "total_hits": 2, "total_relation": "eq", "requested_limit": 3, "has_more": false, "slice_start": "2026-01-01T00:30:00Z", "slice_end": "2026-01-01T01:00:00Z", "end_exclusive": true, "stable_identity": true, "stable_sort": true}
+      ],
+      "expected": {"outcome": "completed", "completeness_status": "complete", "reason_codes": [], "truncated": false, "partial": false, "vendor_confirmed": true, "rows_returned": 4, "pages_returned": 2, "adaptive_slicing": "proven"},
+      "trajectory": ["slice.admitted", "half_open_boundary.enforced", "slice.complete", "slice.admitted", "half_open_boundary.enforced", "slice.complete", "cross_slice_deduplication.enforced", "completeness.complete"]
     }
   ]
 }

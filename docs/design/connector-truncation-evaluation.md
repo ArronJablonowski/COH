@@ -86,6 +86,14 @@ or smaller explicitly admitted interval. In particular, the current Security
 Onion Connect contract has no stable continuation or proven half-open boundary,
 so adjacent responses cannot be upgraded to a complete export.
 
+The v1 corpus qualifies adaptive slicing only for the sanitized Elastic fixture
+family. Its proof uses explicit `gte`/`lt`-equivalent half-open intervals,
+stable event identity plus tie-breaker sort keys, contiguous interval coverage,
+exact cross-slice deduplication, and per-slice total/count agreement below the
+requested limit. Any missing proof field, gap, overlap, duplicate identity,
+hidden continuation, partial response, cancellation, or retry uncertainty
+denies the completeness upgrade.
+
 ## Pinned environment and artifacts
 
 The environment pins Go/toolchain/platform, connector contract versions, public

@@ -68,6 +68,12 @@
       "steps": [{"sequence": 1, "operation": "oql.events", "outcome": "ok", "http_status": 200, "row_ids": [], "total_hits": 0, "requested_limit": 10, "total_relation": "eq", "has_more": false}],
       "expected": {"outcome": "completed", "completeness_status": "complete", "reason_codes": [], "truncated": false, "partial": false, "vendor_confirmed": true, "rows_returned": 0, "pages_returned": 1, "adaptive_slicing": "not_requested"},
       "trajectory": ["request.sent", "response.empty", "total.confirmed_zero", "completeness.complete"]
+    },
+    {
+      "id": "security-onion-adaptive-unsupported", "mode": "adaptive_slice", "boundary": "slicing.vendor_semantics", "fault": "unproven_slice",
+      "steps": [{"sequence": 1, "operation": "slicing.qualify", "outcome": "error", "error_code": "adaptive_slicing_unproven"}],
+      "expected": {"outcome": "denied", "completeness_status": "not_applicable", "reason_codes": ["adaptive_slicing_unproven"], "truncated": false, "partial": false, "vendor_confirmed": false, "rows_returned": 0, "pages_returned": 0, "adaptive_slicing": "unsupported"},
+      "trajectory": ["slicing.proof_requested", "vendor_semantics.unproven", "slicing.denied"]
     }
   ]
 }
