@@ -47,7 +47,8 @@ func validateConfig(config Config) error {
 		config.CapabilityLifetime <= 0 || config.CapabilityLifetime > time.Hour ||
 		!validLimits(config.HardLimits) || config.HardLimits.MaximumBytes > queryconnector.MaximumDocumentBytes ||
 		config.HardLimits.MaximumDurationMillis > 120000 || len(config.Resources) == 0 || len(config.Resources) > maximumResources ||
-		len(config.Fields) == 0 || len(config.Fields) > maximumFields {
+		len(config.Fields) == 0 || len(config.Fields) > maximumFields || config.MaximumSchemaEntriesPerPage <= 0 ||
+		config.MaximumSchemaEntriesPerPage > 4096 {
 		return invalid("elastic_configuration_invalid")
 	}
 	if config.Deployment == "self_managed" && len(config.QualifiedMinorVersions) == 0 {

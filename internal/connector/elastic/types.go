@@ -18,20 +18,21 @@ const (
 // Config is admitted deployment configuration. Resource IDs are COH logical
 // names; expressions and vendor field names never cross the query SPI.
 type Config struct {
-	SourceID                string
-	AdapterVersion          string
-	Deployment              string
-	Endpoint                string
-	ExpectedClusterUUID     string
-	ExpectedBuildFlavor     string
-	MinimumMajorVersion     uint32
-	MaximumMajorVersion     uint32
-	QualifiedMinorVersions  []string
-	TransportIdentityDigest string
-	Resources               []Resource
-	Fields                  []Field
-	HardLimits              queryconnector.Limits
-	CapabilityLifetime      time.Duration
+	SourceID                    string
+	AdapterVersion              string
+	Deployment                  string
+	Endpoint                    string
+	ExpectedClusterUUID         string
+	ExpectedBuildFlavor         string
+	MinimumMajorVersion         uint32
+	MaximumMajorVersion         uint32
+	QualifiedMinorVersions      []string
+	TransportIdentityDigest     string
+	Resources                   []Resource
+	Fields                      []Field
+	HardLimits                  queryconnector.Limits
+	CapabilityLifetime          time.Duration
+	MaximumSchemaEntriesPerPage int
 }
 
 type Resource struct {

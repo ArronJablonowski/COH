@@ -139,6 +139,39 @@ func TestDiscoveryRejectsStaleOrWidenedCapability(t *testing.T) {
 	}
 }
 
+func TestSchemaPaginationIsOpaqueBoundedAndReplayIdempotent(t *testing.T) {
+	adapter, _, _ := testAdapter(t)
+	adapter.config.MaximumSchemaEntriesPerPage = 1
+	capability, err := adapter.Probe(context.Background(), testScope(), testAuthority())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := testRequest(capability.Digest())
+	first, err := adapter.LoadSchema(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstValue := first.Value()
+	if firstValue.Complete || firstValue.NextCursor == nil || len(firstValue.Entries) != 1 ||
+		strings.Contains(string(first.CanonicalBytes()), "logs-security") {
+		t.Fatalf("first=%+v", firstValue)
+	}
+	request.Cursor = firstValue.NextCursor
+	second, err := adapter.LoadSchema(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayed, replayErr := adapter.LoadSchema(context.Background(), request)
+	if replayErr != nil || replayed.Digest() != second.Digest() || !second.Value().Complete ||
+		second.Value().SchemaDigest != firstValue.SchemaDigest {
+		t.Fatalf("second=%+v replay=%s err=%v", second.Value(), replayed.Digest(), replayErr)
+	}
+	request.Authority.PolicyDecisionDigest = testDigest("9")
+	if _, err := adapter.LoadSchema(context.Background(), request); queryconnector.Reason(err) != "elastic_schema_cursor_mismatch" {
+		t.Fatalf("substituted cursor err=%v", err)
+	}
+}
+
 func testAdapter(t testing.TB) (*Adapter, *clientStub, *fixedClock) {
 	t.Helper()
 	client := &clientStub{
@@ -169,7 +202,7 @@ func testConfig() Config {
 		Fields:                  []Field{{VendorName: "@timestamp", SchemaName: "event_timestamp"}, {VendorName: "source.ip", SchemaName: "source_ip"}},
 		HardLimits: queryconnector.Limits{MaximumRows: 1000, MaximumBytes: 1 << 20, MaximumDurationMillis: 60000,
 			MaximumPages: 10, MaximumSlices: 4, MaximumCostMillionths: 1000000, RequestsPerMinute: 12},
-		CapabilityLifetime: 10 * time.Minute,
+		CapabilityLifetime: 10 * time.Minute, MaximumSchemaEntriesPerPage: 1024,
 	}
 }
 

@@ -21,6 +21,16 @@ type capabilityRecord struct {
 	resources []string
 }
 
+type cursorRecord struct {
+	requestDigest    string
+	schemaDigest     string
+	provenanceDigest string
+	entries          []queryconnector.SchemaEntry
+	offset           int
+	issuedAt         time.Time
+	expiresAt        time.Time
+}
+
 // Adapter owns capability admission and normalized schema production. Network
 // authentication remains behind the typed Client boundary.
 type Adapter struct {
@@ -30,6 +40,7 @@ type Adapter struct {
 
 	mu           sync.Mutex
 	capabilities map[string]capabilityRecord
+	cursors      map[string]cursorRecord
 }
 
 func New(config Config, client Client, clock Clock) (*Adapter, error) {
@@ -39,7 +50,8 @@ func New(config Config, client Client, clock Clock) (*Adapter, error) {
 		}
 		return nil, invalid("elastic_port_required")
 	}
-	return &Adapter{config: config, client: client, clock: clock, capabilities: make(map[string]capabilityRecord)}, nil
+	return &Adapter{config: config, client: client, clock: clock, capabilities: make(map[string]capabilityRecord),
+		cursors: make(map[string]cursorRecord)}, nil
 }
 
 func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope, authority queryconnector.AuthorityBinding) (queryconnector.ValidatedCapability, error) {
@@ -107,9 +119,6 @@ func (adapter *Adapter) LoadSchema(ctx context.Context, request queryconnector.S
 	if err := contextError(ctx); err != nil {
 		return queryconnector.ValidatedSchemaPage{}, err
 	}
-	if request.Cursor != nil {
-		return queryconnector.ValidatedSchemaPage{}, unsupported("elastic_schema_cursor_unsupported")
-	}
 	resources, err := validateScope(adapter.config, request.Scope)
 	if err != nil {
 		return queryconnector.ValidatedSchemaPage{}, err
@@ -124,6 +133,12 @@ func (adapter *Adapter) LoadSchema(ctx context.Context, request queryconnector.S
 	now := adapter.clock.Now().UTC()
 	if err := adapter.admitCapability(request, now); err != nil {
 		return queryconnector.ValidatedSchemaPage{}, err
+	}
+	if request.Cursor != nil {
+		return adapter.loadCursor(ctx, request, now)
+	}
+	if uint64(len(resources)*len(adapter.config.Fields)) > uint64(adapter.config.MaximumSchemaEntriesPerPage)*uint64(request.Limits.MaximumPages) {
+		return queryconnector.ValidatedSchemaPage{}, denied("elastic_schema_page_limit_exceeded")
 	}
 	identity, inspectReceipt, err := adapter.client.Inspect(ctx, CallBinding{Scope: request.Scope,
 		Authority: request.Authority, Operation: "elastic.inspect", Targets: resourceIDs(resources)})
@@ -171,7 +186,7 @@ func (adapter *Adapter) LoadSchema(ctx context.Context, request queryconnector.S
 		entries = append(entries, resourceEntries...)
 		provenance = append(provenance, resource, resolved, resolveReceipt, caps, capsReceipt)
 	}
-	if len(entries) == 0 || len(entries) > 4096 {
+	if len(entries) == 0 {
 		return queryconnector.ValidatedSchemaPage{}, denied("elastic_schema_size_invalid")
 	}
 	slices.SortFunc(entries, func(left, right queryconnector.SchemaEntry) int {
@@ -180,16 +195,17 @@ func (adapter *Adapter) LoadSchema(ctx context.Context, request queryconnector.S
 		}
 		return strings.Compare(left.Name, right.Name)
 	})
-	value := queryconnector.SchemaPage{SchemaVersion: queryconnector.SchemaSchemaVersion,
-		ContractVersion: queryconnector.ContractVersion, RequestID: request.RequestID,
-		SchemaDigest: digest("COH-ELASTIC-SCHEMA-V1\x00", entries), Entries: entries, Complete: true,
-		ProvenanceDigest: digest("COH-ELASTIC-DISCOVERY-PROVENANCE-V1\x00", struct {
-			RequestDigest string
-			Records       []any
-		}{request.CapabilityDigest, provenance}),
-	}
-	encoded, _ := json.Marshal(value)
-	return queryconnector.DecodeSchemaPage(ctx, encoded)
+	schemaDigest := digest("COH-ELASTIC-SCHEMA-V1\x00", entries)
+	provenanceDigest := digest("COH-ELASTIC-DISCOVERY-PROVENANCE-V1\x00", struct {
+		RequestDigest string
+		Records       []any
+	}{request.CapabilityDigest, provenance})
+	adapter.mu.Lock()
+	record := adapter.capabilities[request.CapabilityDigest]
+	adapter.mu.Unlock()
+	cursor := cursorRecord{requestDigest: cursorRequestDigest(request), schemaDigest: schemaDigest,
+		provenanceDigest: provenanceDigest, entries: entries, issuedAt: now, expiresAt: record.expiresAt}
+	return adapter.page(ctx, request, cursor)
 }
 
 func (adapter *Adapter) admitCapability(request queryconnector.SchemaRequest, now time.Time) error {
@@ -212,6 +228,89 @@ func (adapter *Adapter) removeExpiredLocked(now time.Time) {
 			delete(adapter.capabilities, key)
 		}
 	}
+	for key, record := range adapter.cursors {
+		if !now.Before(record.expiresAt) {
+			delete(adapter.cursors, key)
+		}
+	}
+}
+
+func (adapter *Adapter) loadCursor(ctx context.Context, request queryconnector.SchemaRequest, now time.Time) (queryconnector.ValidatedSchemaPage, error) {
+	provided := *request.Cursor
+	adapter.mu.Lock()
+	adapter.removeExpiredLocked(now)
+	record, ok := adapter.cursors[provided.HandleID]
+	adapter.mu.Unlock()
+	if !ok || !now.Before(record.expiresAt) {
+		return queryconnector.ValidatedSchemaPage{}, denied("elastic_schema_cursor_stale")
+	}
+	expected := adapter.cursorHandle(record)
+	if provided != expected || record.requestDigest != cursorRequestDigest(request) {
+		return queryconnector.ValidatedSchemaPage{}, conflict("elastic_schema_cursor_mismatch")
+	}
+	return adapter.page(ctx, request, record)
+}
+
+func (adapter *Adapter) page(ctx context.Context, request queryconnector.SchemaRequest, record cursorRecord) (queryconnector.ValidatedSchemaPage, error) {
+	if record.offset < 0 || record.offset >= len(record.entries) {
+		return queryconnector.ValidatedSchemaPage{}, denied("elastic_schema_cursor_invalid")
+	}
+	end := min(record.offset+adapter.config.MaximumSchemaEntriesPerPage, len(record.entries))
+	for end > record.offset {
+		complete := end == len(record.entries)
+		var next *queryconnector.HandleRef
+		if !complete {
+			nextRecord := record
+			nextRecord.offset = end
+			handle := adapter.cursorHandle(nextRecord)
+			next = &handle
+		}
+		value := queryconnector.SchemaPage{SchemaVersion: queryconnector.SchemaSchemaVersion,
+			ContractVersion: queryconnector.ContractVersion, RequestID: request.RequestID,
+			SchemaDigest: record.schemaDigest, Entries: append([]queryconnector.SchemaEntry(nil), record.entries[record.offset:end]...),
+			NextCursor: next, Complete: complete,
+			ProvenanceDigest: digest("COH-ELASTIC-SCHEMA-PAGE-V1\x00", struct {
+				Discovery string
+				Offset    int
+				End       int
+			}{record.provenanceDigest, record.offset, end}),
+		}
+		encoded, _ := json.Marshal(value)
+		if uint64(len(encoded)) <= request.Limits.MaximumBytes {
+			validated, err := queryconnector.DecodeSchemaPage(ctx, encoded)
+			if err != nil {
+				return queryconnector.ValidatedSchemaPage{}, err
+			}
+			if next != nil {
+				nextRecord := record
+				nextRecord.offset = end
+				adapter.mu.Lock()
+				adapter.cursors[next.HandleID] = nextRecord
+				adapter.mu.Unlock()
+			}
+			return validated, nil
+		}
+		end--
+	}
+	return queryconnector.ValidatedSchemaPage{}, denied("elastic_schema_page_oversized")
+}
+
+func (adapter *Adapter) cursorHandle(record cursorRecord) queryconnector.HandleRef {
+	opaque := digest("COH-ELASTIC-SCHEMA-CURSOR-V1\x00", struct {
+		Request    string
+		Schema     string
+		Provenance string
+		Offset     int
+		ExpiresAt  string
+	}{record.requestDigest, record.schemaDigest, record.provenanceDigest, record.offset, record.expiresAt.Format(timestampLayout)})
+	return queryconnector.HandleRef{HandleID: deterministicUUID(record.issuedAt, opaque), Kind: "schema_cursor",
+		SourceID: adapter.config.SourceID, OpaqueDigest: opaque, IssuedAt: record.issuedAt.Format(timestampLayout),
+		ExpiresAt: record.expiresAt.Format(timestampLayout)}
+}
+
+func cursorRequestDigest(request queryconnector.SchemaRequest) string {
+	request.Cursor = nil
+	return digest("COH-ELASTIC-SCHEMA-REQUEST-V1\x00", request)
 }
 
 func resourceIDs(resources []Resource) []string {
