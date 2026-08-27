@@ -40,6 +40,42 @@ type Task struct {
 	Trajectory []string     `json:"trajectory"`
 }
 
+type RecordingStep struct {
+	Sequence       int      `json:"sequence"`
+	Operation      string   `json:"operation"`
+	Outcome        string   `json:"outcome"`
+	HTTPStatus     int      `json:"http_status,omitempty"`
+	RowIDs         []string `json:"row_ids,omitempty"`
+	SortKeys       []string `json:"sort_keys,omitempty"`
+	TotalHits      int      `json:"total_hits,omitempty"`
+	TotalRelation  string   `json:"total_relation,omitempty"`
+	HasMore        bool     `json:"has_more,omitempty"`
+	PITToken       string   `json:"pit_token,omitempty"`
+	Partial        bool     `json:"partial,omitempty"`
+	Truncated      bool     `json:"truncated,omitempty"`
+	ErrorCode      string   `json:"error_code,omitempty"`
+	CloseConfirmed bool     `json:"close_confirmed,omitempty"`
+}
+
+type Recording struct {
+	ID         string          `json:"id"`
+	Mode       string          `json:"mode"`
+	Boundary   string          `json:"boundary"`
+	Fault      string          `json:"fault"`
+	Steps      []RecordingStep `json:"steps"`
+	Expected   Expected        `json:"expected"`
+	Trajectory []string        `json:"trajectory"`
+}
+
+type RecordingSet struct {
+	SchemaVersion    string      `json:"schema_version"`
+	RecordingVersion string      `json:"recording_version"`
+	Vendor           string      `json:"vendor"`
+	Sanitized        bool        `json:"sanitized"`
+	Network          string      `json:"network"`
+	Recordings       []Recording `json:"recordings"`
+}
+
 type Corpus struct {
 	SchemaVersion string     `json:"schema_version"`
 	CorpusVersion string     `json:"corpus_version"`

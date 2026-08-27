@@ -63,6 +63,29 @@ func DecodeEnvironment(input []byte) (Environment, error) {
 	return value, nil
 }
 
+func DecodeRecordings(input []byte) (RecordingSet, error) {
+	var value RecordingSet
+	if err := decodeExact(input, &value); err != nil {
+		return RecordingSet{}, err
+	}
+	if value.SchemaVersion != "coh.connector-truncation-recording/v1" || value.RecordingVersion != "1.0.0" ||
+		!slices.Contains([]string{"elastic", "security_onion"}, value.Vendor) || !value.Sanitized || value.Network != "disabled" ||
+		len(value.Recordings) == 0 || len(value.Recordings) > 128 {
+		return RecordingSet{}, denied("recording set identity invalid")
+	}
+	seen := make(map[string]struct{}, len(value.Recordings))
+	for _, recording := range value.Recordings {
+		if err := validateRecording(value.Vendor, recording); err != nil {
+			return RecordingSet{}, err
+		}
+		if _, exists := seen[recording.ID]; exists {
+			return RecordingSet{}, denied("duplicate recording")
+		}
+		seen[recording.ID] = struct{}{}
+	}
+	return value, nil
+}
+
 func DecodeTrace(input []byte) (Trace, error) {
 	var value Trace
 	if err := decodeExact(input, &value); err != nil {
@@ -170,6 +193,32 @@ func validateTask(task Task) error {
 			return denied("duplicate fixture reference")
 		}
 		fixturePaths[fixture.Path] = struct{}{}
+	}
+	return nil
+}
+
+func validateRecording(vendor string, recording Recording) error {
+	if !idPattern.MatchString(recording.ID) || !boundaryPattern.MatchString(recording.Boundary) ||
+		!slices.Contains([]string{"none", "schema_drift", "partial_response", "repeated_sort", "pit_expiry", "pit_rotation", "documented_cap", "undocumented_cap", "embedded_error", "timeout", "cancel", "lost_state", "unproven_slice"}, recording.Fault) ||
+		len(recording.Steps) == 0 || len(recording.Steps) > 64 || len(recording.Trajectory) == 0 || len(recording.Trajectory) > 64 ||
+		!validTokens(recording.Trajectory) || validateExpected(recording.Expected) != nil {
+		return denied("recording invalid")
+	}
+	if (vendor == "elastic" && !slices.Contains([]string{"esql", "query_dsl_pit", "adaptive_slice"}, recording.Mode)) ||
+		(vendor == "security_onion" && !slices.Contains([]string{"oql_events", "oql_metrics", "adaptive_slice"}, recording.Mode)) {
+		return denied("recording vendor mode invalid")
+	}
+	for index, step := range recording.Steps {
+		if step.Sequence != index+1 || !namePattern.MatchString(step.Operation) ||
+			!slices.Contains([]string{"ok", "error", "canceled", "timeout", "unavailable"}, step.Outcome) ||
+			step.HTTPStatus < 0 || step.HTTPStatus > 599 || len(step.RowIDs) > 1000 || len(step.SortKeys) > 1000 ||
+			(step.TotalRelation != "" && !slices.Contains([]string{"eq", "gte", "unknown", "not_applicable"}, step.TotalRelation)) ||
+			(step.PITToken != "" && !namePattern.MatchString(step.PITToken)) ||
+			(step.ErrorCode != "" && !namePattern.MatchString(step.ErrorCode)) || !validTokens(step.RowIDs) || duplicateAny(step.RowIDs) ||
+			(len(step.SortKeys) != 0 && len(step.SortKeys) != len(step.RowIDs)) ||
+			(step.Outcome != "ok" && step.ErrorCode == "") {
+			return denied("recording step invalid")
+		}
 	}
 	return nil
 }
@@ -288,6 +337,17 @@ func duplicate[T comparable](values []T) bool {
 		if values[index] == values[index-1] {
 			return true
 		}
+	}
+	return false
+}
+
+func duplicateAny[T comparable](values []T) bool {
+	seen := make(map[T]struct{}, len(values))
+	for _, value := range values {
+		if _, exists := seen[value]; exists {
+			return true
+		}
+		seen[value] = struct{}{}
 	}
 	return false
 }

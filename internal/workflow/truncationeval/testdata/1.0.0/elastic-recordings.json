@@ -1,0 +1,90 @@
+{
+  "schema_version": "coh.connector-truncation-recording/v1",
+  "recording_version": "1.0.0",
+  "vendor": "elastic",
+  "sanitized": true,
+  "network": "disabled",
+  "recordings": [
+    {
+      "id": "elastic-schema-drift", "mode": "esql", "boundary": "schema.digest", "fault": "schema_drift",
+      "steps": [{"sequence": 1, "operation": "schema.validate", "outcome": "error", "error_code": "elastic_schema_digest_mismatch"}],
+      "expected": {"outcome": "denied", "completeness_status": "not_applicable", "reason_codes": ["elastic_schema_digest_mismatch"], "truncated": false, "partial": false, "vendor_confirmed": false, "rows_returned": 0, "pages_returned": 0, "adaptive_slicing": "not_requested"},
+      "trajectory": ["schema.loaded", "schema.digest_mismatch", "execution.denied"]
+    },
+    {
+      "id": "elastic-partial-shards", "mode": "esql", "boundary": "response.shard_failure", "fault": "partial_response",
+      "steps": [{"sequence": 1, "operation": "esql.query", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "partial": true, "error_code": "elastic_shard_failure"}],
+      "expected": {"outcome": "partial", "completeness_status": "partial", "reason_codes": ["elastic_shard_failure"], "truncated": false, "partial": true, "vendor_confirmed": true, "rows_returned": 2, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["request.sent", "response.partial", "rows.accepted", "completeness.partial"]
+    },
+    {
+      "id": "elastic-repeated-stable-sort", "mode": "query_dsl_pit", "boundary": "sort.repeated_key", "fault": "repeated_sort",
+      "steps": [
+        {"sequence": 1, "operation": "pit.open", "outcome": "ok", "http_status": 200, "pit_token": "pit-a"},
+        {"sequence": 2, "operation": "pit.search", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "sort_keys": ["2026-01-01t00:00:00z|event-a", "2026-01-01t00:00:00z|event-b"], "total_hits": 4, "total_relation": "eq", "has_more": true, "pit_token": "pit-a"},
+        {"sequence": 3, "operation": "pit.search", "outcome": "ok", "http_status": 200, "row_ids": ["event-c", "event-d"], "sort_keys": ["2026-01-01t00:00:00z|event-c", "2026-01-01t00:00:01z|event-d"], "total_hits": 4, "total_relation": "eq", "has_more": false, "pit_token": "pit-a"},
+        {"sequence": 4, "operation": "pit.close", "outcome": "ok", "http_status": 200, "pit_token": "pit-a", "close_confirmed": true}
+      ],
+      "expected": {"outcome": "completed", "completeness_status": "complete", "reason_codes": [], "truncated": false, "partial": false, "vendor_confirmed": true, "rows_returned": 4, "pages_returned": 2, "adaptive_slicing": "not_requested"},
+      "trajectory": ["pit.opened", "page.accepted", "cursor.tie_breaker_advanced", "page.accepted", "pit.close_confirmed", "completeness.complete"]
+    },
+    {
+      "id": "elastic-pit-rotation", "mode": "query_dsl_pit", "boundary": "pit.rotation", "fault": "pit_rotation",
+      "steps": [
+        {"sequence": 1, "operation": "pit.open", "outcome": "ok", "http_status": 200, "pit_token": "pit-a"},
+        {"sequence": 2, "operation": "pit.search", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "sort_keys": ["001|event-a", "002|event-b"], "total_hits": 4, "total_relation": "eq", "has_more": true, "pit_token": "pit-b"},
+        {"sequence": 3, "operation": "pit.search", "outcome": "ok", "http_status": 200, "row_ids": ["event-c", "event-d"], "sort_keys": ["003|event-c", "004|event-d"], "total_hits": 4, "total_relation": "eq", "has_more": false, "pit_token": "pit-c"},
+        {"sequence": 4, "operation": "pit.close", "outcome": "ok", "http_status": 200, "pit_token": "pit-c", "close_confirmed": true}
+      ],
+      "expected": {"outcome": "completed", "completeness_status": "complete", "reason_codes": [], "truncated": false, "partial": false, "vendor_confirmed": true, "rows_returned": 4, "pages_returned": 2, "adaptive_slicing": "not_requested"},
+      "trajectory": ["pit.opened", "pit.rotated", "page.accepted", "pit.rotated", "page.accepted", "pit.close_confirmed", "completeness.complete"]
+    },
+    {
+      "id": "elastic-pit-expiry", "mode": "query_dsl_pit", "boundary": "pit.expiry", "fault": "pit_expiry",
+      "steps": [
+        {"sequence": 1, "operation": "pit.open", "outcome": "ok", "http_status": 200, "pit_token": "pit-a"},
+        {"sequence": 2, "operation": "pit.search", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "sort_keys": ["001|event-a", "002|event-b"], "total_hits": 4, "total_relation": "eq", "has_more": true, "pit_token": "pit-a"},
+        {"sequence": 3, "operation": "pit.search", "outcome": "error", "http_status": 404, "error_code": "elastic_pit_expired", "pit_token": "pit-a"}
+      ],
+      "expected": {"outcome": "unknown", "completeness_status": "unknown", "reason_codes": ["elastic_pit_expired"], "truncated": true, "partial": true, "vendor_confirmed": false, "rows_returned": 2, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["pit.opened", "page.accepted", "pit.expired", "automatic_retry.denied", "completeness.unknown"]
+    },
+    {
+      "id": "elastic-boundary-lookahead", "mode": "query_dsl_pit", "boundary": "limit.lookahead", "fault": "documented_cap",
+      "steps": [
+        {"sequence": 1, "operation": "pit.open", "outcome": "ok", "http_status": 200, "pit_token": "pit-a"},
+        {"sequence": 2, "operation": "pit.search", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b", "event-lookahead"], "sort_keys": ["001|event-a", "002|event-b", "003|event-lookahead"], "total_hits": 3, "total_relation": "eq", "has_more": true, "pit_token": "pit-a", "truncated": true},
+        {"sequence": 3, "operation": "pit.close", "outcome": "ok", "http_status": 200, "pit_token": "pit-a", "close_confirmed": true}
+      ],
+      "expected": {"outcome": "unknown", "completeness_status": "unknown", "reason_codes": ["row_limit_reached"], "truncated": true, "partial": true, "vendor_confirmed": false, "rows_returned": 2, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["pit.opened", "lookahead.detected", "row_limit.enforced", "pit.close_confirmed", "completeness.unknown"]
+    },
+    {
+      "id": "elastic-cancel-before-request", "mode": "query_dsl_pit", "boundary": "cancellation.before_request", "fault": "cancel",
+      "steps": [{"sequence": 1, "operation": "pit.open", "outcome": "canceled", "error_code": "elastic_request_canceled"}],
+      "expected": {"outcome": "canceled", "completeness_status": "not_applicable", "reason_codes": ["elastic_request_canceled"], "truncated": false, "partial": false, "vendor_confirmed": false, "rows_returned": 0, "pages_returned": 0, "adaptive_slicing": "not_requested"},
+      "trajectory": ["cancellation.observed", "network_call.denied", "execution.canceled"]
+    },
+    {
+      "id": "elastic-pit-close-uncertain", "mode": "query_dsl_pit", "boundary": "pit.close", "fault": "timeout",
+      "steps": [
+        {"sequence": 1, "operation": "pit.open", "outcome": "ok", "http_status": 200, "pit_token": "pit-a"},
+        {"sequence": 2, "operation": "pit.search", "outcome": "ok", "http_status": 200, "row_ids": ["event-a", "event-b"], "sort_keys": ["001|event-a", "002|event-b"], "total_hits": 2, "total_relation": "eq", "has_more": false, "pit_token": "pit-a"},
+        {"sequence": 3, "operation": "pit.close", "outcome": "timeout", "error_code": "elastic_pit_close_unconfirmed", "pit_token": "pit-a", "close_confirmed": false}
+      ],
+      "expected": {"outcome": "unknown", "completeness_status": "unknown", "reason_codes": ["elastic_pit_close_unconfirmed"], "truncated": false, "partial": false, "vendor_confirmed": false, "rows_returned": 2, "pages_returned": 1, "adaptive_slicing": "not_requested"},
+      "trajectory": ["pit.opened", "page.accepted", "pit.close_requested", "pit.close_unconfirmed", "automatic_retry.denied", "completeness.unknown"]
+    },
+    {
+      "id": "elastic-recovery-stable-cursor", "mode": "query_dsl_pit", "boundary": "recovery.stable_cursor", "fault": "lost_state",
+      "steps": [
+        {"sequence": 1, "operation": "pit.search", "outcome": "unavailable", "error_code": "elastic_transport_unavailable", "pit_token": "pit-a"},
+        {"sequence": 2, "operation": "state.recover", "outcome": "ok", "row_ids": ["event-a", "event-b"], "sort_keys": ["001|event-a", "002|event-b"], "pit_token": "pit-b"},
+        {"sequence": 3, "operation": "pit.search", "outcome": "ok", "http_status": 200, "row_ids": ["event-c", "event-d"], "sort_keys": ["003|event-c", "004|event-d"], "total_hits": 4, "total_relation": "eq", "has_more": false, "pit_token": "pit-b"},
+        {"sequence": 4, "operation": "pit.close", "outcome": "ok", "http_status": 200, "pit_token": "pit-b", "close_confirmed": true}
+      ],
+      "expected": {"outcome": "completed", "completeness_status": "complete", "reason_codes": [], "truncated": false, "partial": false, "vendor_confirmed": true, "rows_returned": 4, "pages_returned": 2, "adaptive_slicing": "not_requested"},
+      "trajectory": ["transport.unavailable", "durable_cursor.loaded", "pit.reopened", "deduplication.enforced", "page.accepted", "pit.close_confirmed", "completeness.complete"]
+    }
+  ]
+}

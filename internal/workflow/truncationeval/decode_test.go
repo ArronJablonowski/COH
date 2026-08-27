@@ -2,6 +2,8 @@ package truncationeval
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -29,6 +31,38 @@ func TestDecodersAcceptStrictContracts(t *testing.T) {
 				t.Fatalf("decode valid contract: %v", err)
 			}
 		})
+	}
+}
+
+func TestElasticRecordingsAreStrictSanitizedAndComplete(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join("testdata", "1.0.0", "elastic-recordings.json")
+	input, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordings, err := DecodeRecordings(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recordings.Vendor != "elastic" || len(recordings.Recordings) != 9 {
+		t.Fatalf("recordings = %+v", recordings)
+	}
+	lower := strings.ToLower(string(input))
+	for _, forbidden := range []string{"authorization", "credential", "password", "api_key", "://"} {
+		if strings.Contains(lower, forbidden) {
+			t.Fatalf("recording contains forbidden sensitive/network marker %q", forbidden)
+		}
+	}
+	requiredFaults := map[string]bool{"schema_drift": false, "partial_response": false, "repeated_sort": false,
+		"pit_expiry": false, "pit_rotation": false, "documented_cap": false, "cancel": false, "timeout": false, "lost_state": false}
+	for _, recording := range recordings.Recordings {
+		requiredFaults[recording.Fault] = true
+	}
+	for fault, covered := range requiredFaults {
+		if !covered {
+			t.Fatalf("required Elastic fault %q is missing", fault)
+		}
 	}
 }
 

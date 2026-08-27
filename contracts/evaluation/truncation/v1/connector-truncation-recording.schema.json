@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.example/contracts/evaluation/truncation/v1/connector-truncation-recording.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "recording_version", "vendor", "sanitized", "network", "recordings"],
+  "properties": {
+    "schema_version": {"const": "coh.connector-truncation-recording/v1"},
+    "recording_version": {"const": "1.0.0"},
+    "vendor": {"enum": ["elastic", "security_onion"]},
+    "sanitized": {"const": true},
+    "network": {"const": "disabled"},
+    "recordings": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/recording"}}
+  },
+  "$defs": {
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "reason": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,127}$"},
+    "step": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sequence", "operation", "outcome"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 64},
+        "operation": {"$ref": "#/$defs/token"},
+        "outcome": {"enum": ["ok", "error", "canceled", "timeout", "unavailable"]},
+        "http_status": {"type": "integer", "minimum": 0, "maximum": 599},
+        "row_ids": {"type": "array", "maxItems": 1000, "uniqueItems": true, "items": {"$ref": "#/$defs/token"}},
+        "sort_keys": {"type": "array", "maxItems": 1000, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+        "total_hits": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "total_relation": {"enum": ["eq", "gte", "unknown", "not_applicable"]},
+        "has_more": {"type": "boolean"},
+        "pit_token": {"$ref": "#/$defs/token"},
+        "partial": {"type": "boolean"},
+        "truncated": {"type": "boolean"},
+        "error_code": {"$ref": "#/$defs/token"},
+        "close_confirmed": {"type": "boolean"}
+      }
+    },
+    "expected": {
+      "type": "object", "additionalProperties": false,
+      "required": ["outcome", "completeness_status", "reason_codes", "truncated", "partial", "vendor_confirmed", "rows_returned", "pages_returned", "adaptive_slicing"],
+      "properties": {
+        "outcome": {"enum": ["completed", "partial", "denied", "canceled", "unknown"]},
+        "completeness_status": {"enum": ["complete", "partial", "unknown", "not_applicable"]},
+        "reason_codes": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"$ref": "#/$defs/reason"}},
+        "truncated": {"type": "boolean"}, "partial": {"type": "boolean"}, "vendor_confirmed": {"type": "boolean"},
+        "rows_returned": {"type": "integer", "minimum": 0, "maximum": 100000},
+        "pages_returned": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "adaptive_slicing": {"enum": ["not_requested", "proven", "unsupported"]}
+      }
+    },
+    "recording": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "mode", "boundary", "fault", "steps", "expected", "trajectory"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+        "mode": {"enum": ["esql", "query_dsl_pit", "oql_events", "oql_metrics", "adaptive_slice"]},
+        "boundary": {"type": "string", "pattern": "^(schema|response|sort|pit|limit|cancellation|recovery|slicing)\\.[a-z_]+$"},
+        "fault": {"enum": ["none", "schema_drift", "partial_response", "repeated_sort", "pit_expiry", "pit_rotation", "documented_cap", "undocumented_cap", "embedded_error", "timeout", "cancel", "lost_state", "unproven_slice"]},
+        "steps": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/step"}},
+        "expected": {"$ref": "#/$defs/expected"},
+        "trajectory": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/token"}}
+      }
+    }
+  }
+}
