@@ -1,0 +1,84 @@
+package evidencelifecycle
+
+import (
+	"context"
+	"time"
+)
+
+type exportState struct {
+	Command      Command
+	IntentDigest string
+	Case         CaseSnapshot
+	Evidence     VerifiedEvidenceSet
+	Redactions   []RedactionProof
+	Custody      CustodyVerification
+	Decision     Decision
+	AuthorizedAt time.Time
+}
+
+func (service *ExportService) preflight(ctx context.Context, command Command, intent string) (exportState, error) {
+	current, found, err := service.cases.LoadCase(ctx, command.Case)
+	if err != nil {
+		return exportState{}, mapExportDependency(ctx, "case_load_unavailable", err)
+	}
+	if !found {
+		return exportState{}, newError(NotFound, "case_not_found", false, nil)
+	}
+	if !validCaseSnapshot(current) || current.Case != command.Case || current.Revision != command.ExpectedCaseRevision ||
+		current.State == "deleted" {
+		return exportState{}, newError(Denied, "case_state_invalid", false, nil)
+	}
+	pending, err := service.cases.HasIncompleteHoldRelease(ctx, command.Case)
+	if err != nil {
+		return exportState{}, mapExportDependency(ctx, "hold_state_unavailable", err)
+	}
+	if pending {
+		return exportState{}, newError(Denied, string(ReasonHoldReleaseIncomplete), false, nil)
+	}
+	evidence, err := service.evidence.ResolveEvidenceSet(ctx, command.Case, *command.ArtifactSetDigest)
+	if err != nil {
+		return exportState{}, mapExportDependency(ctx, "evidence_resolution_unavailable", err)
+	}
+	if !validVerifiedEvidenceSet(evidence, command, current.Classification) {
+		return exportState{}, newError(Denied, "evidence_set_invalid", false, nil)
+	}
+	redactions, err := service.redactions.VerifyRedactionReceipts(ctx, command.Case, evidence)
+	if err != nil {
+		return exportState{}, mapExportDependency(ctx, "redaction_verification_unavailable", err)
+	}
+	if !validRedactionProofs(evidence, redactions) {
+		return exportState{}, newError(Denied, "redaction_proof_invalid", false, nil)
+	}
+	head, err := service.custody.LoadCustodyHead(ctx, command.Case)
+	if err != nil {
+		return exportState{}, mapExportDependency(ctx, "custody_head_unavailable", err)
+	}
+	if !sameHead(head, command.ExpectedCustodyHead) || head.Sequence == 0 {
+		return exportState{}, newError(Conflict, string(ReasonStaleCustody), true, nil)
+	}
+	custody, err := service.custody.VerifyLifecycle(ctx, command.Case, 1, head.Sequence)
+	if err != nil {
+		return exportState{}, mapExportDependency(ctx, "custody_verification_unavailable", err)
+	}
+	if !validCustodyVerification(custody, head) {
+		return exportState{}, newError(Denied, "custody_verification_invalid", false, nil)
+	}
+	authorization := AuthorizationRequest{SchemaVersion: AuthorizationSchemaVersion, ContractVersion: ContractVersion,
+		IntentDigest: intent, Command: command, CaseState: current.State, CaseClassification: current.Classification,
+		CaseRevision: current.Revision, RetainUntil: current.RetainUntil, LegalHold: current.LegalHold,
+		HoldReleasePending: pending, CaseProvenanceDigest: current.ProvenanceDigest,
+		ArtifactSetDigest: command.ArtifactSetDigest, CurrentCustodyHead: head}
+	authorization.AuthorizationDigest, err = AuthorizationBindingDigest(authorization)
+	if err != nil || ValidateAuthorization(authorization) != nil {
+		return exportState{}, newError(Denied, "export_authorization_invalid", false, err)
+	}
+	decision, err := service.authority.AuthorizeEvidenceLifecycle(ctx, authorization)
+	if err != nil {
+		return exportState{}, mapExportDependency(ctx, "export_authority_unavailable", err)
+	}
+	now := service.clock.Now()
+	if !validExportDecision(decision, authorization, now) {
+		return exportState{}, newError(Denied, "export_decision_invalid", false, nil)
+	}
+	return exportState{command, intent, current, evidence, redactions, custody, decision, now}, nil
+}

@@ -90,7 +90,7 @@ func TestEvidenceLifecyclePortsAreNarrow(t *testing.T) {
 		{reflect.TypeOf((*Custody)(nil)).Elem(), []string{"LoadCustodyHead", "RecordLifecycle", "VerifyLifecycle"}},
 		{reflect.TypeOf((*Signer)(nil)).Elem(), []string{"SignManifest"}},
 		{reflect.TypeOf((*SignatureVerifier)(nil)).Elem(), []string{"VerifyDetachedSignature"}},
-		{reflect.TypeOf((*PackageWriter)(nil)).Elem(), []string{"BuildPackage", "VerifyPackage"}},
+		{reflect.TypeOf((*PackageWriter)(nil)).Elem(), []string{"BuildPackage", "RecoverPackage", "VerifyPackage"}},
 		{reflect.TypeOf((*PackageReader)(nil)).Elem(), []string{"VerifyImport"}},
 		{reflect.TypeOf((*Publisher)(nil)).Elem(), []string{"PublishImport"}},
 		{reflect.TypeOf((*Disposer)(nil)).Elem(), []string{"DisposeEvidence", "RecoverDisposition"}},

@@ -196,7 +196,9 @@ func validExportManifest(t *testing.T) ExportManifest {
 		AuditCheckpointID: lifecycleUUID("checkpoint"), AuditCheckpointDigest: lifecycleDigest("checkpoint-digest"),
 		AuditCheckpointSequence: 5, AuditSigningKeyRevision: 2, AuditProofDigest: lifecycleDigest("audit-proof"),
 		SigningAlgorithm: SigningAlgorithm, SigningKeyID: "evidence.primary", SigningKeyRevision: 3,
-		Compression: NoCompression, Limits: validLifecycleCommand(Export).Limits, CreatedAt: lifecycleTestNow,
+		SigningTrustSnapshotDigest: lifecycleDigest("signing-trust"),
+		SigningKeyRevocationDigest: lifecycleDigest("signing-revocation"),
+		Compression:                NoCompression, Limits: validLifecycleCommand(Export).Limits, CreatedAt: lifecycleTestNow,
 		ValidUntil: lifecycleTestNow.Add(time.Hour), IdempotencyDigest: lifecycleDigest("idempotency"),
 		PreviousProvenanceDigest: lifecycleDigest("previous")}
 	var err error

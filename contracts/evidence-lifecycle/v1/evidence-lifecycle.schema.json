@@ -140,7 +140,7 @@
     },
     "export_manifest": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "manifest_id", "package_version", "case", "case_revision", "classification", "actor_id", "actor_revision", "purpose_digest", "destination_digest", "artifacts", "artifact_set_digest", "components", "policy_digest", "decision_digest", "approval_digest", "revocation_digest", "custody_from_sequence", "custody_to_sequence", "custody_report_digest", "audit_checkpoint_id", "audit_checkpoint_digest", "audit_checkpoint_sequence", "audit_signing_key_revision", "audit_proof_digest", "signing_algorithm", "signing_key_id", "signing_key_revision", "compression", "limits", "created_at", "valid_until", "idempotency_digest", "previous_provenance_digest", "manifest_digest"],
+      "required": ["schema_version", "contract_version", "manifest_id", "package_version", "case", "case_revision", "classification", "actor_id", "actor_revision", "purpose_digest", "destination_digest", "artifacts", "artifact_set_digest", "components", "policy_digest", "decision_digest", "approval_digest", "revocation_digest", "custody_from_sequence", "custody_to_sequence", "custody_report_digest", "audit_checkpoint_id", "audit_checkpoint_digest", "audit_checkpoint_sequence", "audit_signing_key_revision", "audit_proof_digest", "signing_algorithm", "signing_key_id", "signing_key_revision", "signing_trust_snapshot_digest", "signing_key_revocation_digest", "compression", "limits", "created_at", "valid_until", "idempotency_digest", "previous_provenance_digest", "manifest_digest"],
       "properties": {
         "schema_version": {"const": "coh.evidence-export-manifest/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -171,6 +171,8 @@
         "signing_algorithm": {"const": "ed25519"},
         "signing_key_id": {"$ref": "#/$defs/token"},
         "signing_key_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "signing_trust_snapshot_digest": {"$ref": "#/$defs/digest"},
+        "signing_key_revocation_digest": {"$ref": "#/$defs/digest"},
         "compression": {"const": "none"},
         "limits": {"$ref": "#/$defs/package_limits"},
         "created_at": {"$ref": "#/$defs/timestamp"},

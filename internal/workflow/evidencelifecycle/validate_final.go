@@ -23,7 +23,7 @@ func validateRecordShape(value Record, bound bool) error {
 			value.VerificationReportDigest, value.LifecycleReceiptDigest, value.AuthorizationCustodyReceiptDigest,
 			value.CompletionCustodyReceiptDigest, value.DispositionAttestationDigest) ||
 		(bound && !allDigests(value.AuditEventDigest, value.ProvenanceDigest, value.RecordDigest)) ||
-		(!bound && (value.RecordDigest != "" || value.ProvenanceDigest != "" && value.AuditEventDigest == "")) ||
+		(!bound && value.RecordDigest != "") ||
 		!validTime(value.CompletedAt) || !digestPattern.MatchString(value.PreviousProvenanceDigest) ||
 		!validFinalFields(value.Operation, value.ArtifactSetDigest, value.PackageDigest, value.ManifestDigest,
 			value.SignatureDigest, value.VerificationReportDigest, value.LifecycleReceiptDigest,

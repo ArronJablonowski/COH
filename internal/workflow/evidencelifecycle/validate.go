@@ -76,6 +76,7 @@ func validateManifestShape(value ExportManifest, bound bool) error {
 		value.CustodyToSequence > math.MaxInt64 || !validRevision(value.AuditCheckpointSequence) ||
 		!validRevision(value.AuditSigningKeyRevision) || value.SigningAlgorithm != SigningAlgorithm ||
 		!tokenPattern.MatchString(value.SigningKeyID) || !validRevision(value.SigningKeyRevision) ||
+		!allDigests(value.SigningTrustSnapshotDigest, value.SigningKeyRevocationDigest) ||
 		value.Compression != NoCompression || !validLimits(value.Limits) || !validTime(value.CreatedAt) ||
 		!validTime(value.ValidUntil) || !value.ValidUntil.After(value.CreatedAt) ||
 		(bound && !digestPattern.MatchString(value.ManifestDigest)) || (!bound && value.ManifestDigest != "") ||

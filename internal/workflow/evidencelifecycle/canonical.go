@@ -32,6 +32,14 @@ func IntentBindingDigest(value Command) (string, error) {
 	return digest("COH-EVIDENCE-LIFECYCLE-INTENT-V1\x00", canonical), nil
 }
 
+func CommandBindingDigest(value Command) (string, error) {
+	canonical, err := CanonicalCommand(value)
+	if err != nil {
+		return "", err
+	}
+	return digest("COH-EVIDENCE-LIFECYCLE-COMMAND-V1\x00", canonical), nil
+}
+
 func IdempotencyBindingDigest(value string) (string, error) {
 	if !validOpaque(value, 1, 256) {
 		return "", newError(InvalidInput, "idempotency_key_invalid", false, nil)
@@ -187,6 +195,19 @@ func RecordBindingDigest(value Record) (string, error) {
 		return "", err
 	}
 	return digest("COH-EVIDENCE-LIFECYCLE-RECORD-V1\x00", canonical), nil
+}
+
+func RecordPrecommitDigest(value Record) (string, error) {
+	copyValue := value
+	copyValue.AuditEventDigest, copyValue.RecordDigest = "", ""
+	if err := validateRecordShape(copyValue, false); err != nil {
+		return "", err
+	}
+	canonical, err := canonicalValue(copyValue)
+	if err != nil {
+		return "", err
+	}
+	return digest("COH-EVIDENCE-LIFECYCLE-RECORD-PRECOMMIT-V1\x00", canonical), nil
 }
 
 func ReceiptBindingDigest(value Receipt) (string, error) {

@@ -43,6 +43,7 @@ type LifecycleProof struct {
 type VerifiedEvidenceSet struct {
 	Case               domain.CaseRef
 	Artifacts          []ManifestArtifact
+	Components         []Component
 	ArtifactSetDigest  string
 	LineageDigest      string
 	ComponentSetDigest string
@@ -80,18 +81,20 @@ type CustodyRequest struct {
 type CustodyProof struct {
 	ReceiptDigest string
 	RecordDigest  string
-	ChainHash     string
 	AuditDigest   string
-	Sequence      uint64
+	Head          CustodyHead
 }
 
 type CustodyVerification struct {
-	FromSequence     uint64
-	ToSequence       uint64
-	Head             CustodyHead
-	CheckpointID     string
-	CheckpointDigest string
-	ReportDigest     string
+	FromSequence                 uint64
+	ToSequence                   uint64
+	Head                         CustodyHead
+	CheckpointID                 string
+	CheckpointDigest             string
+	CheckpointSequence           uint64
+	CheckpointSigningKeyRevision uint64
+	CheckpointProofDigest        string
+	ReportDigest                 string
 }
 
 type SignRequest struct {
@@ -112,7 +115,6 @@ type VerifySignatureRequest struct {
 }
 
 type PackageBuildRequest struct {
-	Header    PackageHeader
 	Manifest  ExportManifest
 	Signature DetachedSignature
 	Evidence  VerifiedEvidenceSet
@@ -121,6 +123,7 @@ type PackageBuildRequest struct {
 
 type QuarantinedPackage struct {
 	Reference       string
+	Header          PackageHeader
 	HeaderDigest    string
 	PackageDigest   string
 	PackageLength   int64
@@ -204,6 +207,7 @@ type SignatureVerifier interface {
 
 type PackageWriter interface {
 	BuildPackage(context.Context, PackageBuildRequest) (QuarantinedPackage, error)
+	RecoverPackage(context.Context, domain.CaseRef, string) (QuarantinedPackage, bool, error)
 	VerifyPackage(context.Context, QuarantinedPackage, PackageLimits) error
 }
 
@@ -224,12 +228,12 @@ type Store interface {
 	Recover(context.Context, domain.CaseRef, string) (Receipt, bool, error)
 	LoadProgress(context.Context, domain.CaseRef, string) (Progress, bool, error)
 	Advance(context.Context, string, string, Progress) (Progress, bool, error)
-	Commit(context.Context, string, string, Record, Receipt) (Receipt, bool, error)
+	Commit(context.Context, string, string, Progress, Record, Receipt) (Receipt, bool, error)
 }
 
 type Auditor interface {
 	AppendLifecycleEvent(context.Context, tamperaudit.Event) error
-	VerifyLifecycleEvent(context.Context, domain.CaseRef, string) error
+	VerifyLifecycleEvent(context.Context, domain.CaseRef, string, string) error
 }
 
 type Clock interface{ Now() time.Time }

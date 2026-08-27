@@ -35,7 +35,8 @@ purpose/destination digests; every artifact, encrypted manifest, source/derived
 role, parent edge, completed redaction receipt, and mapping digest; policy,
 model, tool, query, and transformation versions; policy/approval/revocation;
 complete custody proof; signed audit checkpoint; Ed25519 key identity/revision;
-resource limits, validity, idempotency, and provenance. Its detached signature
+exact signing trust and key-revocation snapshots; resource limits, validity,
+idempotency, and provenance. Its detached signature
 is a separate strict payload over the exact canonical manifest digest.
 
 An import verification report records the untrusted source/package identity,
