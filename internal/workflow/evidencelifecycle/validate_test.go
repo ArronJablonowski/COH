@@ -8,7 +8,7 @@ import (
 	"github.com/ArronJablonowski/COH/internal/domain"
 )
 
-var lifecycleTestNow = time.Date(2026, 8, 27, 3, 0, 0, 0, time.UTC)
+var lifecycleTestNow = time.Date(2035, 8, 27, 3, 0, 0, 0, time.UTC)
 
 func TestCommandValidationClosesOperationFieldsAndBounds(t *testing.T) {
 	base := validLifecycleCommand(Export)

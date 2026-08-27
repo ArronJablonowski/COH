@@ -79,8 +79,8 @@ func (service *ExportService) packageExport(ctx context.Context, state exportSta
 		PurposeDigest: *state.Command.PurposeDigest, DestinationDigest: *state.Command.DestinationDigest,
 		Artifacts: state.Evidence.Artifacts, ArtifactSetDigest: state.Evidence.ArtifactSetDigest,
 		Components: state.Evidence.Components, PolicyDigest: state.Command.PolicyDigest,
-		DecisionDigest: state.Decision.DecisionDigest, ApprovalDigest: *state.Command.ApprovalDigest,
-		RevocationDigest: state.Decision.RevocationDigest, CustodyFromSequence: state.Custody.FromSequence,
+		DecisionDigest: state.FinalDecisionDigest, ApprovalDigest: *state.Command.ApprovalDigest,
+		RevocationDigest: state.FinalRevocationDigest, CustodyFromSequence: state.Custody.FromSequence,
 		CustodyToSequence: state.Custody.ToSequence, CustodyReportDigest: state.Custody.ReportDigest,
 		AuditCheckpointID: state.Custody.CheckpointID, AuditCheckpointDigest: state.Custody.CheckpointDigest,
 		AuditCheckpointSequence: state.Custody.CheckpointSequence,
@@ -103,7 +103,7 @@ func (service *ExportService) packageExport(ctx context.Context, state exportSta
 	}
 	signature, err := service.signer.SignManifest(ctx, SignRequest{ManifestDigest: manifest.ManifestDigest,
 		CanonicalBytes: canonical, KeyID: service.signing.KeyID, KeyRevision: service.signing.KeyRevision,
-		DecisionDigest: state.Decision.DecisionDigest})
+		DecisionDigest: state.FinalDecisionDigest})
 	if err != nil {
 		return ExportManifest{}, DetachedSignature{}, QuarantinedPackage{}, Progress{},
 			mapExportDependency(ctx, "export_signing_unavailable", err)
@@ -181,7 +181,7 @@ func (service *ExportService) recordCaseExport(ctx context.Context, state export
 	if err != nil {
 		return LifecycleProof{}, Progress{}, mapExportDependency(ctx, "case_export_unavailable", err)
 	}
-	if !validLifecycleProof(proof, state.Command.Case, Export) {
+	if !validLifecycleProof(proof, state.Command.Case, Export) || proof.Revision != state.Case.Revision+1 {
 		return LifecycleProof{}, Progress{}, newError(Denied, "case_export_proof_invalid", false, nil)
 	}
 	resolved, found, err := service.cases.ResolveLifecycleReceipt(ctx, state.Command.Case, proof.ReceiptDigest)

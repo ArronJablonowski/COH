@@ -176,8 +176,10 @@ func (stub *exportLifecycle) ApplyCaseOperation(_ context.Context, request Lifec
 	if stub.err != nil {
 		return LifecycleProof{}, stub.err
 	}
-	proof := LifecycleProof{Operation: Export, Case: request.Case, Revision: request.ExpectedCaseRevision + 1,
-		ReceiptDigest: lifecycleDigest("lifecycle-receipt"), ProvenanceDigest: lifecycleDigest("lifecycle-provenance")}
+	stub.cases.snapshot.Revision = request.ExpectedCaseRevision + 1
+	stub.cases.snapshot.ProvenanceDigest = lifecycleDigest("case-export-provenance")
+	proof := LifecycleProof{Operation: Export, Case: request.Case, Revision: stub.cases.snapshot.Revision,
+		ReceiptDigest: lifecycleDigest("lifecycle-receipt"), ProvenanceDigest: stub.cases.snapshot.ProvenanceDigest}
 	stub.cases.proof = proof
 	return proof, nil
 }
@@ -205,15 +207,21 @@ type exportCustody struct {
 	now       time.Time
 	failPhase Phase
 	recovered map[string]CustodyProofSet
+	heads     map[uint64]CustodyHead
 }
 
 func (stub *exportCustody) LoadCustodyHead(context.Context, domain.CaseRef) (CustodyHead, error) {
 	*stub.calls = append(*stub.calls, "custody.head")
+	stub.rememberHead(stub.head)
 	return stub.head, nil
 }
 func (stub *exportCustody) VerifyLifecycle(_ context.Context, scope domain.CaseRef, from, to uint64) (CustodyVerification, error) {
 	*stub.calls = append(*stub.calls, "custody.verify")
-	return CustodyVerification{FromSequence: from, ToSequence: to, Head: stub.head,
+	head := stub.head
+	if value, found := stub.heads[to]; found {
+		head = value
+	}
+	return CustodyVerification{FromSequence: from, ToSequence: to, Head: head,
 		CheckpointID: lifecycleUUID("checkpoint"), CheckpointDigest: lifecycleDigest("checkpoint"),
 		CheckpointSequence: to, CheckpointSigningKeyRevision: 2,
 		CheckpointProofDigest: lifecycleDigest("checkpoint-proof"), ReportDigest: lifecycleDigest("custody-report")}, nil
@@ -235,6 +243,7 @@ func (stub *exportCustody) RecordLifecycle(_ context.Context, request CustodyReq
 			RecordDigest: lifecycleDigest(label + ".record." + suffix),
 			AuditDigest:  lifecycleDigest(label + ".audit." + suffix), Head: head}
 		current = head
+		stub.rememberHead(head)
 	}
 	stub.head = current
 	setDigest, _ := CustodyReceiptSetBindingDigest(proofs)
@@ -244,6 +253,12 @@ func (stub *exportCustody) RecordLifecycle(_ context.Context, request CustodyReq
 	}
 	stub.recovered[setDigest] = result
 	return result, nil
+}
+func (stub *exportCustody) rememberHead(value CustodyHead) {
+	if stub.heads == nil {
+		stub.heads = make(map[uint64]CustodyHead)
+	}
+	stub.heads[value.Sequence] = value
 }
 func (stub *exportCustody) RecoverLifecycle(_ context.Context, _ domain.CaseRef,
 	digest string) (CustodyProofSet, bool, error) {
@@ -287,6 +302,8 @@ type exportPackages struct {
 	value      QuarantinedPackage
 	mutate     func(*QuarantinedPackage)
 	recoverErr error
+	manifest   ExportManifest
+	signature  DetachedSignature
 }
 
 func (stub *exportPackages) BuildPackage(_ context.Context, request PackageBuildRequest) (QuarantinedPackage, error) {
@@ -305,6 +322,7 @@ func (stub *exportPackages) BuildPackage(_ context.Context, request PackageBuild
 	if stub.mutate != nil {
 		stub.mutate(&stub.value)
 	}
+	stub.manifest, stub.signature = request.Manifest, request.Signature
 	return stub.value, nil
 }
 func (stub *exportPackages) VerifyPackage(context.Context, QuarantinedPackage, PackageLimits) error {
@@ -313,6 +331,11 @@ func (stub *exportPackages) VerifyPackage(context.Context, QuarantinedPackage, P
 }
 func (stub *exportPackages) RecoverPackage(context.Context, domain.CaseRef, string) (QuarantinedPackage, bool, error) {
 	return stub.value, stub.value.PackageDigest != "", stub.recoverErr
+}
+func (stub *exportPackages) RecoverPackageProof(context.Context, QuarantinedPackage,
+	PackageLimits) (ExportManifest, DetachedSignature, error) {
+	*stub.calls = append(*stub.calls, "package.proof.recover")
+	return stub.manifest, stub.signature, stub.recoverErr
 }
 
 type exportStore struct {

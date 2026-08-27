@@ -64,6 +64,9 @@ func (service *ExportService) execute(ctx context.Context, command Command) (Res
 	}
 	opCtx, cancel := operationContext(ctx, command.Deadline)
 	defer cancel()
+	if err := operationContextError(opCtx); err != nil {
+		return Result{}, err
+	}
 	intent, err := IntentBindingDigest(command)
 	if err != nil {
 		return Result{}, err
@@ -77,29 +80,40 @@ func (service *ExportService) execute(ctx context.Context, command Command) (Res
 	} else if found {
 		return service.recoverCompleted(opCtx, command, intent, idempotency, recovered)
 	}
-	state, err := service.preflight(opCtx, command, intent)
+	progress, found, err := service.loadExportProgress(opCtx, command, intent, idempotency)
 	if err != nil {
 		return Result{}, err
 	}
-	progress, err := service.plan(opCtx, state, idempotency)
+	var state exportState
+	if found {
+		state, err = service.authorizeExport(opCtx, command, intent, progress, true)
+	} else {
+		state, err = service.preflight(opCtx, command, intent)
+	}
 	if err != nil {
 		return Result{}, err
 	}
-	authorizationCustody, authorizedCustody, progress, err := service.authorizeCustody(opCtx, state, progress)
+	if !found {
+		progress, err = service.plan(opCtx, state, idempotency)
+		if err != nil {
+			return Result{}, err
+		}
+	}
+	authorizationCustody, progress, err := service.authorizeCustodyOrRecoverExport(opCtx, state, progress)
 	if err != nil {
 		return Result{}, err
 	}
-	state.Custody = authorizedCustody
-	manifest, signature, packaged, progress, err := service.packageExport(opCtx, state, authorizationCustody, progress)
+	manifest, signature, packaged, progress, state, err := service.packageOrRecoverExport(opCtx, state,
+		authorizationCustody, progress)
 	if err != nil {
 		return Result{}, err
 	}
-	completionCustody, progress, err := service.completeCustody(opCtx, state, authorizationCustody,
+	completionCustody, progress, err := service.completeCustodyOrRecoverExport(opCtx, state, authorizationCustody,
 		manifest, signature, packaged, progress)
 	if err != nil {
 		return Result{}, err
 	}
-	lifecycle, progress, err := service.recordCaseExport(opCtx, state, manifest, progress)
+	lifecycle, progress, err := service.recordOrRecoverCaseExport(opCtx, state, manifest, progress)
 	if err != nil {
 		return Result{}, err
 	}

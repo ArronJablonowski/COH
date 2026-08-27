@@ -143,4 +143,11 @@ func operationContext(parent context.Context, deadline time.Time) (context.Conte
 	return context.WithDeadline(parent, deadline)
 }
 
+func operationContextError(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return mapExportDependency(ctx, "request_context_unavailable", err)
+	}
+	return nil
+}
+
 func formatTime(value time.Time) string { return value.Format("2006-01-02T15:04:05.000000000Z") }

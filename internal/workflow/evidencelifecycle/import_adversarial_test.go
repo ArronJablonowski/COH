@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestImportServiceRejectsCoherentVerificationMutationsBeforeAuthority(t *testing.T) {
@@ -74,7 +73,6 @@ func TestImportServiceFailsClosedForHostilePackageReaderFindings(t *testing.T) {
 		"archive_bomb", "unknown_media_type", "trailing_data", "truncated_input"} {
 		t.Run(reason, func(t *testing.T) {
 			rig := newImportRig(t)
-			rig.command.Deadline = time.Now().Add(time.Hour).UTC()
 			rig.reader.err = newError(Denied, reason, false, nil)
 			result, err := rig.service.Execute(t.Context(), rig.command, "quarantine.import.1")
 			if CodeOf(err) != Denied || Reason(err) != reason || len(result.Imported) != 0 ||
@@ -109,7 +107,6 @@ func TestImportServiceRejectsStaleOrRevokedAuthorityAndRedactsDependencyErrors(t
 	}
 
 	rig := newImportRig(t)
-	rig.command.Deadline = time.Now().Add(time.Hour).UTC()
 	secret := "raw-package-secret"
 	rig.reader.err = errors.New(secret)
 	result, err := rig.service.Execute(t.Context(), rig.command, "quarantine.import.1")

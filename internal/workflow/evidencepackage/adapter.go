@@ -79,6 +79,53 @@ func (adapter *Adapter) RecoverPackage(ctx context.Context, scope domain.CaseRef
 	return adapter.quarantine.Recover(ctx, scope, packageDigest)
 }
 
+func (adapter *Adapter) RecoverPackageProof(ctx context.Context, value evidencelifecycle.QuarantinedPackage,
+	limits evidencelifecycle.PackageLimits) (evidencelifecycle.ExportManifest,
+	evidencelifecycle.DetachedSignature, error) {
+	if ctx == nil || value.Reference == "" || evidencelifecycle.ValidatePackageHeader(value.Header) != nil ||
+		value.Header.ManifestLength > limits.MaximumManifestBytes ||
+		value.Header.SignatureLength > limits.MaximumSignatureBytes {
+		return evidencelifecycle.ExportManifest{}, evidencelifecycle.DetachedSignature{},
+			errors.New("evidence package proof recovery request is invalid")
+	}
+	reader, err := adapter.quarantine.Open(ctx, value.Reference)
+	if err != nil {
+		return evidencelifecycle.ExportManifest{}, evidencelifecycle.DetachedSignature{},
+			errors.New("evidence package quarantine is unavailable")
+	}
+	defer reader.Close()
+	headerBytes := make([]byte, fixedHeaderLength)
+	manifestBytes := make([]byte, value.Header.ManifestLength)
+	signatureBytes := make([]byte, value.Header.SignatureLength)
+	if err = readFullContext(ctx, reader, headerBytes); err != nil {
+		return evidencelifecycle.ExportManifest{}, evidencelifecycle.DetachedSignature{},
+			errors.New("evidence package header recovery failed")
+	}
+	if err = readFullContext(ctx, reader, manifestBytes); err != nil {
+		return evidencelifecycle.ExportManifest{}, evidencelifecycle.DetachedSignature{},
+			errors.New("evidence package manifest recovery failed")
+	}
+	if err = readFullContext(ctx, reader, signatureBytes); err != nil {
+		return evidencelifecycle.ExportManifest{}, evidencelifecycle.DetachedSignature{},
+			errors.New("evidence package signature recovery failed")
+	}
+	manifest, err := evidencelifecycle.DecodeExportManifest(manifestBytes)
+	if err != nil || manifest.ManifestDigest != value.ManifestDigest ||
+		value.Header.ArtifactCount != uint16(len(manifest.Artifacts)) {
+		return evidencelifecycle.ExportManifest{}, evidencelifecycle.DetachedSignature{},
+			errors.New("evidence package recovered manifest is invalid")
+	}
+	signature, err := evidencelifecycle.DecodeDetachedSignature(signatureBytes)
+	signatureDigest, digestErr := evidencelifecycle.SignatureBindingDigest(signature)
+	if err != nil || digestErr != nil || signatureDigest != value.SignatureDigest ||
+		signature.ManifestDigest != manifest.ManifestDigest || signature.KeyID != manifest.SigningKeyID ||
+		signature.KeyRevision != manifest.SigningKeyRevision {
+		return evidencelifecycle.ExportManifest{}, evidencelifecycle.DetachedSignature{},
+			errors.New("evidence package recovered signature is invalid")
+	}
+	return manifest, signature, nil
+}
+
 func (adapter *Adapter) VerifyPackage(ctx context.Context, value evidencelifecycle.QuarantinedPackage,
 	limits evidencelifecycle.PackageLimits) error {
 	if ctx == nil || value.Reference == "" || value.PackageLength <= 0 ||

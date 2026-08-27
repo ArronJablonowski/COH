@@ -6,17 +6,26 @@ import (
 )
 
 type exportState struct {
-	Command      Command
-	IntentDigest string
-	Case         CaseSnapshot
-	Evidence     VerifiedEvidenceSet
-	Redactions   []RedactionProof
-	Custody      CustodyVerification
-	Decision     Decision
-	AuthorizedAt time.Time
+	Command               Command
+	IntentDigest          string
+	Case                  CaseSnapshot
+	Evidence              VerifiedEvidenceSet
+	Redactions            []RedactionProof
+	Custody               CustodyVerification
+	Decision              Decision
+	FinalDecisionDigest   string
+	FinalRevocationDigest string
+	CurrentCaseRevision   uint64
+	RecoveredPhase        Phase
+	AuthorizedAt          time.Time
 }
 
 func (service *ExportService) preflight(ctx context.Context, command Command, intent string) (exportState, error) {
+	return service.authorizeExport(ctx, command, intent, Progress{}, false)
+}
+
+func (service *ExportService) authorizeExport(ctx context.Context, command Command, intent string,
+	progress Progress, recovery bool) (exportState, error) {
 	current, found, err := service.cases.LoadCase(ctx, command.Case)
 	if err != nil {
 		return exportState{}, mapExportDependency(ctx, "case_load_unavailable", err)
@@ -24,8 +33,9 @@ func (service *ExportService) preflight(ctx context.Context, command Command, in
 	if !found {
 		return exportState{}, newError(NotFound, "case_not_found", false, nil)
 	}
-	if !validCaseSnapshot(current) || current.Case != command.Case || current.Revision != command.ExpectedCaseRevision ||
-		current.State == "deleted" {
+	if !validCaseSnapshot(current) || current.Case != command.Case || current.State == "deleted" ||
+		!recovery && current.Revision != command.ExpectedCaseRevision || recovery && progress.Phase != CaseRecorded &&
+		current.Revision != command.ExpectedCaseRevision {
 		return exportState{}, newError(Denied, "case_state_invalid", false, nil)
 	}
 	pending, err := service.cases.HasIncompleteHoldRelease(ctx, command.Case)
@@ -53,7 +63,8 @@ func (service *ExportService) preflight(ctx context.Context, command Command, in
 	if err != nil {
 		return exportState{}, mapExportDependency(ctx, "custody_head_unavailable", err)
 	}
-	if !sameHead(head, command.ExpectedCustodyHead) || head.Sequence == 0 {
+	if !recovery && (!sameHead(head, command.ExpectedCustodyHead) || head.Sequence == 0) ||
+		recovery && (head.Sequence < command.ExpectedCustodyHead.Sequence || command.ExpectedCustodyHead.Sequence == 0) {
 		return exportState{}, newError(Conflict, string(ReasonStaleCustody), true, nil)
 	}
 	custody, err := service.custody.VerifyLifecycle(ctx, command.Case, 1, head.Sequence)
@@ -63,11 +74,34 @@ func (service *ExportService) preflight(ctx context.Context, command Command, in
 	if !validCustodyVerification(custody, head) {
 		return exportState{}, newError(Denied, "custody_verification_invalid", false, nil)
 	}
+	originalCustody := custody
+	if recovery {
+		originalCustody, err = service.custody.VerifyLifecycle(ctx, command.Case, 1,
+			command.ExpectedCustodyHead.Sequence)
+		if err != nil {
+			return exportState{}, mapExportDependency(ctx, "export_original_custody_unavailable", err)
+		}
+		if !validCustodyVerification(originalCustody, command.ExpectedCustodyHead) {
+			return exportState{}, newError(Denied, "export_original_custody_invalid", false, nil)
+		}
+	}
+	authorizationCommand, authorizationIntent := command, intent
+	if recovery {
+		authorizationCommand.ExpectedCaseRevision, authorizationCommand.ExpectedCustodyHead = current.Revision, head
+		authorizationIntent, err = IntentBindingDigest(authorizationCommand)
+		if err != nil {
+			return exportState{}, err
+		}
+	}
 	authorization := AuthorizationRequest{SchemaVersion: AuthorizationSchemaVersion, ContractVersion: ContractVersion,
-		IntentDigest: intent, Command: command, CaseState: current.State, CaseClassification: current.Classification,
-		CaseRevision: current.Revision, RetainUntil: current.RetainUntil, LegalHold: current.LegalHold,
+		IntentDigest: authorizationIntent, Command: authorizationCommand, CaseState: current.State,
+		CaseClassification: current.Classification,
+		CaseRevision:       current.Revision, RetainUntil: current.RetainUntil, LegalHold: current.LegalHold,
 		HoldReleasePending: pending, CaseProvenanceDigest: current.ProvenanceDigest,
-		ArtifactSetDigest: command.ArtifactSetDigest, CurrentCustodyHead: head}
+		ArtifactSetDigest: authorizationCommand.ArtifactSetDigest, CurrentCustodyHead: head}
+	if recovery {
+		authorization.ProgressDigest = &progress.ProgressDigest
+	}
 	authorization.AuthorizationDigest, err = AuthorizationBindingDigest(authorization)
 	if err != nil || ValidateAuthorization(authorization) != nil {
 		return exportState{}, newError(Denied, "export_authorization_invalid", false, err)
@@ -80,5 +114,15 @@ func (service *ExportService) preflight(ctx context.Context, command Command, in
 	if !validExportDecision(decision, authorization, now) {
 		return exportState{}, newError(Denied, "export_decision_invalid", false, nil)
 	}
-	return exportState{command, intent, current, evidence, redactions, custody, decision, now}, nil
+	state := exportState{Command: command, IntentDigest: intent, Case: current, Evidence: evidence,
+		Redactions: redactions, Custody: originalCustody, Decision: decision,
+		FinalDecisionDigest: decision.DecisionDigest, FinalRevocationDigest: decision.RevocationDigest,
+		CurrentCaseRevision: current.Revision, AuthorizedAt: now}
+	if recovery && progress.DecisionDigest != nil && progress.RevocationDigest != nil {
+		state.FinalDecisionDigest, state.FinalRevocationDigest = *progress.DecisionDigest, *progress.RevocationDigest
+	}
+	if recovery {
+		state.RecoveredPhase = progress.Phase
+	}
+	return state, nil
 }

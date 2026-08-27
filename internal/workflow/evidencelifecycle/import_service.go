@@ -46,6 +46,9 @@ func (service *ImportService) execute(ctx context.Context, command Command, inpu
 	}
 	opCtx, cancel := operationContext(ctx, command.Deadline)
 	defer cancel()
+	if err := operationContextError(opCtx); err != nil {
+		return Result{}, err
+	}
 	intent, err := IntentBindingDigest(command)
 	if err != nil {
 		return Result{}, err

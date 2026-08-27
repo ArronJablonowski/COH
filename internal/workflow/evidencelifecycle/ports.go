@@ -229,6 +229,7 @@ type SignatureVerifier interface {
 type PackageWriter interface {
 	BuildPackage(context.Context, PackageBuildRequest) (QuarantinedPackage, error)
 	RecoverPackage(context.Context, domain.CaseRef, string) (QuarantinedPackage, bool, error)
+	RecoverPackageProof(context.Context, QuarantinedPackage, PackageLimits) (ExportManifest, DetachedSignature, error)
 	VerifyPackage(context.Context, QuarantinedPackage, PackageLimits) error
 }
 

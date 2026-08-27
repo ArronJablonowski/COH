@@ -32,6 +32,10 @@ func TestAdapterBuildsCommitsVerifiesAndRecoversQuarantine(t *testing.T) {
 	if err != nil || !found || recovered != value {
 		t.Fatalf("recovered=%+v found=%v err=%v", recovered, found, err)
 	}
+	recoveredManifest, recoveredSignature, err := adapter.RecoverPackageProof(t.Context(), recovered, manifest.Limits)
+	if err != nil || recoveredManifest.ManifestDigest != manifest.ManifestDigest || recoveredSignature != signature {
+		t.Fatalf("manifest=%+v signature=%+v err=%v", recoveredManifest, recoveredSignature, err)
+	}
 	quarantine.objects[value.Reference][fixedHeaderLength] ^= 1
 	if err = adapter.VerifyPackage(t.Context(), value, manifest.Limits); err == nil {
 		t.Fatal("tampered quarantine object verified")

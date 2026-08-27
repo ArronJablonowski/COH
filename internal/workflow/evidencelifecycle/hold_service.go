@@ -43,6 +43,9 @@ func (service *HoldService) execute(ctx context.Context, command Command) (Resul
 	}
 	opCtx, cancel := operationContext(ctx, command.Deadline)
 	defer cancel()
+	if err := operationContextError(opCtx); err != nil {
+		return Result{}, err
+	}
 	intent, err := IntentBindingDigest(command)
 	if err != nil {
 		return Result{}, err
