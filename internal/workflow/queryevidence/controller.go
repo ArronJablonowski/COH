@@ -379,5 +379,3 @@ func validEventOutcome(event, completeness string) bool {
 		return false
 	}
 }
-
-var _ queryruntime.Recorder = (*Controller)(nil)
