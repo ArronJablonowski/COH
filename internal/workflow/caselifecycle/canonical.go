@@ -115,6 +115,16 @@ func IdempotencyBindingDigest(value string) string {
 	return digest("COH-CASE-IDEMPOTENCY-V1\x00", []byte(value))
 }
 
+// RetentionPolicyBindingDigest converts the canonical retention-policy
+// identifier carried by case lifecycle records into the immutable digest form
+// consumed by downstream custody records.
+func RetentionPolicyBindingDigest(value string) (string, error) {
+	if !uuidPattern.MatchString(value) {
+		return "", newError(InvalidInput, "retention_policy_id_invalid", false, nil)
+	}
+	return digest("COH-CASE-RETENTION-POLICY-V1\x00", []byte(value)), nil
+}
+
 func canonicalValue(value any) ([]byte, error) {
 	encoded, err := json.Marshal(value)
 	if err != nil {
