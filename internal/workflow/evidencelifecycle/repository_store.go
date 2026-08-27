@@ -144,6 +144,13 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 	if err != nil {
 		return Receipt{}, false, err
 	}
+	if found && current.ProgressDigest == progress.ProgressDigest {
+		recovered, recoveredFound, recoverErr := store.Recover(ctx, record.Case, idempotency)
+		if recoverErr != nil || !recoveredFound || recovered.ReceiptDigest != receipt.ReceiptDigest {
+			return Receipt{}, false, newError(Denied, "completed_progress_receipt_invalid", false, recoverErr)
+		}
+		return recovered, true, nil
+	}
 	if !found || !validStoredProgressTransition(current, progress) {
 		return Receipt{}, false, newError(Denied, "commit_progress_invalid", false, nil)
 	}
