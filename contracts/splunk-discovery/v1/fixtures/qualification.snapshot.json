@@ -7,5 +7,5 @@
     {"operation": "splunk.server_info", "request_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666", "response_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777", "lease_decision_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888", "transport_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"},
     {"operation": "splunk.current_context", "request_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "response_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "lease_decision_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "transport_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}
   ],
-  "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  "digest": "sha256:a6555dbc8710e4c09be3fefed845efc39f75c23302951d21e8ed6d4f5d0ff39f"
 }
