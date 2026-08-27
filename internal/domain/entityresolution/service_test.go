@@ -176,8 +176,10 @@ func TestServiceAtomicallyMergesAndReversesWithSplit(t *testing.T) {
 		t.Fatalf("receipt=%+v err=%v", merged, err)
 	}
 	mergedState := fixture.store.entities[outputEntityID]
+	expectedParents := []string{first.entity.ProvenanceDigest, second.entity.ProvenanceDigest}
+	slices.Sort(expectedParents)
 	if len(fixture.store.commits) != 1 || len(fixture.store.commits[0].Entities) != 3 ||
-		len(mergedState.entity.PreviousProvenanceDigests) != 2 {
+		!slices.Equal(mergedState.entity.PreviousProvenanceDigests, expectedParents) {
 		t.Fatalf("commits=%+v merged=%+v", fixture.store.commits, mergedState)
 	}
 
@@ -225,6 +227,19 @@ func TestServiceAtomicallyMergesAndReversesWithSplit(t *testing.T) {
 		*fixture.store.commits[1].Decision.ReversesHistoryDigest != mergeHistoryDigest ||
 		fixture.store.commits[1].History == nil || fixture.store.commits[1].History.ReversesHistoryDigest == nil {
 		t.Fatalf("commits=%+v", fixture.store.commits)
+	}
+	for _, entity := range fixture.store.commits[1].Entities {
+		if !slices.Equal(entity.PreviousProvenanceDigests, []string{mergedState.entity.ProvenanceDigest}) {
+			t.Fatalf("split provenance=%+v", entity.PreviousProvenanceDigests)
+		}
+	}
+	mergeReplay, err := fixture.service.Execute(context.Background(), mergeCommand)
+	if err != nil || mergeReplay != merged {
+		t.Fatalf("merge replay=%+v err=%v", mergeReplay, err)
+	}
+	splitReplay, err := fixture.service.Execute(context.Background(), splitCommand)
+	if err != nil || splitReplay != splitReceipt {
+		t.Fatalf("split replay=%+v err=%v", splitReplay, err)
 	}
 }
 

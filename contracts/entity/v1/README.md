@@ -30,10 +30,11 @@ Commands also persist every generated candidate, decision, history, sequence,
 and output identity. A restarted worker can therefore recompute the exact
 candidate or transition and deny changed replay instead of generating new
 identities or trusting an unverifiable score.
-The frozen v1 weights, counterevidence effects, source-independence rule,
-arithmetic, and label thresholds are executable in
-`fixtures/confidence-method-v1.json`; changing them requires a new method
-version rather than an in-place tuning change.
+The closed role/type/normalization catalog and case-keyed HMAC boundary are
+executable in `fixtures/identity-method-v1.json`. The frozen v1 weights,
+counterevidence effects, source-independence rule, arithmetic, and label
+thresholds are executable in `fixtures/confidence-method-v1.json`; changing
+either fixture requires a new method version rather than an in-place change.
 
 Compatibility, privacy, authority, confidence, counterevidence, recovery,
 rollback, and extension semantics are frozen in the

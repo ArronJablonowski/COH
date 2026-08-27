@@ -64,6 +64,9 @@ Key rotation is append-only. Existing observations retain their key revision.
 A reindex operation emits a new verified observation and an explicit alias
 proof; it never edits an old digest. Lookup compares equal type and digest only
 within one key revision unless a verified alias proof bridges revisions.
+The closed role/type/normalization catalog and case-match construction are
+pinned as the executable fixture
+`contracts/entity/v1/fixtures/identity-method-v1.json`.
 
 ## Typed observation
 

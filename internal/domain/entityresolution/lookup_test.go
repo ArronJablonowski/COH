@@ -72,6 +72,11 @@ func TestLookupCandidateRejectsReturnedBoundaryDrift(t *testing.T) {
 			entity.Scope.CaseID = testUUID(9)
 			value.entities.values[value.entityRef] = entity
 		}, ScopeMismatch},
+		"cross tenant entity": {func(value *lookupFixture) {
+			entity := value.entity
+			entity.Scope.TenantID = testUUID(9)
+			value.entities.values[value.entityRef] = entity
+		}, ScopeMismatch},
 		"weak classification": {func(value *lookupFixture) {
 			entity := value.entity
 			entity.Classification = "public"
