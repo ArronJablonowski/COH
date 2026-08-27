@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -106,6 +107,12 @@ func TestDiscoveryFailsClosedOnIdentityReceiptAndTargetDrift(t *testing.T) {
 		}, queryconnector.Unsupported, "elastic_data_stream_unsupported"},
 		"type-conflict":  {func(client *clientStub) { client.caps.Fields = append(client.caps.Fields, client.caps.Fields[0]) }, queryconnector.Unsupported, "elastic_field_type_conflict"},
 		"field-widening": {func(client *clientStub) { client.caps.Fields[0].Name = "secret.value" }, queryconnector.Denied, "elastic_field_scope_widened"},
+		"field-partial":  {func(client *clientStub) { client.caps.Fields = client.caps.Fields[:1] }, queryconnector.Denied, "elastic_fields_partial"},
+		"version-drift":  {func(client *clientStub) { client.identity.Version = "10.0.0" }, queryconnector.Unsupported, "elastic_version_unqualified"},
+		"alias-substitution": {func(client *clientStub) {
+			client.resolved.Indices = nil
+			client.resolved.Aliases = []ResolvedAlias{{Name: "logs-security-current", Indices: []string{".security-7"}}}
+		}, queryconnector.Denied, "elastic_resolved_target_invalid"},
 	}
 	for name, test := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -185,6 +192,52 @@ func TestPublishedCapabilityFixtureUsesStrictQueryContract(t *testing.T) {
 	for _, forbidden := range []string{"credential", "api_key", "authorization", "vendor_body", "secret"} {
 		if strings.Contains(strings.ToLower(string(input)), forbidden) {
 			t.Fatalf("published capability contains %q", forbidden)
+		}
+	}
+}
+
+func TestConcurrentSchemaCursorReplayIsDeterministic(t *testing.T) {
+	adapter, _, _ := testAdapter(t)
+	adapter.config.MaximumSchemaEntriesPerPage = 1
+	capability, err := adapter.Probe(context.Background(), testScope(), testAuthority())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := testRequest(capability.Digest())
+	first, err := adapter.LoadSchema(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Cursor = first.Value().NextCursor
+	const workers = 32
+	digests := make(chan string, workers)
+	errors := make(chan error, workers)
+	var group sync.WaitGroup
+	for range workers {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			page, loadErr := adapter.LoadSchema(context.Background(), request)
+			if loadErr != nil {
+				errors <- loadErr
+				return
+			}
+			digests <- page.Digest()
+		}()
+	}
+	group.Wait()
+	close(digests)
+	close(errors)
+	for loadErr := range errors {
+		t.Fatal(loadErr)
+	}
+	want := ""
+	for value := range digests {
+		if want == "" {
+			want = value
+		}
+		if value != want {
+			t.Fatalf("cursor replay digest %s != %s", value, want)
 		}
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
@@ -111,7 +112,7 @@ func TestHTTPClientUsesOnlyPinnedTypedReadOperations(t *testing.T) {
 }
 
 func TestHTTPClientFailsClosedWithoutLeakingVendorBody(t *testing.T) {
-	secretBody := "vendor says credential encoded-api-key is forbidden"
+	secretBody := string(readElasticFixture(t, "privilege-denied.json"))
 	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		http.Error(writer, secretBody, http.StatusForbidden)
 	}))
@@ -195,6 +196,25 @@ func TestHTTPClientCancellationAndOutageRecovery(t *testing.T) {
 	if _, _, err := client.Inspect(canceled, httpTestBinding()); queryconnector.Code(err) != queryconnector.Canceled ||
 		credentials.uses != uses {
 		t.Fatalf("cancel err=%v uses=%d", err, credentials.uses)
+	}
+}
+
+func TestHTTPClientDeadlineFailsClosed(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(_ http.ResponseWriter, request *http.Request) {
+		<-request.Context().Done()
+	}))
+	defer server.Close()
+	config, roots := httpTestConfig(t, server)
+	credentials := &credentialStub{secret: []byte("key"), decision: testDigest("8")}
+	client, err := NewHTTPClient(config, credentials, roots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	if _, _, err := client.Inspect(ctx, httpTestBinding()); queryconnector.Code(err) != queryconnector.Timeout ||
+		queryconnector.Reason(err) != "elastic_request_timeout" {
+		t.Fatalf("timeout err=%v", err)
 	}
 }
 

@@ -90,6 +90,9 @@ func normalizeCapabilities(resource Resource, configured []Field, indices []stri
 	if len(entries) == 0 {
 		return nil, denied("elastic_fields_empty")
 	}
+	if len(seen) != len(configured) {
+		return nil, denied("elastic_fields_partial")
+	}
 	return entries, nil
 }
 
