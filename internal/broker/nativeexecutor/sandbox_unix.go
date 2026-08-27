@@ -113,6 +113,9 @@ func (sandbox *ProcessSandbox) Execute(ctx context.Context, plan Plan) (result S
 	command.Cancel = func() error { return killProcessGroup(command.Process) }
 	command.WaitDelay = 250 * time.Millisecond
 	if err := command.Start(); err != nil {
+		if contextErr := contextError(ctx); contextErr != nil {
+			return SandboxResult{ExitCode: -1}, contextErr
+		}
 		return SandboxResult{}, NewError(Unavailable, "process_start_failed")
 	}
 	_ = planFile.Close()
