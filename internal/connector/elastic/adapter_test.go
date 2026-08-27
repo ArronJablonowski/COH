@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
+	"github.com/ArronJablonowski/COH/internal/domain/schemacache"
 )
 
 var testNow = time.Date(2026, 8, 27, 18, 0, 0, 0, time.UTC)
@@ -239,6 +240,29 @@ func TestConcurrentSchemaCursorReplayIsDeterministic(t *testing.T) {
 		if value != want {
 			t.Fatalf("cursor replay digest %s != %s", value, want)
 		}
+	}
+}
+
+func TestSchemaCacheBindsElasticCapabilityAndScope(t *testing.T) {
+	adapter, client, clock := testAdapter(t)
+	capability, err := adapter.Probe(context.Background(), testScope(), testAuthority())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache, err := schemacache.New(schemacache.Config{MaximumEntries: 8, MaximumTotalBytes: 1 << 20,
+		MaximumEntryBytes: 1 << 20, TTL: time.Minute, LoadTimeout: time.Second}, adapter, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := schemacache.Request{SchemaRequest: testRequest(capability.Digest()), Capability: capability}
+	first, err := cache.Get(context.Background(), request)
+	if err != nil || first.Hit() || first.Page().Value().SchemaDigest == "" {
+		t.Fatalf("first=%+v err=%v", first, err)
+	}
+	calls := len(client.calls)
+	second, err := cache.Get(context.Background(), request)
+	if err != nil || !second.Hit() || second.IdentityDigest() != first.IdentityDigest() || len(client.calls) != calls {
+		t.Fatalf("second=%+v calls=%d/%d err=%v", second, calls, len(client.calls), err)
 	}
 }
 
