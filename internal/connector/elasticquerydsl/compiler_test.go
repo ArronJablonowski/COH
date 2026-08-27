@@ -40,6 +40,12 @@ func TestCompilerRebuildsTypedMandatoryBoundedPlan(t *testing.T) {
 	if plan.Value().CanonicalQuery["changed"] != nil || plan.Value().Columns[0].VendorName == "changed" {
 		t.Fatal("validated plan exposed mutable state")
 	}
+	oneSlice := query.Value()
+	oneSlice.Limits.MaximumSlices = 1
+	_, slicePlan, err := testCompiler(t).Validate(context.Background(), decodeQuery(t, oneSlice), testSchema(t))
+	if err != nil || slicePlan.Value().MaximumPages != 1 {
+		t.Fatalf("slice-bounded plan=%+v err=%v", slicePlan, err)
+	}
 }
 
 func TestCompilerCanonicalizesEquivalentTermSets(t *testing.T) {
@@ -179,7 +185,7 @@ func testQuery(t testing.TB, native string) queryconnector.ValidatedQuery {
 		Authority:        queryconnector.AuthorityBinding{ActorID: testID("4"), AuthorizationDigest: testDigest("1"), PolicyDecisionDigest: testDigest("2"), AuditReservationDigest: testDigest("3")},
 		CapabilityDigest: testDigest("4"), SchemaDigest: testDigest("5"), Language: "elastic-query-dsl", NativeText: native,
 		TimeRange:   queryconnector.TimeRange{Start: "2026-08-27T17:00:00.000000000Z", End: "2026-08-27T18:00:00.000000000Z"},
-		Limits:      queryconnector.Limits{MaximumRows: 100, MaximumBytes: 100000, MaximumDurationMillis: 5000, MaximumPages: 2, MaximumSlices: 1, MaximumCostMillionths: 1000, RequestsPerMinute: 2},
+		Limits:      queryconnector.Limits{MaximumRows: 100, MaximumBytes: 100000, MaximumDurationMillis: 5000, MaximumPages: 2, MaximumSlices: 2, MaximumCostMillionths: 1000, RequestsPerMinute: 2},
 		RequestedAt: "2026-08-27T16:59:00.000000000Z", Deadline: "2026-08-27T18:01:00.000000000Z"}
 	return decodeQuery(t, value)
 }

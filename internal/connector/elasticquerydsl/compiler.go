@@ -100,7 +100,11 @@ func (compiler *Compiler) buildPlan(ctx context.Context, query queryconnector.Va
 	sortFields := append([]SortField(nil), compiler.definition.StableSort...)
 	sortFields = append(sortFields, SortField{Name: "_shard_doc", VendorName: "_shard_doc", Type: "integer", Direction: "ASC"})
 	maximumRows := min(queryValue.Limits.MaximumRows, compiler.definition.HardMaximumRows)
-	maximumPages := min(queryValue.Limits.MaximumPages, compiler.definition.HardMaximumPages)
+	// A serial PIT page is the exporter's smallest independently bounded work
+	// slice. Capping pages by the caller's slice budget keeps shared runtime
+	// accounting fail closed without exposing vendor slicing controls.
+	maximumPages := min(queryValue.Limits.MaximumPages, compiler.definition.HardMaximumPages,
+		queryValue.Limits.MaximumSlices)
 	pageRows := min(maximumRows, compiler.definition.HardPageRows)
 	if maximumRows == 0 || maximumPages == 0 || pageRows == 0 {
 		return Plan{}, deny("querydsl_limits_invalid")

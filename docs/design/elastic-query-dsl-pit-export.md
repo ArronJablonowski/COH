@@ -144,9 +144,12 @@ causes shared runtime protective cancellation and explicit truncation.
 The adapter atomically replaces the stored PIT ID when a search response
 returns a new one. Replay of the exact current operation is coalesced. Changed,
 old, substituted, cross-query, cross-actor, or cross-case handles fail. Page and
-usage counters are cumulative and monotonic. Process-local plan/job/page state
-has fixed capacity, expires by the query deadline, and retains at most one
-bounded lookahead result per in-flight operation.
+usage counters are cumulative and monotonic. Because this exporter is serial
+and exposes no vendor slicing control, each released PIT page consumes one
+logical shared-runtime work slice; the compiler caps effective pages by
+`min(maximum_pages, maximum_slices, hard_maximum_pages)`. Process-local
+plan/job/page state has fixed capacity, expires by the query deadline, and
+retains at most one bounded lookahead result per in-flight operation.
 
 ## Failure, cancellation, and recovery
 
