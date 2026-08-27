@@ -1,6 +1,6 @@
 # Normalization mapping registry design freeze
 
-Status: frozen for implementation  
+Status: implemented and verified
 Stable key: COH-E11-03  
 Linear: CYB-81  
 Requirements: FR-021, FR-025  
@@ -84,6 +84,15 @@ Private keys never enter this package. The injected verifier confirms the
 exact preimage, publisher/key/revision trust, validity interval, purpose, and
 current revocation snapshot. Signature validity does not grant case access,
 policy authority, or permission to rewrite evidence.
+
+Key rotation is append-only. A new trusted public-key revision signs a new
+envelope or successor manifest; rotation never rewrites an existing signature
+or changes its publisher/key/revision binding. Retired verification keys remain
+available for historical verification through the applicable retention period.
+A compromised key is revoked through monotonic verifier state before a newly
+reviewed manifest is registered and promoted. Every rotation and emergency
+replacement reruns the complete vendor corpus and preserves the old audit and
+provenance chain.
 
 ## Closed mapping language
 
