@@ -5,9 +5,12 @@
 | Issue | COH-E13-04 / CYB-90 |
 | Parent | COH-E13 / CYB-20 |
 | Requirements | FR-046, FR-050 |
-| Implementation baseline | pending evidence commit |
-| Focused verification | `scripts/verify_security_onion.sh` |
-| Full CI evidence | pending clean run |
+| Implementation baseline | `d150e101ebe3eb71115f97b71e2decb36ff31d68` |
+| Focused verification | `scripts/verify_security_onion.sh` passed |
+| Full CI evidence | `/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.RjHSpp` |
+| CI outcome | 18/18 stages passed; promotable; VCS clean |
+| CI report digest | `0ce803e569574e6da4b5e1278a1b0d3657c44fbfa4c44b08305f3acff6b04b80` |
+| CI report SHA-256 | `c689c647d819d7f06a548ba888e5ed514f6021f73c15c06d971e0cd44e338763` |
 
 ## Delivered boundary
 
@@ -66,7 +69,7 @@ the public README and design record.
 | Qualified Connect, structured OQL, limits, forbidden routes unreachable | Qualifier, compiler, typed transport, design | Pass |
 | Typed operations, capability/resource bounds, cancellation, redaction, partial reporting | Adapter/runtime/receipts/completeness tests | Pass |
 | Invalid input, denial, timeout/cancel, recovery retain policy and provenance | Adversarial and shared-runtime suites | Pass |
-| Applicable test/race/architecture/secret/license/dependency/size gates | Focused verifier and clean full CI | Pending full CI |
+| Applicable test/race/architecture/secret/license/dependency/size gates | Focused verifier and clean 18/18 full CI | Pass |
 | Vendor fixtures, capability, conformance report, redacted trace, checksums | Versioned contract and evidence manifest | Pass |
 
 ## Residual release condition
