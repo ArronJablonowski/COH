@@ -1,7 +1,9 @@
 package queryruntime
 
 import (
+	"bytes"
 	"context"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -9,6 +11,26 @@ import (
 	"github.com/ArronJablonowski/COH/internal/domain/querybounds"
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
+
+func TestCanonicalSessionFixtureAndStrictDecoder(t *testing.T) {
+	input, err := os.ReadFile("../../../contracts/query-runtime/v1/fixtures/session.canonical.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, canonical, err := DecodeSession(context.Background(), input)
+	if err != nil || session.SessionDigest != "sha256:159644d34412244c8e04de04aef71dc7d64f7adcda7ca14d3a6301c124622332" ||
+		!bytes.Equal(bytes.TrimSpace(input), canonical) {
+		t.Fatalf("digest=%s canonical=%t err=%v", session.SessionDigest, bytes.Equal(bytes.TrimSpace(input), canonical), err)
+	}
+	unknown := append([]byte(`{"unexpected":true,`), bytes.TrimSpace(input)[1:]...)
+	if _, _, err := DecodeSession(context.Background(), unknown); Code(err) != InvalidInput || Reason(err) != "document_decoding" {
+		t.Fatalf("unknown field err=%v", err)
+	}
+	mutated := bytes.Replace(input, []byte(`"rows_returned":0`), []byte(`"rows_returned":1`), 1)
+	if _, _, err := DecodeSession(context.Background(), mutated); Code(err) != Conflict || Reason(err) != "session_integrity" {
+		t.Fatalf("mutated fixture err=%v", err)
+	}
+}
 
 func TestStartBindsAdmissionExecutionAndNarrowProfile(t *testing.T) {
 	controller, _, _, recorder, request := testController(t, &adapterStub{})

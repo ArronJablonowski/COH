@@ -81,7 +81,7 @@ func FinalizeRateReservation(value RateReservation) (RateReservation, error) {
 	return value, nil
 }
 
-func verifyRateReservation(value RateReservation) error {
+func VerifyRateReservation(value RateReservation) error {
 	supplied := value.ReservationDigest
 	value.ReservationDigest = ""
 	finalized, err := FinalizeRateReservation(value)

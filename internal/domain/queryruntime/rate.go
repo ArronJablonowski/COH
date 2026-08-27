@@ -28,7 +28,7 @@ func (controller *Controller) reserveRate(ctx context.Context, managed *managedS
 		}
 		return RateReservation{}, newError(Unavailable, "rate_unavailable", err)
 	}
-	if err := verifyRateReservation(reservation); err != nil || reservation.KeyDigest != keyDigest ||
+	if err := VerifyRateReservation(reservation); err != nil || reservation.KeyDigest != keyDigest ||
 		reservation.SessionID != request.SessionID || reservation.Operation != operation {
 		return RateReservation{}, newError(Conflict, "rate_reservation_mismatch", err)
 	}
