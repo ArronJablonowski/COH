@@ -16,10 +16,11 @@ type custodyTestClock struct{ now time.Time }
 func (value *custodyTestClock) Now() time.Time { return value.now }
 
 type custodyTestAuthority struct {
-	mu       sync.Mutex
-	requests []AuthorizationRequest
-	deny     bool
-	err      error
+	mu         sync.Mutex
+	requests   []AuthorizationRequest
+	deny       bool
+	denyReason DecisionReason
+	err        error
 }
 
 func (value *custodyTestAuthority) AuthorizeCustody(_ context.Context,
@@ -32,7 +33,10 @@ func (value *custodyTestAuthority) AuthorizeCustody(_ context.Context,
 	}
 	outcome, reason := Allow, ReasonAuthorized
 	if value.deny {
-		outcome, reason = Deny, ReasonAuthorityDenied
+		outcome, reason = Deny, value.denyReason
+		if reason == "" {
+			reason = ReasonAuthorityDenied
+		}
 	}
 	decision := Decision{SchemaVersion: DecisionSchemaVersion, ContractVersion: ContractVersion,
 		DecisionID:          deterministicUUID("COH-CUSTODY-TEST-DECISION-V1\x00", request.AuthorizationDigest),

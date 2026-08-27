@@ -23,7 +23,7 @@
     "operation": {"enum": ["acquire", "access", "transform", "redact", "transfer", "export", "place_hold", "release_hold", "delete"]},
     "phase": {"enum": ["authorized", "completed"]},
     "decision_outcome": {"enum": ["allow", "deny"]},
-    "decision_reason": {"enum": ["authorized", "invalid_input", "case_not_found", "case_state_denied", "artifact_not_found", "artifact_invalid", "manifest_invalid", "lineage_invalid", "authority_denied", "approval_required", "approval_invalid", "revoked", "stale_case", "stale_head", "changed_replay", "retention_active", "legal_hold_active"]},
+    "decision_reason": {"enum": ["authorized", "invalid_input", "case_not_found", "case_state_denied", "artifact_not_found", "artifact_invalid", "manifest_invalid", "lineage_invalid", "authority_denied", "approval_required", "approval_invalid", "revoked", "stale_actor", "stale_case", "stale_head", "changed_replay", "retention_active", "legal_hold_active"]},
     "verification_outcome": {"enum": ["valid", "invalid", "incomplete"]},
     "verification_reason": {"enum": ["verified", "invalid_scope", "invalid_sequence", "invalid_record", "invalid_chain", "invalid_receipt", "invalid_artifact", "invalid_manifest", "broken_lineage", "invalid_operation", "missing_audit", "invalid_audit", "invalid_checkpoint", "truncated_interval"]},
     "case": {

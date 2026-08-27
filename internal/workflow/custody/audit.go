@@ -46,6 +46,62 @@ func replayAuditEvent(command Command, decision Decision, receipt Receipt, now t
 			decision.RevocationDigest), OccurredAt: formatTime(now)}
 }
 
+func deniedAuditEvent(command Command, intent string, failure error, now time.Time) tamperaudit.Event {
+	reason := safeDenialReason(failure)
+	digests := []string{intent, command.PolicyDigest, command.ExpectedHead.ChainHash,
+		command.Subject.Artifact.Digest, command.Subject.Manifest.Digest,
+		command.Subject.ManifestProvenanceDigest, command.Subject.IngestionReceiptDigest}
+	for _, optional := range []*string{command.SourceIdentityDigest, command.PurposeDigest,
+		command.DestinationDigest, command.RecipientDigest, command.TransformationDigest,
+		command.RuleDigest, command.ReasonDigest, command.MappingDigest, command.ApprovalDigest,
+		command.ExternalReceiptDigest, command.LifecycleReceiptDigest,
+		command.PriorAuthorizationDigest, command.ArtifactSetDigest} {
+		if optional != nil {
+			digests = append(digests, *optional)
+		}
+	}
+	return tamperaudit.Event{SchemaVersion: tamperaudit.EventSchemaVersion,
+		ContractVersion: tamperaudit.ContractVersion,
+		EventID: deterministicUUID("COH-CUSTODY-AUDIT-ID-V1\x00",
+			command.RequestID+"\x00"+intent+"\x00denied\x00"+reason),
+		OrganizationID: command.Case.OrganizationID, TenantID: command.Case.TenantID,
+		CaseID: command.Case.CaseID, ActorID: command.ActorID, ActorRevision: command.ActorRevision,
+		SourceSchema: CommandSchemaVersion, Operation: "evidence.custody." + string(command.Operation),
+		Outcome: "denied", ReasonCode: reason, SubjectID: command.Case.CaseID,
+		SubjectDigest: command.Subject.Artifact.Digest, EvidenceDigests: sortedDigests(digests...),
+		OccurredAt: formatTime(now)}
+}
+
+func safeDenialReason(failure error) string {
+	switch CodeOf(failure) {
+	case InvalidInput:
+		return "invalid_input"
+	case NotFound:
+		return "not_found"
+	case Conflict:
+		return "stale_or_conflicting_state"
+	case Canceled:
+		return "request_canceled"
+	case Timeout:
+		return "request_timeout"
+	case Unavailable:
+		return "dependency_unavailable"
+	case InternalFailure:
+		return "internal_failure"
+	case Denied:
+		switch Reason(failure) {
+		case "approval_required", "approval_invalid", "revoked", "stale_actor", "retention_active", "legal_hold_active",
+			"case_state_denied", "artifact_not_found", "artifact_invalid", "manifest_invalid",
+			"lineage_invalid", "authority_denied", "stale_case", "stale_head", "changed_replay":
+			return Reason(failure)
+		default:
+			return "request_denied"
+		}
+	default:
+		return "request_denied"
+	}
+}
+
 func auditEventBindingDigest(value tamperaudit.Event) (string, error) {
 	canonical, err := tamperaudit.CanonicalEvent(value)
 	if err != nil {

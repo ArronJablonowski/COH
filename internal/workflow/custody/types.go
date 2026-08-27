@@ -63,6 +63,7 @@ const (
 	ReasonApprovalRequired DecisionReason = "approval_required"
 	ReasonApprovalInvalid  DecisionReason = "approval_invalid"
 	ReasonRevoked          DecisionReason = "revoked"
+	ReasonStaleActor       DecisionReason = "stale_actor"
 	ReasonStaleCase        DecisionReason = "stale_case"
 	ReasonStaleHead        DecisionReason = "stale_head"
 	ReasonChangedReplay    DecisionReason = "changed_replay"

@@ -38,6 +38,10 @@ func mapDependency(ctx context.Context, reason string, err error) error {
 			return newError(Timeout, "request_timeout", false, context.DeadlineExceeded)
 		}
 	}
+	switch CodeOf(err) {
+	case Denied, NotFound, Conflict:
+		return newError(CodeOf(err), Reason(err), Retryable(err), err)
+	}
 	return newError(Unavailable, reason, true, err)
 }
 

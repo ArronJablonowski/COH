@@ -281,7 +281,8 @@ func validDecisionReason(value DecisionReason) bool {
 	case ReasonAuthorized, ReasonInvalidInput, ReasonCaseNotFound, ReasonCaseStateDenied,
 		ReasonArtifactNotFound, ReasonArtifactInvalid, ReasonManifestInvalid, ReasonLineageInvalid,
 		ReasonAuthorityDenied, ReasonApprovalRequired, ReasonApprovalInvalid, ReasonRevoked,
-		ReasonStaleCase, ReasonStaleHead, ReasonChangedReplay, ReasonRetentionActive, ReasonLegalHoldActive:
+		ReasonStaleActor, ReasonStaleCase, ReasonStaleHead, ReasonChangedReplay,
+		ReasonRetentionActive, ReasonLegalHoldActive:
 		return true
 	default:
 		return false

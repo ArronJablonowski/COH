@@ -28,6 +28,26 @@ func New(authority Authority, cases CaseStore, evidence EvidenceResolver, ledger
 }
 
 func (controller *Controller) Execute(ctx context.Context, command Command) (Result, error) {
+	result, err := controller.execute(ctx, command)
+	if err == nil || validateCommandShape(command) != nil {
+		return result, err
+	}
+	now := controller.clock.Now()
+	if !validTime(now) {
+		return Result{}, err
+	}
+	intent, digestErr := CommandBindingDigest(command)
+	if digestErr != nil {
+		return Result{}, err
+	}
+	event := deniedAuditEvent(command, intent, err, now)
+	if _, auditErr := controller.appendAudit(ctx, event); auditErr != nil {
+		return Result{}, auditErr
+	}
+	return Result{}, err
+}
+
+func (controller *Controller) execute(ctx context.Context, command Command) (Result, error) {
 	if err := contextError(ctx); err != nil {
 		return Result{}, err
 	}
