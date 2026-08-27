@@ -1,0 +1,17 @@
+{
+  "schema_version": "coh.splunk-denials/v1", "contract_version": "1.0.0",
+  "cases": [
+    {"class": "authentication_endpoint", "reason": "Authentication and token-management endpoints are forbidden", "covered_by": "TestConfigDenialMutations"},
+    {"class": "cloud_deployment", "reason": "Splunk Cloud index inventory is not qualified in v1", "covered_by": "TestConfigDenialMutations"},
+    {"class": "dangerous_capability", "reason": "Privileged capabilities invalidate qualification", "covered_by": "TestQualificationDenialMutations"},
+    {"class": "duplicate_key", "reason": "Duplicate JSON keys are rejected", "covered_by": "TestStrictContractDecoding"},
+    {"class": "generic_request", "reason": "Generic REST request passthrough is forbidden", "covered_by": "TestConfigDenialMutations"},
+    {"class": "internal_index", "reason": "Internal indexes are outside declared resources", "covered_by": "TestConfigDenialMutations"},
+    {"class": "malformed_evidence", "reason": "Malformed denial evidence is rejected", "covered_by": "TestEvidenceDenialMutations"},
+    {"class": "redirect", "reason": "HTTP redirects are never followed", "covered_by": "TestConfigDenialMutations"},
+    {"class": "secret_exposure", "reason": "Credential or session material cannot enter evidence", "covered_by": "TestEvidenceDenialMutations"},
+    {"class": "unknown_field", "reason": "Unknown contract fields are rejected", "covered_by": "TestStrictContractDecoding"},
+    {"class": "unqualified_version", "reason": "Unlisted minor versions remain disabled", "covered_by": "TestQualificationDenialMutations"},
+    {"class": "wildcard_index", "reason": "Wildcard and all-index targets are forbidden", "covered_by": "TestConfigDenialMutations"}
+  ]
+}

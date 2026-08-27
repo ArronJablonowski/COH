@@ -1,0 +1,11 @@
+{
+  "schema_version": "coh.splunk-qualification/v1", "contract_version": "1.0.0", "source_id": "splunk-prod", "adapter_version": "splunk-1.0.0",
+  "observed_at": "2026-08-27T18:00:00Z", "valid_until": "2026-08-27T18:10:00Z", "server_guid": "12345678-1234-1234-1234-123456789abc", "product_type": "enterprise", "version": "10.0.0", "build": "example-build",
+  "server_roles": ["search_head"], "capabilities": ["search"],
+  "config_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333", "server_identity_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444", "capabilities_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "receipts": [
+    {"operation": "splunk.server_info", "request_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666", "response_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777", "lease_decision_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888", "transport_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"},
+    {"operation": "splunk.current_context", "request_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "response_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "lease_decision_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "transport_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}
+  ],
+  "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+}

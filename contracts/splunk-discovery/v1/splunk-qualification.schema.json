@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/splunk-discovery/v1/splunk-qualification.schema.json",
+  "title": "COH Splunk qualification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "source_id", "adapter_version", "observed_at", "valid_until", "server_guid", "product_type", "version", "build", "server_roles", "capabilities", "config_digest", "server_identity_digest", "capabilities_digest", "receipts", "digest"],
+  "properties": {
+    "schema_version": {"const": "coh.splunk-qualification/v1"}, "contract_version": {"const": "1.0.0"},
+    "source_id": {"type": "string"}, "adapter_version": {"type": "string"}, "observed_at": {"type": "string", "format": "date-time"}, "valid_until": {"type": "string", "format": "date-time"},
+    "server_guid": {"type": "string"}, "product_type": {"const": "enterprise"}, "version": {"type": "string"}, "build": {"type": "string"},
+    "server_roles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}, "capabilities": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "config_digest": {"$ref": "#/$defs/digest"}, "server_identity_digest": {"$ref": "#/$defs/digest"}, "capabilities_digest": {"$ref": "#/$defs/digest"}, "digest": {"$ref": "#/$defs/digest"},
+    "receipts": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "object", "additionalProperties": false, "required": ["operation", "request_digest", "response_digest", "lease_decision_digest", "transport_digest"], "properties": {"operation": {"type": "string"}, "request_digest": {"$ref": "#/$defs/digest"}, "response_digest": {"$ref": "#/$defs/digest"}, "lease_decision_digest": {"$ref": "#/$defs/digest"}, "transport_digest": {"$ref": "#/$defs/digest"}}}}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+}

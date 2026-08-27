@@ -1,0 +1,5 @@
+{
+  "schema_version": "coh.splunk-redacted-error/v1", "contract_version": "1.0.0", "event": "splunk_discovery_denied", "reason_code": "authentication_or_privilege_denied", "source_id": "splunk-prod",
+  "request_digest": "sha256:1414141414141414141414141414141414141414141414141414141414141414", "response_digest": "sha256:1515151515151515151515151515151515151515151515151515151515151515", "lease_decision_digest": "sha256:1616161616161616161616161616161616161616161616161616161616161616", "transport_identity_digest": "sha256:1717171717171717171717171717171717171717171717171717171717171717",
+  "credential_exposed": false, "bearer_exposed": false, "sid_exposed": false, "native_text_exposed": false, "result_row_exposed": false, "vendor_body_exposed": false
+}

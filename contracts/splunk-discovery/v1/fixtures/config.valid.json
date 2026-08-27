@@ -1,0 +1,26 @@
+{
+  "schema_version": "coh.splunk-discovery-config/v1",
+  "contract_version": "1.0.0",
+  "source_id": "splunk-prod",
+  "adapter_version": "splunk-1.0.0",
+  "deployment": "enterprise",
+  "endpoint": "https://splunk.example.invalid:8089",
+  "expected_server_guid": "12345678-1234-1234-1234-123456789abc",
+  "expected_product_type": "enterprise",
+  "expected_server_roles": ["search_head"],
+  "qualified_minor_versions": ["10.0", "9.4"],
+  "credential_reference": "splunk-prod-token",
+  "tls_root_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "transport_identity_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "required_capabilities": ["search"],
+  "denied_capabilities": ["admin_all_objects", "change_authentication", "delete_by_keyword", "edit_roles", "edit_scripted", "edit_user", "indexes_edit", "output_file", "rest_apps_management", "rest_properties_set", "run_debug_commands"],
+  "resources": [{"id": "security-events", "index": "security"}],
+  "fields": [
+    {"vendor_name": "_time", "schema_name": "event.time", "type": "timestamp", "nullable": false, "indexed_required": true, "resource_ids": ["security-events"]},
+    {"vendor_name": "src_ip", "schema_name": "source.ip", "type": "ip", "nullable": true, "indexed_required": false, "resource_ids": ["security-events"]}
+  ],
+  "hard_limits": {"maximum_rows": 1000, "maximum_bytes": 1048576, "maximum_duration_millis": 60000, "maximum_pages": 10, "maximum_slices": 4, "maximum_cost_millionths": 1000000, "requests_per_minute": 12},
+  "maximum_inventory_entries": 1000,
+  "maximum_schema_entries_per_page": 256,
+  "qualification_lifetime_seconds": 600
+}
