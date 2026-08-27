@@ -107,6 +107,20 @@ func TestManifestRejectsInvalidRuleBindings(t *testing.T) {
 		"noncanonical absent constant": func(value *Manifest) {
 			value.Rules[0].ConstantValue = json.RawMessage(`{}`)
 		},
+		"dynamic operation": func(value *Manifest) {
+			value.Rules[0].Operation = Operation("expression")
+		},
+		"wildcard input": func(value *Manifest) {
+			path := "original.host.*"
+			value.Rules[0].InputPath = &path
+		},
+		"array traversal": func(value *Manifest) {
+			path := "original.host[0].name"
+			value.Rules[0].InputPath = &path
+		},
+		"wildcard output": func(value *Manifest) {
+			value.Rules[0].OutputPath = "ocsf.device.*"
+		},
 		"null ignored fields": func(value *Manifest) { value.IgnoredFields = nil },
 		"null enum table":     func(value *Manifest) { value.Rules[0].EnumTable = nil },
 		"lossy reversible": func(value *Manifest) {
@@ -116,6 +130,8 @@ func TestManifestRejectsInvalidRuleBindings(t *testing.T) {
 		"mismatched entity hint": func(value *Manifest) {
 			value.Rules[0].EntityHint.IdentifierType = "sha256"
 		},
+		"output leaf ceiling":    func(value *Manifest) { value.Limits.MaxOutputLeaves = 0 },
+		"path depth ceiling":     func(value *Manifest) { value.Limits.MaxDepth = 1 },
 		"missing predecessor":    func(value *Manifest) { value.Revision = 2 },
 		"unbound product digest": func(value *Manifest) { value.Source.ProductDigest = testDigest },
 		"nonbijective reversible enum": func(value *Manifest) {
@@ -153,6 +169,33 @@ func TestManifestAcceptsTypedNullConstant(t *testing.T) {
 	}
 	if _, _, err := CanonicalManifest(context.Background(), manifest); err != nil {
 		t.Fatalf("CanonicalManifest(null constant) err=%v", err)
+	}
+}
+
+func TestManifestRejectsUnsupportedIntegerScalarsAndSignedValueOverflow(t *testing.T) {
+	manifest := validManifest()
+	input := "original.event.code"
+	manifest.Rules[0] = Rule{
+		RuleID: "event-code", Sequence: 1, Operation: Enum, InputPath: &input,
+		OutputNamespace: "ocsf", OutputPath: "ocsf.status_id", InputType: Integer, OutputType: Integer,
+		Required: true, ConstantValue: json.RawMessage(`null`), EnumTable: []EnumEntry{{
+			Source: json.RawMessage(`9223372036854775808`), Target: json.RawMessage(`1`),
+		}}, Reversibility: "reversible", LossState: "lossless", LossReason: "none",
+	}
+	if _, _, err := CanonicalManifest(context.Background(), manifest); Code(err) != InvalidInput || ErrorReason(err) != RuleInvalid {
+		t.Fatalf("out-of-range enum integer err=%v code=%q reason=%q", err, Code(err), ErrorReason(err))
+	}
+
+	manifest = validManifest()
+	manifest.Rules[0] = Rule{
+		RuleID: "constant-value", Sequence: 1, Operation: Constant,
+		OutputNamespace: "ocsf", OutputPath: "ocsf.message", InputType: String, OutputType: String,
+		ConstantValue: json.RawMessage(`"too-large"`), EnumTable: []EnumEntry{},
+		Reversibility: "not_reversible", LossState: "lossless", LossReason: "constant",
+	}
+	manifest.Limits.MaxValueBytes = 4
+	if _, _, err := CanonicalManifest(context.Background(), manifest); Code(err) != InvalidInput || ErrorReason(err) != RuleInvalid {
+		t.Fatalf("oversized constant err=%v code=%q reason=%q", err, Code(err), ErrorReason(err))
 	}
 }
 

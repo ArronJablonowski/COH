@@ -73,6 +73,9 @@ func validateManifest(ctx context.Context, value Manifest) error {
 	if err := validateRules(ctx, value.Rules); err != nil {
 		return err
 	}
+	if !validRuleLimits(value.Rules, value.Limits) {
+		return newError(InvalidInput, RuleInvalid, nil)
+	}
 	return validateIgnored(value.IgnoredFields, value.Rules)
 }
 
@@ -150,6 +153,27 @@ func validReverseLoss(rule Rule) bool {
 	return rule.LossReason != "none"
 }
 
+func validRuleLimits(rules []Rule, limits Limits) bool {
+	if len(rules) > int(limits.MaxOutputLeaves) {
+		return false
+	}
+	for _, rule := range rules {
+		if len(strings.Split(rule.OutputPath, "."))-1 > int(limits.MaxDepth) ||
+			rule.InputPath != nil && len(strings.Split(*rule.InputPath, "."))-1 > int(limits.MaxDepth) {
+			return false
+		}
+		if rule.Operation == Constant && len(rule.ConstantValue) > int(limits.MaxValueBytes) {
+			return false
+		}
+		for _, entry := range rule.EnumTable {
+			if len(entry.Source) > int(limits.MaxValueBytes) || len(entry.Target) > int(limits.MaxValueBytes) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func validEnumTable(entries []EnumEntry, inputType, outputType ValueType, reversible bool) bool {
 	sources, targets := make(map[string]struct{}, len(entries)), make(map[string]struct{}, len(entries))
 	for _, entry := range entries {
@@ -195,7 +219,7 @@ func validScalar(raw json.RawMessage, kind ValueType) bool {
 		return ok
 	case Integer:
 		number, ok := value.(json.Number)
-		return ok && !strings.ContainsAny(number.String(), ".eE+")
+		return ok && canonicalRuntimeInteger(number.String())
 	case Boolean:
 		_, ok := value.(bool)
 		return ok
