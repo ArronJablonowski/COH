@@ -9,16 +9,17 @@ type orchestrator struct {
 	preflight  *preflight
 	derivation *derivationService
 	custody    CustodyRecorder
+	store      Store
 	auditor    Auditor
 	clock      Clock
 }
 
 func newOrchestrator(preflight *preflight, derivation *derivationService, custody CustodyRecorder,
-	auditor Auditor, clock Clock) (*orchestrator, error) {
-	if preflight == nil || derivation == nil || custody == nil || auditor == nil || clock == nil {
+	store Store, auditor Auditor, clock Clock) (*orchestrator, error) {
+	if preflight == nil || derivation == nil || custody == nil || store == nil || auditor == nil || clock == nil {
 		return nil, newError(InvalidInput, "orchestrator_dependencies_required", false, nil)
 	}
-	return &orchestrator{preflight, derivation, custody, auditor, clock}, nil
+	return &orchestrator{preflight, derivation, custody, store, auditor, clock}, nil
 }
 
 func (service *orchestrator) execute(ctx context.Context, command Command) (Result, error) {
@@ -28,19 +29,22 @@ func (service *orchestrator) execute(ctx context.Context, command Command) (Resu
 	}
 	opCtx, cancel := context.WithTimeout(ctx, command.Deadline.Sub(state.AuthorizedAt))
 	defer cancel()
-	published, err := service.derivation.deriveAndPublish(opCtx, state)
+	progress, recovered, err := service.recoverOrPlan(opCtx, state)
 	if err != nil {
 		return Result{}, err
 	}
-	now, err := service.nowBeforeRelease(state)
+	if recovered != nil {
+		return Result{Receipt: *recovered, Replayed: true}, nil
+	}
+	published, progress, err := service.publishOrResume(opCtx, state, progress)
 	if err != nil {
 		return Result{}, err
 	}
-	custody, err := service.recordCustody(opCtx, state, published)
+	custody, progress, err := service.custodyOrResume(opCtx, state, published, progress)
 	if err != nil {
 		return Result{}, err
 	}
-	record, err := buildRedactionRecord(state, published, custody, now)
+	record, err := buildRedactionRecord(state, published, custody, progress.UpdatedAt)
 	if err != nil {
 		return Result{}, err
 	}
@@ -57,11 +61,19 @@ func (service *orchestrator) execute(ctx context.Context, command Command) (Resu
 	if err != nil || ValidateRecord(record) != nil {
 		return Result{}, newError(InternalFailure, "record_build_failed", false, err)
 	}
-	receipt, err := buildRedactionReceipt(state, record, now)
+	receipt, err := buildRedactionReceipt(state, record, progress.UpdatedAt)
 	if err != nil {
 		return Result{}, err
 	}
-	return Result{Receipt: receipt}, nil
+	stored, replayed, err := service.store.Commit(opCtx, state.Command.IdempotencyKey, state.IntentDigest, record, receipt)
+	if err != nil {
+		return Result{}, mapDependency(opCtx, "redaction_commit_unavailable", err)
+	}
+	if ValidateReceipt(stored) != nil || stored.IntentDigest != state.IntentDigest ||
+		stored.IdempotencyDigest != progress.IdempotencyDigest {
+		return Result{}, newError(Denied, "stored_receipt_invalid", false, nil)
+	}
+	return Result{Receipt: stored, Replayed: replayed}, nil
 }
 
 func (service *orchestrator) nowBeforeRelease(state authorizedState) (time.Time, error) {
@@ -78,10 +90,7 @@ func (service *orchestrator) nowBeforeRelease(state authorizedState) (time.Time,
 
 func (service *orchestrator) recordCustody(ctx context.Context, state authorizedState,
 	published publicationResult) (CustodyProof, error) {
-	request := CustodyRequest{Command: cloneCommand(state.Command), Derived: published.Derived.Reference,
-		MappingDigest: published.Derivation.Mapping.MappingDigest, ApprovalDigest: state.Approval.UseDigest,
-		DecisionDigest: state.Decision.DecisionDigest, ExpectedHead: cloneHead(state.CustodyHead),
-		Deadline: state.Command.Deadline}
+	request := custodyRequestFor(state, published)
 	proof, _, err := service.custody.RecordRedaction(ctx, request)
 	if err != nil {
 		return CustodyProof{}, mapDependency(ctx, "custody_record_unavailable", err)
@@ -93,6 +102,13 @@ func (service *orchestrator) recordCustody(ctx context.Context, state authorized
 		return CustodyProof{}, mapDependency(ctx, "custody_verification_unavailable", err)
 	}
 	return proof, nil
+}
+
+func custodyRequestFor(state authorizedState, published publicationResult) CustodyRequest {
+	return CustodyRequest{Command: cloneCommand(state.Command), Derived: published.Derived.Reference,
+		MappingDigest: published.Derivation.Mapping.MappingDigest, ApprovalDigest: state.Approval.UseDigest,
+		DecisionDigest: state.Decision.DecisionDigest, ExpectedHead: cloneHead(state.CustodyHead),
+		Deadline: state.Command.Deadline}
 }
 
 func validCustodyProof(value CustodyProof) bool {

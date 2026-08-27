@@ -29,7 +29,7 @@ var (
 		"claim": {}, "evidence": {}, "finding": {}, "model": {},
 		"query": {}, "risk": {}, "roe": {}, "run": {}, "skill": {},
 		"task": {}, "timeline_event": {}, "vulnerability": {}, "memory": {}, "retrieval": {}, "subagent_dag": {},
-		"case_lifecycle": {}, "custody_record": {},
+		"case_lifecycle": {}, "custody_record": {}, "redaction_record": {},
 	}
 )
 

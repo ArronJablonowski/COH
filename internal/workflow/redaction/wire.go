@@ -234,6 +234,35 @@ type receiptWire struct {
 	ReceiptDigest        string       `json:"receipt_digest"`
 }
 
+type publishedEvidenceWire struct {
+	Reference     evidenceWire `json:"reference"`
+	ReceiptDigest string       `json:"receipt_digest"`
+}
+
+type custodyProofWire struct {
+	ReceiptDigest string `json:"receipt_digest"`
+	RecordDigest  string `json:"record_digest"`
+	ChainHash     string `json:"chain_hash"`
+	Sequence      uint64 `json:"sequence"`
+	AuditDigest   string `json:"audit_digest"`
+}
+
+type progressWire struct {
+	Case              caseWire               `json:"case"`
+	IdempotencyDigest string                 `json:"idempotency_digest"`
+	IntentDigest      string                 `json:"intent_digest"`
+	Phase             ProgressPhase          `json:"phase"`
+	Revision          uint64                 `json:"revision"`
+	PlanDigest        string                 `json:"plan_digest"`
+	DecisionDigest    string                 `json:"decision_digest"`
+	ApprovalUseDigest string                 `json:"approval_use_digest"`
+	Derived           *publishedEvidenceWire `json:"derived"`
+	Mapping           *publishedEvidenceWire `json:"mapping"`
+	MappingDigest     *string                `json:"mapping_digest"`
+	Custody           *custodyProofWire      `json:"custody"`
+	UpdatedAt         string                 `json:"updated_at"`
+}
+
 func caseToWire(v domain.CaseRef) caseWire { return caseWire{v.OrganizationID, v.TenantID, v.CaseID} }
 func artifactToWire(v domain.ArtifactRef) artifactWire {
 	return artifactWire{v.Digest, v.MediaType, v.Classification, v.Length}
@@ -313,4 +342,28 @@ func receiptToWire(v Receipt) receiptWire {
 	return receiptWire{v.SchemaVersion, v.ContractVersion, v.RequestID, caseToWire(v.Case), v.IdempotencyDigest,
 		v.IntentDigest, v.RedactionID, v.RecordDigest, evidenceToWire(v.Derived), evidenceToWire(v.MappingReference),
 		v.MappingDigest, v.CustodyReceiptDigest, v.AuditEventDigest, v.ProvenanceDigest, formatTime(v.CreatedAt), v.ReceiptDigest}
+}
+
+func publishedToWire(value *PublishedEvidence) *publishedEvidenceWire {
+	if value == nil {
+		return nil
+	}
+	return &publishedEvidenceWire{Reference: evidenceToWire(value.Reference), ReceiptDigest: value.ReceiptDigest}
+}
+
+func custodyProofToWire(value *CustodyProof) *custodyProofWire {
+	if value == nil {
+		return nil
+	}
+	return &custodyProofWire{ReceiptDigest: value.ReceiptDigest, RecordDigest: value.RecordDigest,
+		ChainHash: value.ChainHash, Sequence: value.Sequence, AuditDigest: value.AuditDigest}
+}
+
+func progressToWire(value Progress) progressWire {
+	return progressWire{Case: caseToWire(value.Case), IdempotencyDigest: value.IdempotencyDigest,
+		IntentDigest: value.IntentDigest, Phase: value.Phase, Revision: value.Revision,
+		PlanDigest: value.PlanDigest, DecisionDigest: value.DecisionDigest,
+		ApprovalUseDigest: value.ApprovalUseDigest, Derived: publishedToWire(value.Derived),
+		Mapping: publishedToWire(value.Mapping), MappingDigest: clonePointer(value.MappingDigest),
+		Custody: custodyProofToWire(value.Custody), UpdatedAt: formatTime(value.UpdatedAt)}
 }
