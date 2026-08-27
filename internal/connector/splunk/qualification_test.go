@@ -19,6 +19,8 @@ func (clock *splunkFixedClock) Now() time.Time { return clock.now }
 type qualificationClientStub struct {
 	identity     ServerIdentity
 	current      CurrentContext
+	indexes      IndexInventory
+	fields       RegisteredFieldInventory
 	receipts     []CallReceipt
 	err          error
 	operations   []string
@@ -35,12 +37,14 @@ func (client *qualificationClientStub) CurrentContext(_ context.Context, binding
 	return client.current, client.nextReceipt(), client.err
 }
 
-func (client *qualificationClientStub) Indexes(context.Context, InventoryRequest) (IndexInventory, CallReceipt, error) {
-	return IndexInventory{}, CallReceipt{}, client.err
+func (client *qualificationClientStub) Indexes(_ context.Context, request InventoryRequest) (IndexInventory, CallReceipt, error) {
+	client.operations = append(client.operations, request.Binding.Operation)
+	return client.indexes, client.nextReceipt(), client.err
 }
 
-func (client *qualificationClientStub) RegisteredFields(context.Context, InventoryRequest) (RegisteredFieldInventory, CallReceipt, error) {
-	return RegisteredFieldInventory{}, CallReceipt{}, client.err
+func (client *qualificationClientStub) RegisteredFields(_ context.Context, request InventoryRequest) (RegisteredFieldInventory, CallReceipt, error) {
+	client.operations = append(client.operations, request.Binding.Operation)
+	return client.fields, client.nextReceipt(), client.err
 }
 
 func (client *qualificationClientStub) nextReceipt() CallReceipt {
@@ -142,7 +146,9 @@ func splunkTestQualifier(t testing.TB) (*Qualifier, *qualificationClientStub) {
 	}
 	client := &qualificationClientStub{identity: ServerIdentity{GUID: config.ExpectedServerGUID,
 		ProductType: "enterprise", Version: "10.0.0", Build: "example-build", ServerRoles: []string{"search_head"}},
-		current: CurrentContext{Capabilities: []string{"get_metadata", "search"}}, receipts: receipts}
+		current: CurrentContext{Capabilities: []string{"get_metadata", "search"}},
+		indexes: IndexInventory{Names: []string{"security"}}, fields: RegisteredFieldInventory{Fields: []RegisteredField{
+			{Name: "_time", Indexed: true}, {Name: "src_ip", Indexed: false}}}, receipts: receipts}
 	qualifier, err := NewQualifier(config, client, &splunkFixedClock{now: splunkTestNow})
 	if err != nil {
 		t.Fatal(err)
