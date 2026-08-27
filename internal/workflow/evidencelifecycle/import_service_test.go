@@ -237,9 +237,10 @@ func (stub *importReader) VerifyImport(ctx context.Context, _ ImportRequest) (Ve
 }
 
 type importAuthority struct {
-	calls *[]string
-	now   time.Time
-	err   error
+	calls  *[]string
+	now    time.Time
+	err    error
+	mutate func(*Decision)
 }
 
 func (stub *importAuthority) AuthorizeEvidenceLifecycle(_ context.Context,
@@ -257,6 +258,9 @@ func (stub *importAuthority) AuthorizeEvidenceLifecycle(_ context.Context,
 		RevocationDigest: lifecycleDigest("import-revocation"), ExpectedCaseRevision: request.CaseRevision,
 		ExpectedCustodyHead: request.CurrentCustodyHead, Outcome: Allow, ReasonCode: ReasonAuthorized,
 		IssuedAt: stub.now, ExpiresAt: stub.now.Add(30 * time.Minute), Revision: 1}
+	if stub.mutate != nil {
+		stub.mutate(&value)
+	}
 	value.DecisionDigest, _ = DecisionBindingDigest(value)
 	return value, nil
 }

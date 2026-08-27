@@ -6,6 +6,7 @@ func validVerifiedImport(value VerifiedImport, command Command, reference string
 	if command.PackageDigest == nil || command.SourceDigest == nil ||
 		ValidateExportManifest(value.Manifest) != nil || ValidateDetachedSignature(value.Signature) != nil ||
 		ValidatePackageHeader(value.Package.Header) != nil || ValidateImportVerification(value.Verification) != nil ||
+		value.Manifest.Case != command.Case ||
 		value.Package.Reference != reference || value.Package.PackageDigest != *command.PackageDigest ||
 		value.Package.HeaderDigest != value.Package.Header.HeaderDigest ||
 		value.Package.PackageLength != value.Package.Header.PackageLength ||
