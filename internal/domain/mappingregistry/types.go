@@ -5,6 +5,8 @@ package mappingregistry
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/ArronJablonowski/COH/internal/domain/normalizedevent"
 )
 
 const (
@@ -237,6 +239,11 @@ const (
 	ContextCanceled             Reason = "context_canceled"
 	ContextDeadline             Reason = "context_deadline"
 	DependencyUnavailableReason Reason = "dependency_unavailable"
+	RegisteredReason            Reason = "registered"
+	PromotedReason              Reason = "promoted"
+	RolledBackReason            Reason = "rolled_back"
+	RevokedReason               Reason = "revoked"
+	AppliedReason               Reason = "applied"
 )
 
 type EmittedEntityHint struct {
@@ -297,6 +304,7 @@ type RegistrySnapshot struct {
 	CurrentManifestDigest     string
 	PredecessorManifestDigest string
 	Revocation                RevocationBinding
+	CurrentRevoked            bool
 }
 
 type SignatureRequest struct {
@@ -328,10 +336,13 @@ type AuditRecord struct {
 }
 type ProvenanceRecord struct{ OperationID, CommandDigest, OutcomeDigest, PreviousDigest, Digest string }
 type Commit struct {
-	Command    Command
-	Outcome    Outcome
-	Receipt    Receipt
-	Audit      AuditRecord
-	Provenance ProvenanceRecord
+	Command            Command
+	SignedMapping      *SignedMapping
+	Snapshot           *RegistrySnapshot
+	NormalizedEnvelope *normalizedevent.ValidatedEnvelope
+	Outcome            Outcome
+	Receipt            Receipt
+	Audit              AuditRecord
+	Provenance         ProvenanceRecord
 }
 type Clock interface{ Now() time.Time }

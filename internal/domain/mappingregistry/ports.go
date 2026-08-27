@@ -23,6 +23,7 @@ type SourceSchemaResolver interface {
 // persists command, outcome, receipt, audit, and provenance.
 type RegistryStore interface {
 	LoadReceipt(context.Context, string) (Receipt, bool, error)
+	LoadOutcome(context.Context, string) (Outcome, bool, error)
 	LoadCommandDigest(context.Context, string) (string, bool, error)
 	Begin(context.Context, Command, string) (bool, error)
 	LoadSnapshots(context.Context, Case, SourceMatcher) ([]RegistrySnapshot, error)

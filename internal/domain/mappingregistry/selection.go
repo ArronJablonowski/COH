@@ -2,6 +2,7 @@ package mappingregistry
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -65,6 +66,9 @@ func selectSnapshot(command Command, snapshots []RegistrySnapshot) (RegistrySnap
 		!validRevocation(snapshot.Revocation) || snapshot.PredecessorManifestDigest != "" && !digestPattern.MatchString(snapshot.PredecessorManifestDigest) {
 		return RegistrySnapshot{}, newError(UnavailableError, DependencyUnavailableReason, nil)
 	}
+	if snapshot.CurrentRevoked {
+		return RegistrySnapshot{}, newError(DeniedError, ManifestRevoked, nil)
+	}
 	if command.ExpectedRegistryRevision != 0 && command.ExpectedRegistryRevision != snapshot.Revision {
 		if command.ExpectedRegistryRevision < snapshot.Revision {
 			return RegistrySnapshot{}, newError(DeniedError, MappingDowngrade, nil)
@@ -99,20 +103,31 @@ func verifySelectedMapping(ctx context.Context, verifier SignatureVerifier, now 
 	if !validPredecessor(snapshot, signed.Manifest) {
 		return newError(DeniedError, MappingDowngrade, nil)
 	}
+	decision, err := verifySignedAuthority(ctx, verifier, now, signed)
+	if err != nil {
+		return err
+	}
+	if decision.Revocation != snapshot.Revocation {
+		return newError(DeniedError, RevocationStale, nil)
+	}
+	return nil
+}
+
+func verifySignedAuthority(ctx context.Context, verifier SignatureVerifier, now time.Time, signed SignedMapping) (SignatureDecision, error) {
 	notBefore, beforeOK := parseTimestamp(signed.Manifest.NotBefore)
 	notAfter, afterOK := parseTimestamp(signed.Manifest.NotAfter)
 	if !beforeOK || !afterOK {
-		return newError(InvalidInput, ManifestInvalid, nil)
+		return SignatureDecision{}, newError(InvalidInput, ManifestInvalid, nil)
 	}
 	if now.IsZero() {
-		return newError(UnavailableError, DependencyUnavailableReason, nil)
+		return SignatureDecision{}, newError(UnavailableError, DependencyUnavailableReason, nil)
 	}
 	now = now.UTC()
 	if now.Before(notBefore) {
-		return newError(DeniedError, ManifestNotYetValid, nil)
+		return SignatureDecision{}, newError(DeniedError, ManifestNotYetValid, nil)
 	}
 	if !now.Before(notAfter) {
-		return newError(DeniedError, ManifestExpired, nil)
+		return SignatureDecision{}, newError(DeniedError, ManifestExpired, nil)
 	}
 	decision, err := verifier.VerifySignature(ctx, SignatureRequest{
 		ManifestDigest: signed.ManifestDigest, PublisherID: signed.PublisherID,
@@ -122,27 +137,26 @@ func verifySelectedMapping(ctx context.Context, verifier SignatureVerifier, now 
 		Revocation: signed.Manifest.Revocation,
 	})
 	if err != nil {
-		return normalizeDependencyError(err)
+		return SignatureDecision{}, normalizeDependencyError(err)
 	}
 	if err := checkContext(ctx); err != nil {
-		return err
+		return SignatureDecision{}, err
 	}
 	if !decision.Verified {
-		return newError(DeniedError, SignatureInvalid, nil)
+		return SignatureDecision{}, newError(DeniedError, SignatureInvalid, nil)
 	}
 	if decision.TrustRevision != signed.PublisherKeyRevision {
-		return newError(DeniedError, PublisherUntrusted, nil)
+		return SignatureDecision{}, newError(DeniedError, PublisherUntrusted, nil)
 	}
 	if decision.Revoked {
-		return newError(DeniedError, ManifestRevoked, nil)
+		return SignatureDecision{}, newError(DeniedError, ManifestRevoked, nil)
 	}
-	if !validRevocation(decision.Revocation) || decision.Revocation != snapshot.Revocation ||
-		decision.Revocation.ListID != signed.Manifest.Revocation.ListID ||
+	if !validRevocation(decision.Revocation) || decision.Revocation.ListID != signed.Manifest.Revocation.ListID ||
 		decision.Revocation.ListDigest != signed.Manifest.Revocation.ListDigest ||
 		decision.Revocation.MinimumRevision < signed.Manifest.Revocation.MinimumRevision {
-		return newError(DeniedError, RevocationStale, nil)
+		return SignatureDecision{}, newError(DeniedError, RevocationStale, nil)
 	}
-	return nil
+	return decision, nil
 }
 
 func validPredecessor(snapshot RegistrySnapshot, manifest Manifest) bool {
@@ -168,6 +182,12 @@ func sameSource(left, right SourceMatcher) bool {
 func normalizeDependencyError(err error) error {
 	if Code(err) != "" {
 		return err
+	}
+	if errors.Is(err, context.Canceled) {
+		return newError(CanceledError, ContextCanceled, err)
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return newError(TimeoutError, ContextDeadline, err)
 	}
 	return newError(UnavailableError, DependencyUnavailableReason, err)
 }

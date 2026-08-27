@@ -184,6 +184,9 @@ func (store *selectionStore) LoadSignedMapping(context.Context, string) (SignedM
 func (*selectionStore) LoadReceipt(context.Context, string) (Receipt, bool, error) {
 	return Receipt{}, false, nil
 }
+func (*selectionStore) LoadOutcome(context.Context, string) (Outcome, bool, error) {
+	return Outcome{}, false, nil
+}
 func (*selectionStore) LoadCommandDigest(context.Context, string) (string, bool, error) {
 	return "", false, nil
 }

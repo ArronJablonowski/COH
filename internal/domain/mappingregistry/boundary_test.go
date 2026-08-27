@@ -21,7 +21,7 @@ func TestNarrowPortsExposeNoUnsafeSurface(t *testing.T) {
 	ports := []any{(*EvidenceVerifier)(nil), (*SignatureVerifier)(nil), (*SourceSchemaResolver)(nil), (*RegistryStore)(nil), (*AuditBuilder)(nil), (*ProvenanceBuilder)(nil), (*Clock)(nil)}
 	for _, port := range ports {
 		typeOf := reflect.TypeOf(port).Elem()
-		if typeOf.NumMethod() == 0 || typeOf.NumMethod() > 6 {
+		if typeOf.NumMethod() == 0 || typeOf.NumMethod() > 7 {
 			t.Fatalf("%s method count=%d", typeOf.Name(), typeOf.NumMethod())
 		}
 	}
