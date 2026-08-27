@@ -64,11 +64,15 @@ type exportRig struct {
 	service   *ExportService
 	command   Command
 	calls     []string
+	authority *exportAuthority
+	cases     *exportCases
 	signer    *exportSigner
+	verifier  *exportSignatureVerifier
 	packages  *exportPackages
 	custody   *exportCustody
 	lifecycle *exportLifecycle
 	auditor   *exportAuditor
+	store     *exportStore
 }
 
 func newExportRig(t *testing.T) *exportRig {
@@ -87,17 +91,18 @@ func newExportRig(t *testing.T) *exportRig {
 	cases := &exportCases{calls: &rig.calls, snapshot: CaseSnapshot{Case: command.Case, State: "open",
 		Classification: "restricted", Revision: command.ExpectedCaseRevision, RetainUntil: now.Add(-time.Hour),
 		ProvenanceDigest: lifecycleDigest("case-provenance")}}
-	authority := &exportAuthority{calls: &rig.calls, now: now}
+	rig.authority = &exportAuthority{calls: &rig.calls, now: now}
+	rig.cases = cases
 	rig.custody = &exportCustody{calls: &rig.calls, head: command.ExpectedCustodyHead, now: now}
 	rig.lifecycle = &exportLifecycle{calls: &rig.calls, cases: cases}
 	rig.signer = &exportSigner{calls: &rig.calls}
-	verifier := &exportSignatureVerifier{calls: &rig.calls}
+	rig.verifier = &exportSignatureVerifier{calls: &rig.calls}
 	rig.packages = &exportPackages{calls: &rig.calls}
-	store := &exportStore{calls: &rig.calls}
+	rig.store = &exportStore{calls: &rig.calls}
 	rig.auditor = &exportAuditor{calls: &rig.calls}
-	service, err := NewExportService(authority, cases, rig.lifecycle,
+	service, err := NewExportService(rig.authority, cases, rig.lifecycle,
 		exportEvidence{calls: &rig.calls, value: evidence}, exportRedactions{calls: &rig.calls},
-		rig.custody, rig.signer, verifier, rig.packages, store, rig.auditor, exportClock{now},
+		rig.custody, rig.signer, rig.verifier, rig.packages, rig.store, rig.auditor, exportClock{now},
 		SigningProfile{KeyID: "evidence.primary", KeyRevision: 3,
 			TrustSnapshotDigest: lifecycleDigest("signing-trust"),
 			KeyRevocationDigest: lifecycleDigest("signing-revocation"), Validity: 20 * time.Minute})
@@ -113,12 +118,17 @@ type exportClock struct{ now time.Time }
 func (clock exportClock) Now() time.Time { return clock.now }
 
 type exportAuthority struct {
-	calls *[]string
-	now   time.Time
+	calls  *[]string
+	now    time.Time
+	err    error
+	mutate func(*Decision)
 }
 
 func (stub *exportAuthority) AuthorizeEvidenceLifecycle(_ context.Context, request AuthorizationRequest) (Decision, error) {
 	*stub.calls = append(*stub.calls, "authority")
+	if stub.err != nil {
+		return Decision{}, stub.err
+	}
 	value := Decision{SchemaVersion: DecisionSchemaVersion, ContractVersion: ContractVersion,
 		DecisionID: lifecycleUUID("export-decision"), AuthorizationDigest: request.AuthorizationDigest,
 		IntentDigest: request.IntentDigest, Operation: Export, Case: request.Command.Case,
@@ -128,6 +138,9 @@ func (stub *exportAuthority) AuthorizeEvidenceLifecycle(_ context.Context, reque
 		ExpectedCaseRevision: request.CaseRevision, ExpectedCustodyHead: request.CurrentCustodyHead,
 		Outcome: Allow, ReasonCode: ReasonAuthorized, IssuedAt: stub.now,
 		ExpiresAt: stub.now.Add(30 * time.Minute), Revision: 1}
+	if stub.mutate != nil {
+		stub.mutate(&value)
+	}
 	value.DecisionDigest, _ = DecisionBindingDigest(value)
 	return value, nil
 }
@@ -240,8 +253,9 @@ func (stub *exportCustody) RecoverLifecycle(_ context.Context, _ domain.CaseRef,
 }
 
 type exportSigner struct {
-	calls *[]string
-	err   error
+	calls  *[]string
+	err    error
+	mutate func(*DetachedSignature)
 }
 
 func (stub *exportSigner) SignManifest(_ context.Context, request SignRequest) (DetachedSignature, error) {
@@ -249,24 +263,37 @@ func (stub *exportSigner) SignManifest(_ context.Context, request SignRequest) (
 	if stub.err != nil {
 		return DetachedSignature{}, stub.err
 	}
-	return validDetachedSignature(request.ManifestDigest), nil
+	value := validDetachedSignature(request.ManifestDigest)
+	if stub.mutate != nil {
+		stub.mutate(&value)
+	}
+	return value, nil
 }
 
-type exportSignatureVerifier struct{ calls *[]string }
+type exportSignatureVerifier struct {
+	calls *[]string
+	err   error
+}
 
 func (stub *exportSignatureVerifier) VerifyDetachedSignature(context.Context, VerifySignatureRequest) error {
 	*stub.calls = append(*stub.calls, "signature.verify")
-	return nil
+	return stub.err
 }
 
 type exportPackages struct {
-	calls     *[]string
-	verifyErr error
-	value     QuarantinedPackage
+	calls      *[]string
+	buildErr   error
+	verifyErr  error
+	value      QuarantinedPackage
+	mutate     func(*QuarantinedPackage)
+	recoverErr error
 }
 
 func (stub *exportPackages) BuildPackage(_ context.Context, request PackageBuildRequest) (QuarantinedPackage, error) {
 	*stub.calls = append(*stub.calls, "package.build")
+	if stub.buildErr != nil {
+		return QuarantinedPackage{}, stub.buildErr
+	}
 	header := PackageHeader{SchemaVersion: PackageHeaderSchemaVersion, ContractVersion: ContractVersion,
 		Magic: PackageMagic, PackageVersion: PackageVersion, Compression: NoCompression,
 		ManifestLength: 4096, SignatureLength: 256, ArtifactCount: uint16(len(request.Manifest.Artifacts)), PackageLength: 8192}
@@ -275,6 +302,9 @@ func (stub *exportPackages) BuildPackage(_ context.Context, request PackageBuild
 	stub.value = QuarantinedPackage{Reference: "quarantine.export.1", Header: header,
 		HeaderDigest: header.HeaderDigest, PackageDigest: lifecycleDigest("export-package"), PackageLength: header.PackageLength,
 		ManifestDigest: request.Manifest.ManifestDigest, SignatureDigest: signatureDigest}
+	if stub.mutate != nil {
+		stub.mutate(&stub.value)
+	}
 	return stub.value, nil
 }
 func (stub *exportPackages) VerifyPackage(context.Context, QuarantinedPackage, PackageLimits) error {
@@ -282,20 +312,25 @@ func (stub *exportPackages) VerifyPackage(context.Context, QuarantinedPackage, P
 	return stub.verifyErr
 }
 func (stub *exportPackages) RecoverPackage(context.Context, domain.CaseRef, string) (QuarantinedPackage, bool, error) {
-	return stub.value, true, nil
+	return stub.value, stub.value.PackageDigest != "", stub.recoverErr
 }
 
-type exportStore struct{ calls *[]string }
+type exportStore struct {
+	calls    *[]string
+	receipt  Receipt
+	progress Progress
+}
 
 func (stub *exportStore) Recover(context.Context, domain.CaseRef, string) (Receipt, bool, error) {
 	*stub.calls = append(*stub.calls, "recover")
-	return Receipt{}, false, nil
+	return stub.receipt, stub.receipt.ReceiptDigest != "", nil
 }
-func (*exportStore) LoadProgress(context.Context, domain.CaseRef, string) (Progress, bool, error) {
-	return Progress{}, false, nil
+func (stub *exportStore) LoadProgress(context.Context, domain.CaseRef, string) (Progress, bool, error) {
+	return stub.progress, stub.progress.ProgressDigest != "", nil
 }
 func (stub *exportStore) Advance(_ context.Context, _ string, _ string, value Progress) (Progress, bool, error) {
 	*stub.calls = append(*stub.calls, "store."+string(value.Phase))
+	stub.progress = value
 	return value, false, nil
 }
 func (stub *exportStore) Commit(_ context.Context, _, _ string, progress Progress, record Record,
@@ -304,12 +339,14 @@ func (stub *exportStore) Commit(_ context.Context, _, _ string, progress Progres
 	if ValidateProgress(progress) != nil || ValidateRecord(record) != nil || ValidateReceipt(receipt) != nil {
 		return Receipt{}, false, errors.New("invalid commit")
 	}
+	stub.progress, stub.receipt = progress, receipt
 	return receipt, false, nil
 }
 
 type exportAuditor struct {
 	calls     *[]string
 	appendErr error
+	verifyErr error
 }
 
 func (stub *exportAuditor) AppendLifecycleEvent(context.Context, tamperaudit.Event) error {
@@ -318,7 +355,7 @@ func (stub *exportAuditor) AppendLifecycleEvent(context.Context, tamperaudit.Eve
 }
 func (stub *exportAuditor) VerifyLifecycleEvent(context.Context, domain.CaseRef, string, string) error {
 	*stub.calls = append(*stub.calls, "audit.verify")
-	return nil
+	return stub.verifyErr
 }
 
 func containsCall(values []string, wanted string) bool {
