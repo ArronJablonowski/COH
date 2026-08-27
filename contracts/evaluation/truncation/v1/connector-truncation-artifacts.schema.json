@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.example/contracts/evaluation/truncation/v1/connector-truncation-artifacts.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "corpus_digest", "environment_digest", "reproduction_command", "artifacts"],
+  "properties": {
+    "schema_version": {"const": "coh.connector-truncation-artifacts/v1"},
+    "corpus_digest": {"$ref": "#/$defs/digest"}, "environment_digest": {"$ref": "#/$defs/digest"},
+    "reproduction_command": {"const": "./scripts/verify_connector_truncation.sh"},
+    "artifacts": {"type": "array", "minItems": 6, "maxItems": 16, "items": {"$ref": "#/$defs/artifact"}}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "artifact": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256", "length"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{2,127}$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "length": {"type": "integer", "minimum": 1, "maximum": 104857600}
+      }
+    }
+  }
+}

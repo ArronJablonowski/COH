@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.example/contracts/evaluation/truncation/v1/connector-truncation-threshold.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "corpus_digest", "environment_digest", "thresholds", "metrics", "outcome"],
+  "properties": {
+    "schema_version": {"const": "coh.connector-truncation-threshold/v1"},
+    "corpus_digest": {"$ref": "#/$defs/digest"}, "environment_digest": {"$ref": "#/$defs/digest"},
+    "thresholds": {"$ref": "#/$defs/thresholds"}, "metrics": {"$ref": "#/$defs/metrics"},
+    "outcome": {"enum": ["passed", "denied"]}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "thresholds": {
+      "type": "object", "additionalProperties": false,
+      "required": ["maximum_false_complete", "maximum_duplicate_rows", "maximum_missing_rows", "minimum_replay_rate", "minimum_outcome_grade_rate", "minimum_trajectory_grade_rate", "minimum_boundary_coverage_rate"],
+      "properties": {
+        "maximum_false_complete": {"const": 0}, "maximum_duplicate_rows": {"const": 0}, "maximum_missing_rows": {"const": 0},
+        "minimum_replay_rate": {"const": 1}, "minimum_outcome_grade_rate": {"const": 1},
+        "minimum_trajectory_grade_rate": {"const": 1}, "minimum_boundary_coverage_rate": {"const": 1}
+      }
+    },
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["task_count", "trial_count", "required_boundary_count", "covered_boundary_count", "false_complete", "duplicate_rows", "missing_rows", "replay_rate", "outcome_grade_rate", "trajectory_grade_rate", "boundary_coverage_rate"],
+      "properties": {
+        "task_count": {"type": "integer", "minimum": 1}, "trial_count": {"type": "integer", "minimum": 5},
+        "required_boundary_count": {"type": "integer", "minimum": 1}, "covered_boundary_count": {"type": "integer", "minimum": 1},
+        "false_complete": {"type": "integer", "minimum": 0}, "duplicate_rows": {"type": "integer", "minimum": 0},
+        "missing_rows": {"type": "integer", "minimum": 0}, "replay_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "outcome_grade_rate": {"type": "number", "minimum": 0, "maximum": 1}, "trajectory_grade_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "boundary_coverage_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.example/contracts/evaluation/truncation/v1/connector-truncation-environment.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "environment_version", "corpus_version", "go_version", "qualified_platform", "clock", "randomness", "network", "contracts", "fixture_manifests"],
+  "properties": {
+    "schema_version": {"const": "coh.connector-truncation-environment/v1"},
+    "environment_version": {"const": "1.0.0"},
+    "corpus_version": {"const": "1.0.0"},
+    "go_version": {"const": "1.26.7"},
+    "qualified_platform": {"const": "darwin/arm64"},
+    "clock": {"const": "logical-trial-clock/v1"},
+    "randomness": {"const": "none"},
+    "network": {"const": "disabled"},
+    "contracts": {"type": "array", "minItems": 4, "maxItems": 16, "items": {"$ref": "#/$defs/pin"}},
+    "fixture_manifests": {"type": "array", "minItems": 2, "maxItems": 16, "items": {"$ref": "#/$defs/pin"}}
+  },
+  "$defs": {
+    "pin": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version", "digest"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

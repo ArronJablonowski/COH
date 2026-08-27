@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.example/contracts/evaluation/truncation/v1/connector-truncation-graders.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "corpus_version", "corpus_digest", "environment_digest", "metrics", "trace_stream_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.connector-truncation-graders/v1"}, "corpus_version": {"const": "1.0.0"},
+    "corpus_digest": {"$ref": "#/$defs/digest"}, "environment_digest": {"$ref": "#/$defs/digest"},
+    "trace_stream_digest": {"$ref": "#/$defs/digest"}, "metrics": {"$ref": "#/$defs/metrics"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["task_count", "trial_count", "required_boundary_count", "covered_boundary_count", "false_complete", "duplicate_rows", "missing_rows", "replay_rate", "outcome_grade_rate", "trajectory_grade_rate", "boundary_coverage_rate"],
+      "properties": {
+        "task_count": {"type": "integer", "minimum": 1}, "trial_count": {"type": "integer", "minimum": 5},
+        "required_boundary_count": {"type": "integer", "minimum": 1}, "covered_boundary_count": {"type": "integer", "minimum": 1},
+        "false_complete": {"type": "integer", "minimum": 0}, "duplicate_rows": {"type": "integer", "minimum": 0},
+        "missing_rows": {"type": "integer", "minimum": 0}, "replay_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "outcome_grade_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "trajectory_grade_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "boundary_coverage_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}
