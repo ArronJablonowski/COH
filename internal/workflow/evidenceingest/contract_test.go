@@ -84,6 +84,7 @@ func TestIngestionPortsAndRecordsExposeNoExecutionOrSecretSurface(t *testing.T) 
 		value reflect.Type
 		want  []string
 	}{
+		{reflect.TypeOf((*Source)(nil)).Elem(), []string{"ReadContext"}},
 		{reflect.TypeOf((*Authority)(nil)).Elem(), []string{"AuthorizeIngestion"}},
 		{reflect.TypeOf((*TransportVerifier)(nil)).Elem(), []string{"VerifyTransport"}},
 		{reflect.TypeOf((*EncryptedCAS)(nil)).Elem(), []string{"Abandon", "Publish", "Resolve", "Stage", "Verify"}},

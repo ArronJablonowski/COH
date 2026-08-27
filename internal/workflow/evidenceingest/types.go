@@ -3,7 +3,6 @@ package evidenceingest
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain"
@@ -270,12 +269,18 @@ type Authority interface {
 	AuthorizeIngestion(context.Context, AuthorizationRequest) (Decision, error)
 }
 
+// Source is a cancellation-aware, forward-only evidence stream. Implementers
+// must return promptly when ctx is done and must not support seek or replay.
+type Source interface {
+	ReadContext(context.Context, []byte) (int, error)
+}
+
 type TransportVerifier interface {
 	VerifyTransport(context.Context, TransportContext) error
 }
 
 type EncryptedCAS interface {
-	Stage(context.Context, StageRequest, io.Reader) (EncryptedObject, error)
+	Stage(context.Context, StageRequest, Source) (EncryptedObject, error)
 	Verify(context.Context, EncryptedObject) error
 	Publish(context.Context, EncryptedObject) (EncryptedObject, bool, error)
 	Resolve(context.Context, PublishedObject) (EncryptedObject, error)
