@@ -4,6 +4,7 @@ const (
 	ContractVersion = "1.0.0"
 
 	CapabilitySchemaVersion = "coh.query-capability/v1"
+	QuerySchemaVersion      = "coh.query-request/v1"
 	SchemaSchemaVersion     = "coh.query-schema/v1"
 	ValidationSchemaVersion = "coh.query-validation/v1"
 	ExecutionSchemaVersion  = "coh.query-execution/v1"
@@ -59,6 +60,7 @@ type CapabilitySnapshot struct {
 }
 
 type Features struct {
+	ReadOnly        bool `json:"read_only"`
 	SchemaDiscovery bool `json:"schema_discovery"`
 	Validation      bool `json:"validation"`
 	Polling         bool `json:"polling"`
@@ -95,6 +97,8 @@ type SchemaEntry struct {
 }
 
 type Query struct {
+	SchemaVersion    string           `json:"schema_version"`
+	ContractVersion  string           `json:"contract_version"`
 	QueryID          string           `json:"query_id"`
 	Scope            Scope            `json:"scope"`
 	Authority        AuthorityBinding `json:"authority"`

@@ -1,0 +1,16 @@
+{
+  "schema_version": "coh.query-connector-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name":"duplicate-key","reason":"document_decoding","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"unknown-field","reason":"document_decoding","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"missing-authority","reason":"query_invalid","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"missing-limit","reason":"query_invalid","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"empty-resource-scope","reason":"query_invalid","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"reversed-time-range","reason":"query_invalid","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"unknown-version","reason":"query_invalid","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"unsorted-resources","reason":"query_invalid","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"credential-passthrough","reason":"document_decoding","covered_by":"TestStrictQueryDenialCorpus"},
+    {"name":"zero-capability","reason":"query_invalid","covered_by":"TestStrictQueryDenialCorpus"}
+  ]
+}

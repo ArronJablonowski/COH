@@ -18,12 +18,19 @@ polling, paging, cancellation, typed limits, explicit completeness, statistics,
 and adapter-held opaque handle references. It does not expose generic HTTP,
 headers, credentials, vendor tokens, mutation methods, or untyped option maps.
 
+Capability admission requires an explicit `read_only: true` assertion. Method
+names alone are not treated as proof that an adapter cannot mutate its source.
+
 Authority is supplied as immutable actor, authorization, policy-decision, and
 audit-reservation digests. A connector consumes those bindings; it cannot mint
 authority or infer approval. Query scope names organization, tenant, case,
 source, and allowlisted resources. Bounds and limits are explicit values, never
 connector defaults. CYB-84 will enforce the UTC and policy semantics without
 widening this SPI.
+
+Published lifecycle inputs and outputs cross the SPI as immutable validated
+documents. `AdmitExecution` binds an accepted validator result to the exact
+query ID and canonical query digest before the adapter may execute it.
 
 Opaque vendor handles remain inside an adapter. The shared contract carries
 only a scoped handle ID and digest plus issue/expiry time, so credentials,
