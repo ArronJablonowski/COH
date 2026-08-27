@@ -32,8 +32,8 @@ validation additionally rejects empty, overlapping, unsorted,
 touching-ambiguous, out-of-range, excessive, and output-inconsistent spans.
 
 The signed rule set limits media types, permitted replacement modes, span and
-byte ceilings, output size, signer key revision, and optional fixed-token
-digest. Signature verification and key-revocation checks occur in the trusted
+byte ceilings, output size, signer key revision, and optional fixed-mask and
+fixed-token digests. Signature verification and key-revocation checks occur in the trusted
 rule resolver. There is no regex, selector language, script, prompt, callback,
 caller replacement content, or extension map.
 

@@ -26,20 +26,22 @@ const (
 var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
 type Config struct {
-	Root      string
-	Keys      KeyManager
-	Random    io.Reader
-	Clock     func() time.Time
-	ChunkSize uint32
+	Root           string
+	Keys           KeyManager
+	Random         io.Reader
+	Clock          func() time.Time
+	ChunkSize      uint32
+	RedactionRules RedactionRuleResolver
 }
 
 type Store struct {
-	root      string
-	keys      KeyManager
-	random    io.Reader
-	clock     func() time.Time
-	chunkSize uint32
-	files     fileOperations
+	root           string
+	keys           KeyManager
+	random         io.Reader
+	clock          func() time.Time
+	chunkSize      uint32
+	files          fileOperations
+	redactionRules RedactionRuleResolver
 }
 
 func Open(config Config) (*Store, error) {
@@ -59,7 +61,7 @@ func Open(config Config) (*Store, error) {
 		return nil, newError(InvalidInput, "chunk_size_invalid", nil)
 	}
 	store := &Store{root: config.Root, keys: config.Keys, random: config.Random,
-		clock: config.Clock, chunkSize: config.ChunkSize, files: defaultFileOperations()}
+		clock: config.Clock, chunkSize: config.ChunkSize, files: defaultFileOperations(), redactionRules: config.RedactionRules}
 	if err := store.ensureRoot(); err != nil {
 		return nil, err
 	}
@@ -137,6 +139,7 @@ func (store *Store) Stage(ctx context.Context, request evidenceingest.StageReque
 	plainHash := sha256.New()
 	remaining, counter := request.ExpectedLength, uint32(0)
 	buffer := make([]byte, store.chunkSize)
+	defer zero(buffer)
 	for remaining > 0 {
 		if err = contextError(opCtx); err != nil {
 			cleanup()

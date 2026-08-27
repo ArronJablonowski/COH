@@ -58,6 +58,20 @@ func IdempotencyBindingDigest(value string) (string, error) {
 	return digest("COH-REDACTION-IDEMPOTENCY-V1\x00", []byte(value)), nil
 }
 
+func DerivationBindingDigest(request DerivationRequest, value Derivation) (string, error) {
+	if ValidateDerivationRequest(request) != nil || ValidateMapping(value.Mapping) != nil ||
+		value.DerivedArtifact != value.Mapping.DerivedArtifact || value.Mapping.Case != request.Case ||
+		value.Mapping.Source != request.Source || value.Mapping.PlanDigest != request.Plan.PlanDigest ||
+		value.Mapping.RuleDigest != request.Rule.RuleDigest || value.Mapping.ReasonDigest != request.Plan.ReasonDigest ||
+		value.Mapping.ApprovalFingerprintDigest != request.Plan.ApprovalFingerprintDigest ||
+		!value.Mapping.CreatedAt.Equal(request.CreatedAt) ||
+		value.Mapping.PreviousProvenanceDigest != request.PreviousProvenanceDigest {
+		return "", newError(InvalidInput, "derivation_binding_invalid", false, nil)
+	}
+	return digest("COH-REDACTION-DERIVATION-V1\x00", []byte(request.Verified.VerificationDigest+"\x00"+
+		value.DerivedArtifact.Digest+"\x00"+value.Mapping.MappingDigest)), nil
+}
+
 func RuleSigningBytes(value RuleSet) ([]byte, error) {
 	copyValue := cloneRule(value)
 	copyValue.RuleDigest, copyValue.Signature = "", ""

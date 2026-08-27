@@ -25,15 +25,15 @@ type bindingFixture struct {
 func TestCanonicalBindingsValidateCompleteFixture(t *testing.T) {
 	fixture := newBindingFixture(t)
 	golden := map[string][2]string{
-		"rule":          {fixture.rule.RuleDigest, "sha256:456b181f15b06f1a6657a6154149abd2423e8767f6ff36d127122040ccbbe7be"},
-		"plan":          {fixture.plan.PlanDigest, "sha256:bcf241ba60e0ed878f3e2896d70d1cdfe445858a01c43a4363b07a094f227cdc"},
-		"intent":        {fixture.authorization.IntentDigest, "sha256:97cdf057df63069f138e4558d5db4d4f5afa270655523210f607247cffcbe5e3"},
-		"approval":      {fixture.approval.ProofDigest, "sha256:e5ed62afae9db07a6fffff5c7072c67020bdb5ba24182f02017f5c49de87843d"},
-		"authorization": {fixture.authorization.AuthorizationDigest, "sha256:e8a536b91bfe85a413d803bc86f50ffd13d50997e85c614a882b56ff4640443e"},
-		"decision":      {fixture.decision.DecisionDigest, "sha256:07151dc82b3bf6940ef589141e20194d728df79e2518f910e748068ebf79e225"},
-		"mapping":       {fixture.mapping.MappingDigest, "sha256:be82f5c5788b434c4d03a28655e761371422066a34b04321bfc4feaa22c50311"},
-		"record":        {fixture.record.RecordDigest, "sha256:6d883bd7de77ba00f9b8214ed3d35d22ad4c5394c9b006e7bb10b7c3684bcade"},
-		"receipt":       {fixture.receipt.ReceiptDigest, "sha256:7f3fafd8d7c99e20f0b027c5d4f0695dcfef2f5952f75fda6cdadc49bc47c5fc"},
+		"rule":          {fixture.rule.RuleDigest, "sha256:6a38a480b36fb50c7b38ef9b8a15d4c5f5a060c088f8e454b304395f7d9b8b8c"},
+		"plan":          {fixture.plan.PlanDigest, "sha256:b89dd33e76cd64446a01cd0f21e5b2b593c1d4eace5d6668488f774ca5411439"},
+		"intent":        {fixture.authorization.IntentDigest, "sha256:38f95d8fbbdcf9626486900e725267c001042b89dcbf0eb39d9c233f12980740"},
+		"approval":      {fixture.approval.ProofDigest, "sha256:6e814f28dce4ab29d0c337cfd8027a5895bd762ceef65c5599a5478fc12c2dd0"},
+		"authorization": {fixture.authorization.AuthorizationDigest, "sha256:01d178087b79acd1b23be7d4b30b5f25f51d90a1d6efa7cd373bd5f669d828e4"},
+		"decision":      {fixture.decision.DecisionDigest, "sha256:2e5e24a5aeae9c8a110313b2d93d6dd78a0a1bd8fc311bdb5522dc2040e270d8"},
+		"mapping":       {fixture.mapping.MappingDigest, "sha256:13fa2a28ff3af7057e068085e8f74b21113c39fe7409f5aba59ae643290a390f"},
+		"record":        {fixture.record.RecordDigest, "sha256:21b3af94e363f118cccaf588980d75fd0ab62a139eb56e7af64612677eea75cf"},
+		"receipt":       {fixture.receipt.ReceiptDigest, "sha256:41b52ee6d3e827dafa3be6f58dc2fad8ae5c385a08faca3b1853e3551b2ae617"},
 	}
 	for name, pair := range golden {
 		if pair[0] != pair[1] {
@@ -130,6 +130,8 @@ func newBindingFixture(t *testing.T) bindingFixture {
 		AllowedMediaTypes: []string{"text/plain"}, PermittedModes: []ReplacementMode{Mask, Remove}, MaximumSpans: 8,
 		MaximumSelectedBytes: 50, MaximumOutputBytes: 100, SignerKeyID: "redaction-key", SignerKeyRevision: 1,
 		Signature: strings.Repeat("A", 86)}
+	maskDigest := "sha256:684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1"
+	rule.MaskDigest = &maskDigest
 	rule.RuleDigest = mustDigest(t, func() (string, error) { return RuleBindingDigest(rule) })
 	plan := ApprovedPlan{SchemaVersion: PlanSchemaVersion, ContractVersion: ContractVersion, PlanID: testID(5), Case: caseRef,
 		Source: source, RuleID: rule.RuleID, RuleRevision: rule.Revision, RuleDigest: rule.RuleDigest, ReasonDigest: testDigest("e"),

@@ -2,6 +2,45 @@ package redaction
 
 import "math"
 
+func ValidateDerivationRequest(value DerivationRequest) error {
+	if !validCase(value.Case) || value.Source != value.Verified.Reference || value.Source != value.Plan.Source ||
+		value.Case != value.Plan.Case || !allDigests(value.Verified.SourceIdentityDigest,
+		value.Verified.VerificationDigest, value.PreviousProvenanceDigest) || ValidateRule(value.Rule) != nil ||
+		ValidatePlan(value.Plan) != nil || !ruleMatchesPlan(value.Rule, value.Plan) || !validTime(value.CreatedAt) ||
+		!validTime(value.Deadline) || !value.Deadline.After(value.CreatedAt) {
+		return newError(InvalidInput, "derivation_request_invalid", false, nil)
+	}
+	return nil
+}
+
+func ValidatePublicationRequest(value PublicationRequest) error {
+	if value.Role != DerivedPublication && value.Role != MappingPublication || !uuidPattern.MatchString(value.RequestID) ||
+		!validOpaque(value.IdempotencyKey, 1, 256) || !validCase(value.Case) || !uuidPattern.MatchString(value.ActorID) ||
+		!boundedRevision(value.ActorRevision) || !validArtifact(value.ExpectedArtifact) || len(value.Parents) == 0 ||
+		len(value.Parents) > 2 || !allDigests(value.SourceIdentityDigest, value.RuleDigest, value.PlanDigest,
+		value.PolicyDigest, value.KeyProfileDigest) || !tokenPattern.MatchString(value.KeyProfile) ||
+		!validTime(value.CreatedAt) || !validTime(value.Deadline) || !value.Deadline.After(value.CreatedAt) {
+		return newError(InvalidInput, "publication_request_invalid", false, nil)
+	}
+	previous := ""
+	maximumParentClassification := -1
+	for _, parent := range value.Parents {
+		key := parent.Artifact.Digest + "\x00" + parent.Manifest.Digest
+		if !validEvidence(parent) || key <= previous || parent.Artifact.Digest == value.ExpectedArtifact.Digest {
+			return newError(InvalidInput, "publication_parent_invalid", false, nil)
+		}
+		if rank := classificationRank(parent.Artifact.Classification); rank > maximumParentClassification {
+			maximumParentClassification = rank
+		}
+		previous = key
+	}
+	if value.Role == MappingPublication && (value.ExpectedArtifact.MediaType != mappingMediaType ||
+		classificationRank(value.ExpectedArtifact.Classification) < maximumParentClassification) {
+		return newError(InvalidInput, "mapping_publication_invalid", false, nil)
+	}
+	return nil
+}
+
 func ValidateMapping(value Mapping) error {
 	if err := validateMappingBase(value); err != nil || !allDigests(value.ProvenanceDigest, value.MappingDigest) {
 		return newError(InvalidInput, "mapping_invalid", false, err)
@@ -113,6 +152,21 @@ func validateReceiptShape(value Receipt, bound bool) error {
 
 func boundedRevision(value uint64) bool { return value > 0 && value <= math.MaxInt64 }
 func boundedBytes(value int64) bool     { return value > 0 && value <= maximumArtifactBytes }
+
+func classificationRank(value string) int {
+	switch value {
+	case "public":
+		return 0
+	case "internal":
+		return 1
+	case "confidential":
+		return 2
+	case "restricted":
+		return 3
+	default:
+		return -1
+	}
+}
 
 func sortedUniqueStrings(values []string, valid func(string) bool) bool {
 	for index, value := range values {

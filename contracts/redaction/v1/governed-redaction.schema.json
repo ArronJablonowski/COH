@@ -123,7 +123,7 @@
     },
     "rule_set": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "rule_id", "revision", "rule_digest", "allowed_media_types", "permitted_modes", "token_digest", "maximum_spans", "maximum_selected_bytes", "maximum_output_bytes", "signer_key_id", "signer_key_revision", "signature"],
+      "required": ["schema_version", "contract_version", "rule_id", "revision", "rule_digest", "allowed_media_types", "permitted_modes", "mask_digest", "token_digest", "maximum_spans", "maximum_selected_bytes", "maximum_output_bytes", "signer_key_id", "signer_key_revision", "signature"],
       "properties": {
         "schema_version": {"const": "coh.redaction-rule-set/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -132,6 +132,7 @@
         "rule_digest": {"$ref": "#/$defs/digest"},
         "allowed_media_types": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/media_type"}},
         "permitted_modes": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"$ref": "#/$defs/replacement_mode"}},
+        "mask_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
         "token_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
         "maximum_spans": {"type": "integer", "minimum": 1, "maximum": 4096},
         "maximum_selected_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},

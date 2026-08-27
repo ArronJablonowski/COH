@@ -45,7 +45,7 @@ func TestRedactionPortsAndRecordsExposeNoAuthorityOrSensitiveSurface(t *testing.
 		{reflect.TypeOf((*CaseStore)(nil)).Elem(), []string{"LoadCase"}},
 		{reflect.TypeOf((*PlanStore)(nil)).Elem(), []string{"ResolvePlan", "ResolveRule"}},
 		{reflect.TypeOf((*SourceResolver)(nil)).Elem(), []string{"ResolveSource"}},
-		{reflect.TypeOf((*DerivedSource)(nil)).Elem(), []string{"ReadContext"}},
+		{reflect.TypeOf((*DerivedSource)(nil)).Elem(), []string{"Close", "ReadContext"}},
 		{reflect.TypeOf((*Transformer)(nil)).Elem(), []string{"Derive"}},
 		{reflect.TypeOf((*Publisher)(nil)).Elem(), []string{"Publish"}},
 		{reflect.TypeOf((*CustodyRecorder)(nil)).Elem(), []string{"LoadCustodyHead", "RecordRedaction", "VerifyRedaction"}},

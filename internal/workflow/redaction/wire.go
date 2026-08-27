@@ -59,6 +59,7 @@ type ruleWire struct {
 	RuleDigest           string            `json:"rule_digest"`
 	AllowedMediaTypes    []string          `json:"allowed_media_types"`
 	PermittedModes       []ReplacementMode `json:"permitted_modes"`
+	MaskDigest           *string           `json:"mask_digest"`
 	TokenDigest          *string           `json:"token_digest"`
 	MaximumSpans         uint16            `json:"maximum_spans"`
 	MaximumSelectedBytes int64             `json:"maximum_selected_bytes"`
@@ -257,7 +258,7 @@ func commandToWire(v Command) commandWire {
 func ruleToWire(v RuleSet) ruleWire {
 	return ruleWire{v.SchemaVersion, v.ContractVersion, v.RuleID, v.Revision, v.RuleDigest,
 		append([]string(nil), v.AllowedMediaTypes...), append([]ReplacementMode(nil), v.PermittedModes...),
-		clonePointer(v.TokenDigest), v.MaximumSpans, v.MaximumSelectedBytes, v.MaximumOutputBytes,
+		clonePointer(v.MaskDigest), clonePointer(v.TokenDigest), v.MaximumSpans, v.MaximumSelectedBytes, v.MaximumOutputBytes,
 		v.SignerKeyID, v.SignerKeyRevision, v.Signature}
 }
 func spansToWire(values []PlanSpan) []spanWire {

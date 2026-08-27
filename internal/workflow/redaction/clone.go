@@ -24,6 +24,7 @@ func cloneCommand(value Command) Command {
 func cloneRule(value RuleSet) RuleSet {
 	value.AllowedMediaTypes = append([]string(nil), value.AllowedMediaTypes...)
 	value.PermittedModes = append([]ReplacementMode(nil), value.PermittedModes...)
+	value.MaskDigest = clonePointer(value.MaskDigest)
 	value.TokenDigest = clonePointer(value.TokenDigest)
 	return value
 }
@@ -72,6 +73,11 @@ func clonePublished(value *PublishedEvidence) *PublishedEvidence {
 	copy := *value
 	copy.Reference = cloneEvidence(value.Reference)
 	return &copy
+}
+
+func clonePublication(value PublicationRequest) PublicationRequest {
+	value.Parents = append([]EvidenceReference(nil), value.Parents...)
+	return value
 }
 
 func cloneProgress(value Progress) Progress {

@@ -111,6 +111,7 @@ type RuleSet struct {
 	RuleDigest           string
 	AllowedMediaTypes    []string
 	PermittedModes       []ReplacementMode
+	MaskDigest           *string
 	TokenDigest          *string
 	MaximumSpans         uint16
 	MaximumSelectedBytes int64
@@ -318,12 +319,14 @@ type Result struct {
 }
 
 type DerivationRequest struct {
-	Case     domain.CaseRef
-	Source   EvidenceReference
-	Verified VerifiedSource
-	Rule     RuleSet
-	Plan     ApprovedPlan
-	Deadline time.Time
+	Case                     domain.CaseRef
+	Source                   EvidenceReference
+	Verified                 VerifiedSource
+	Rule                     RuleSet
+	Plan                     ApprovedPlan
+	CreatedAt                time.Time
+	PreviousProvenanceDigest string
+	Deadline                 time.Time
 }
 
 type Derivation struct {
@@ -341,14 +344,20 @@ const (
 
 type PublicationRequest struct {
 	Role                 PublicationRole
+	RequestID            string
+	IdempotencyKey       string
 	Case                 domain.CaseRef
+	ActorID              string
+	ActorRevision        uint64
 	ExpectedArtifact     domain.ArtifactRef
 	Parents              []EvidenceReference
 	SourceIdentityDigest string
 	RuleDigest           string
 	PlanDigest           string
 	PolicyDigest         string
+	KeyProfile           string
 	KeyProfileDigest     string
+	CreatedAt            time.Time
 	Deadline             time.Time
 }
 

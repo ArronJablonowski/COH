@@ -57,9 +57,13 @@ func validateRuleShape(value RuleSet, bound bool) error {
 		!sortedUniqueModes(value.PermittedModes) {
 		return newError(InvalidInput, "rule_lists_invalid", false, nil)
 	}
-	hasToken := false
+	hasMask, hasToken := false, false
 	for _, mode := range value.PermittedModes {
+		hasMask = hasMask || mode == Mask
 		hasToken = hasToken || mode == Token
+	}
+	if hasMask != (value.MaskDigest != nil) || value.MaskDigest != nil && !digestPattern.MatchString(*value.MaskDigest) {
+		return newError(InvalidInput, "rule_mask_invalid", false, nil)
 	}
 	if hasToken != (value.TokenDigest != nil) || value.TokenDigest != nil && !digestPattern.MatchString(*value.TokenDigest) {
 		return newError(InvalidInput, "rule_token_invalid", false, nil)

@@ -123,8 +123,9 @@ Spans are sorted by `start`, never overlap or touch ambiguously, and the count
 and total selected bytes are bounded. Each selected segment must hash to the
 plan's exact digest during both passes. An empty plan is denied.
 
-`remove` emits no bytes. `mask` emits the signed rule revision's deterministic
-same-length mask and is valid only for media profiles that define it. `token`
+`remove` emits no bytes. `mask` emits the signed rule revision's digest-bound,
+deterministic same-length mask and is valid only for media profiles that define
+it. `token`
 emits the signed rule revision's fixed token. A format-aware rule profile must
 validate the complete derived output before publication; byte-range validity
 alone does not prove that JSON, archive, image, or other structured media is

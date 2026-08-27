@@ -36,6 +36,7 @@ type SourceResolver interface {
 // replay, inspection, or access to the immutable source plaintext.
 type DerivedSource interface {
 	ReadContext(context.Context, []byte) (int, error)
+	Close() error
 }
 
 type Transformer interface {
