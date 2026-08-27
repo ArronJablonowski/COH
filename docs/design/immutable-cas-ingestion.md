@@ -112,9 +112,10 @@ corrupt existing object fails closed; it is never overwritten.
 Retrieval first authorizes and loads the exact committed manifest reference,
 then resolves through `EncryptedCAS.Resolve`. The adapter authenticates every
 frame, unwraps only the bound key revision, and recomputes plaintext digest and
-length through EOF. A missing key, revoked key, unwrap/decrypt error, changed
-header/frame/footer, truncated stream, or digest/length mismatch yields no
-plaintext success and no valid reference claim.
+length through EOF. An unavailable or revoked wrapping revision, failed
+unwrapping or decryption, changed header/frame/footer, truncated stream, or
+digest/length mismatch yields no plaintext success and no valid reference
+claim.
 
 ## Encryption format and key handling
 
