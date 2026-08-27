@@ -22,6 +22,8 @@ type CaseStore interface {
 }
 
 type PlanStore interface {
+	// ResolvePlan and ResolveRule return immutable, signature-verified current
+	// definitions for the exact digest; callers still validate every binding.
 	ResolvePlan(context.Context, domain.CaseRef, string) (ApprovedPlan, bool, error)
 	ResolveRule(context.Context, string) (RuleSet, bool, error)
 }
