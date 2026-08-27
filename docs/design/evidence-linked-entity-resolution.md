@@ -164,6 +164,16 @@ summary, creation decision, latest history digest, audit digest, and provenance
 head. Classification is the most restrictive classification of its members and
 can never be reduced by entity resolution.
 
+`EntityRef.record_digest` is the SHA-256 digest of the canonical immutable
+entity-revision core: versions, entity ID/revision, scope, status,
+classification, members, alias proofs, confidence, and created/updated times.
+The decision, history, audit, and provenance digests are excluded from that
+core and then bound onto the full entity record. This staged definition avoids
+a cryptographic cycle (decisions and histories themselves contain entity
+references) while still making every referenced state field immutable and
+verifiable. The full stored entity remains bound by its audit and provenance
+records.
+
 Merge requires exact current revisions for at least two active entities, an
 explicit ordered supporting set, the complete known counterevidence set, a
 closed reason, current scope authorization, and a deterministic resulting

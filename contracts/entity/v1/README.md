@@ -17,6 +17,9 @@ identifier type, normalization method, and key revision. Every observation
 binds the complete COH-E10, CYB-80, and CYB-81 evidence chain. Confidence is
 integer millionths with ordered components and an explicit ceiling. Merge and
 split never rewrite observations or historical entities.
+An `entity_ref.record_digest` identifies the canonical immutable entity-revision
+core; decision, history, audit, and provenance digests are layered onto the
+full record afterward to avoid cyclic self-reference.
 The frozen v1 weights, counterevidence effects, source-independence rule,
 arithmetic, and label thresholds are executable in
 `fixtures/confidence-method-v1.json`; changing them requires a new method
