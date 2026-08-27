@@ -2,6 +2,7 @@
 set -euo pipefail
 
 root=${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}
+design="${root}/docs/design/e10-evidence-integration.md"
 
 leaves=(
   "CYB-76|CYB-76-case-lifecycle-report.md|case_lifecycle|case-lifecycle summary:"
@@ -25,6 +26,7 @@ for entry in "${leaves[@]}"; do
 done
 
 for path in \
+  "${design}" \
   "${root}/internal/persistence/sqlite/e10_integration_test.go" \
   "${root}/internal/persistence/sqlite/e10_redaction_integration_test.go" \
   "${root}/internal/persistence/sqlite/e10_delete_integration_test.go" \
@@ -35,6 +37,13 @@ for path in \
     exit 2
   }
 done
+
+/usr/bin/grep -Fq '| Status | Implemented and verified |' "${design}"
+/usr/bin/grep -Fq 'There are no unresolved blocking integration findings.' "${design}"
+/usr/bin/grep -Fq 'authorization custody → tombstone →' "${design}"
+/usr/bin/grep -Fq 'Rollback never reopens a deleted case' "${design}"
+/usr/bin/grep -Fq 'one consistency boundary across case metadata' "${design}"
+/usr/bin/grep -Fq 'CYB-173 remains a hard gate before the first' "${design}"
 
 export COH_NATIVE_STORAGE_ROOT=${COH_NATIVE_STORAGE_ROOT:-$(dirname "${root}")}
 export COH_TOOLCHAIN_ROOT=${COH_TOOLCHAIN_ROOT:-$(dirname "${root}")/COH-toolchains}
@@ -106,6 +115,7 @@ cd "${root}"
 "${root}/scripts/check_go_architecture.sh" | tee "${artifact_dir}/architecture.log"
 "${root}/scripts/check_file_sizes.sh"
 "${root}/scripts/check_markdown_links.sh" \
+  "${design}" \
   "${root}/docs/evidence/CYB-76-case-lifecycle-report.md" \
   "${root}/docs/evidence/CYB-71-immutable-cas-ingestion-report.md" \
   "${root}/docs/evidence/CYB-79-chain-of-custody-report.md" \

@@ -5,7 +5,7 @@
 | Issue | COH-E10 / CYB-14 |
 | Children | CYB-76, CYB-71, CYB-79, CYB-78, CYB-77 |
 | Requirements | FR-002, FR-019, FR-020, FR-023, FR-028, FR-029, FR-030, NFR-011, SEC-014, SEC-015, SEC-020, SEC-023, SEC-036, SEC-037, SEC-042, EVAL-012, EVAL-013 |
-| Status | Integration findings open |
+| Status | Implemented and verified |
 
 ## Purpose
 
@@ -37,40 +37,41 @@ verification. Leaf-local fakes are not evidence that these boundaries compose.
    verified encrypted objects, append completion custody, and retain all
    metadata, provenance, audit, public verification, and attestation history.
 
-## Integration findings
+## Integration finding closure
 
-| ID | Boundary | Current evidence | Missing parent-level capability |
-|---|---|---|---|
-| E10-I01 | Case lifecycle | CYB-76 repository/controller and CYB-71 read adapter are production-backed | CYB-77 has no adapter that maps current records and exact lifecycle receipts into `CaseStore`/`CaseLifecycle`. |
-| E10-I02 | Hold-release safety | CYB-77 services fail closed when `HasIncompleteHoldRelease` is true | No durable case-scoped index can answer that query after restart without knowing the release idempotency key. |
-| E10-I03 | Artifact sets | CYB-71 persists and verifies individual immutable evidence and manifests | No immutable artifact-set registry resolves a requested set digest into verified ordered evidence, lineage, and component bindings. |
-| E10-I04 | Redaction ancestry | CYB-78 creates digest-bound immutable records and receipts | No receipt-digest lookup adapter verifies each derived artifact and mapping named by an export set. |
-| E10-I05 | Custody | CYB-79 provides a production repository, controller, and read-only verifier | CYB-77 has no adapter that records a multi-subject lifecycle request and returns/verifies its exact receipt set and checkpointed interval. |
-| E10-I06 | Physical disposition | CYB-71 CAS supports staging, immutable publication, verification, and safe abandonment | Published-object removal/cryptographic erasure, exact recovery, and durable per-object disposition attestations have no production adapter. |
-| E10-I07 | Composition evidence | Each leaf has focused and clean baseline evidence | No focused parent verifier or end-to-end integration fixture proves the full ingest/redact/custody/export/delete chain. |
+| ID | Boundary | Original parent-level gap | Resolution | Status |
+|---|---|---|---|---|
+| E10-I01 | Case lifecycle | No production mapping from current records and exact receipts into signed-lifecycle and custody case ports | `lifecyclecase` applies and resolves signed lifecycle operations; `custodycase` independently projects canonical current records and hold/release/delete receipts, including a domain-separated retention-policy binding | Closed |
+| E10-I02 | Hold-release safety | No durable case-scoped incomplete-release lookup | The lifecycle repository atomically maintains a case-scoped incomplete-release marker with progress and final receipt commits and proves restart/replay behavior | Closed |
+| E10-I03 | Artifact sets | No immutable requested-set resolver | `evidencecatalog` registers and re-verifies ordered receipt-bound artifacts, manifests, parent edges, lineage, components, scope, and set digest | Closed |
+| E10-I04 | Redaction ancestry | No receipt-digest verifier for each derived artifact and mapping | `lifecycleredaction` resolves canonical redaction records, receipts, encrypted mappings, ingestion receipts, custody and audit proofs, and exact source ancestry | Closed |
+| E10-I05 | Custody | No multi-subject lifecycle recorder/recovery adapter | `lifecyclecustody` advances an ordered receipt set over the real custody controller and ledger, recovers exact sets, and requires a complete independently verified checkpointed interval | Closed |
+| E10-I06 | Physical disposition | No exact published-object removal and attestation adapter | `lifecycledisposition` writes a durable exact-object plan, removes only receipt-bound encrypted artifacts, converges after partial/lost responses, and retains manifests and metadata history | Closed |
+| E10-I07 | Composition evidence | No full parent integration or verifier | Real SQLite export, derived-redaction, and governed-deletion compositions plus `verify_e10_integration.sh` prove success, restart, replay, adversarial, repeated, and race behavior | Closed |
 
-These are blocking findings for CYB-14 only. They do not invalidate the leaf
-contracts or their completed acceptance evidence; they prevent claiming that the
-parent integration is production-composable.
+There are no unresolved blocking integration findings. Closure does not weaken
+the five leaf contracts: every conversion reloads and validates the leaf's
+canonical evidence rather than treating a lookup index or adapter result as
+authority.
 
 ## Closure slices
 
-1. Add a case/lifecycle adapter and a durable case-scoped incomplete-release
+1. [x] Add a case/lifecycle adapter and a durable case-scoped incomplete-release
    index whose active and completed transitions are atomic with lifecycle
    progress and final receipt commits.
-2. Add an immutable artifact-set catalog over the guarded repository. Registration
+2. [x] Add an immutable artifact-set catalog over the guarded repository. Registration
    validates every referenced ingestion record and computes ordered artifact-set,
    lineage, and component digests; resolution re-verifies them.
-3. Add receipt-digest resolution to governed redaction storage and a narrow
+3. [x] Add receipt-digest resolution to governed redaction storage and a narrow
    verifier adapter that checks each derived artifact, source parent, encrypted
    mapping digest, audit, custody, and provenance binding.
-4. Add the lifecycle-to-custody adapter over the CYB-79 controller, repository,
+4. [x] Add the lifecycle-to-custody adapter over the CYB-79 controller, repository,
    and verifier. Multi-subject progress must advance the expected head exactly
    once per ordered subject and recover the same receipt set.
-5. Add encrypted-CAS disposition with a narrow exact-object request, no caller
+5. [x] Add encrypted-CAS disposition with a narrow exact-object request, no caller
    paths, per-object outcome proof, atomic durable attestation, same-intent
    recovery, and preservation of immutable metadata history.
-6. Compose the real adapters in a parent integration fixture and add mutation,
+6. [x] Compose the real adapters in a parent integration fixture and add mutation,
    cross-scope, unauthorized-redaction, custody-gap, restart, lost-response,
    concurrency, export verification, and deletion-recovery tests.
 
@@ -91,10 +92,97 @@ parent integration is production-composable.
   objects and never removes the case tombstone, manifests, receipts, custody,
   audit, provenance, public keys, or disposition attestation.
 
-## Verification plan
+## Migration and cutover
 
-The parent gate will run all five child verifiers plus focused cross-leaf tests,
-10 repeated runs, race detection, vet, static analysis, architecture, file size,
-documentation links, and a clean full baseline. Its retained report will map the
-three CYB-14 acceptance criteria to named integration and adversarial traces and
-cross-reference each immutable child evidence set.
+The five leaf metadata kinds use the existing guarded canonical metadata table;
+the integration adds no SQL DDL. The encrypted CAS adds private versioned object
+storage and key revisions. Cutover must deploy in this order:
+
+1. schema readers, canonical validators, repository readers, encrypted-CAS key
+   revisions, public signing trust/revocation history, checkpoint verification,
+   and exact recovery tooling;
+2. the case, catalog, redaction, custody, source, signing, package, disposition,
+   and lifecycle adapters; then
+3. writers and release endpoints only after a restored staging target verifies
+   the complete case/metadata/audit/CAS/trust set.
+
+Queued operations remain bound to their original contract version and exact
+durable phase. Deployment never translates an old receipt, rewrites provenance,
+or infers a missing phase from external state.
+
+## Recovery and reconciliation
+
+- Ingestion publishes no reference until encrypted artifact, encrypted manifest,
+  receipt, provenance, and audit facts verify. Pending markers identify staged or
+  published objects after interruption; reconciliation never invents a receipt.
+- Redaction resumes only `planned → published → custodied → completed` from an
+  exact canonical progress record, reauthorizes, and never repeats a completed
+  transformation, publication, custody append, or audit release.
+- Export, import, hold, release, and deletion recover their exact durable phase,
+  revalidate current case, authority, approval, revocation, custody, checkpoint,
+  trust, and evidence facts, and reject changed replay.
+- Deletion recovery preserves the order `authorization custody → tombstone →
+  exact disposition → completion custody → final commit`. A partial disposition
+  has no completed-deletion claim; retry reuses the durable object plan, treats
+  an already absent exact object as converged, and completes the remaining set.
+- Ambiguous metadata or CAS responses return no claimed success. Operators use
+  receipt/progress/attestation lookup on a separate restored target; they never
+  repair a custody chain, reopen a tombstone, or reconstruct disposed ciphertext
+  from retained manifests.
+
+## Rollback
+
+Rollback disables new ingestion, redaction, import/export, hold release, and
+physical disposition writers before removing a newer binary. It retains V1
+readers and validators, decrypt-only historical key revisions, public signing
+and revocation history, quarantine, manifests, receipts, tombstones, custody,
+audit checkpoints, provenance, progress, and disposition plans/attestations for
+forward recovery.
+
+Rollback never reopens a deleted case, removes or rewrites immutable history,
+fabricates completion, repeats an external effect, or recreates an artifact that
+was already physically disposed. If an older binary cannot validate a metadata
+kind, it must reject it and leave it untouched.
+
+## Privacy, retention, and backup assumptions
+
+Artifact, derived-artifact, and redaction-mapping plaintext remain inside the
+encrypted CAS or bounded package/import workers. Public and durable contracts
+contain typed references and digests, never plaintext, keys, raw paths, policy
+source, approval bodies, credentials, callbacks, or backend error strings.
+
+Manifests, mappings, stable digests, timing, purposes, reasons, verification
+reports, lifecycle metadata, quarantine, and attestations are still sensitive
+case data. Access, retention, legal hold, audit, export, and backup policy apply
+to them. Deployments should normalize or salt low-entropy purpose/reason/rule
+inputs before hashing when dictionary recovery is plausible.
+
+Backup and restore are one consistency boundary across case metadata, guarded
+records, encrypted CAS, audit/checkpoints, quarantine, key revisions, public
+verification keys, and revocation/trust history. A restore is not eligible for
+import, export, redaction, hold release, or deletion until the parent verifier
+can validate that complete set. Deletion intentionally preserves metadata and
+manifests while removing exact artifact ciphertext; backup expiry and erasure
+policy must therefore distinguish retained evidence history from disposed bytes.
+
+## Immutable child evidence cross-reference
+
+| Child | Capability | Evidence report | Checksum manifest | Focused verifier |
+|---|---|---|---|---|
+| CYB-76 / COH-E10-01 | Case lifecycle, retention, hold, tombstone | [case lifecycle report](../evidence/CYB-76-case-lifecycle-report.md) | [CYB-76 checksums](../evidence/CYB-76-artifacts.sha256) | `verify_case_lifecycle.sh` |
+| CYB-71 / COH-E10-02 | Immutable encrypted ingestion and manifests | [immutable CAS report](../evidence/CYB-71-immutable-cas-ingestion-report.md) | [CYB-71 checksums](../evidence/CYB-71-artifacts.sha256) | `verify_immutable_cas_ingestion.sh` |
+| CYB-79 / COH-E10-03 | Append-only custody and independent verification | [custody report](../evidence/CYB-79-chain-of-custody-report.md) | [CYB-79 checksums](../evidence/CYB-79-artifacts.sha256) | `verify_chain_of_custody.sh` |
+| CYB-78 / COH-E10-04 | Governed redaction and encrypted mappings | [redaction report](../evidence/CYB-78-governed-redaction-report.md) | [CYB-78 checksums](../evidence/CYB-78-artifacts.sha256) | `verify_governed_redaction.sh` |
+| CYB-77 / COH-E10-05 | Signed packages, import/export, hold, deletion | [signed lifecycle report](../evidence/CYB-77-signed-evidence-lifecycle-report.md) | [CYB-77 checksums](../evidence/CYB-77-artifacts.sha256) | `verify_signed_evidence_lifecycle.sh` |
+
+## Verification and release follow-up
+
+The parent gate runs all five child verifiers plus focused cross-leaf tests, 10
+repeated parent runs, race detection, vet, static analysis, architecture, file
+size, documentation links, and clean-diff checks. The retained CYB-14 report
+maps the three acceptance criteria to named integration and adversarial traces.
+
+No integration finding blocks CYB-14 completion. The independent security
+architecture review tracked by CYB-173 remains a hard gate before the first
+production release; this integration evidence does not claim that review has
+occurred.
