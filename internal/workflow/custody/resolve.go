@@ -9,7 +9,11 @@ import (
 )
 
 func (controller *Controller) resolveEvidence(ctx context.Context, command Command) (string, error) {
-	subject, err := controller.evidence.ResolveEvidence(ctx, command.Case, command.Subject)
+	return resolveEvidenceSet(ctx, controller.evidence, command)
+}
+
+func resolveEvidenceSet(ctx context.Context, resolver EvidenceResolver, command Command) (string, error) {
+	subject, err := resolver.ResolveEvidence(ctx, command.Case, command.Subject)
 	if err != nil {
 		return "", mapDependency(ctx, "evidence_resolution_unavailable", err)
 	}
@@ -19,7 +23,7 @@ func (controller *Controller) resolveEvidence(ctx context.Context, command Comma
 	verificationDigests := []string{subject.VerificationDigest}
 	parents := make([]VerifiedEvidence, len(command.Parents))
 	for index, reference := range command.Parents {
-		parents[index], err = controller.evidence.ResolveEvidence(ctx, command.Case, reference)
+		parents[index], err = resolver.ResolveEvidence(ctx, command.Case, reference)
 		if err != nil {
 			return "", mapDependency(ctx, "parent_resolution_unavailable", err)
 		}

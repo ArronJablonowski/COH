@@ -139,6 +139,20 @@ type receiptWire struct {
 	ReceiptDigest     string   `json:"receipt_digest"`
 }
 
+type verificationWire struct {
+	SchemaVersion         string              `json:"schema_version"`
+	ContractVersion       string              `json:"contract_version"`
+	Case                  caseWire            `json:"case"`
+	FromSequence          uint64              `json:"from_sequence"`
+	ToSequence            uint64              `json:"to_sequence"`
+	HeadChainHash         string              `json:"head_chain_hash"`
+	AuditCheckpointID     *string             `json:"audit_checkpoint_id"`
+	AuditCheckpointDigest *string             `json:"audit_checkpoint_digest"`
+	Outcome               VerificationOutcome `json:"outcome"`
+	ReasonCode            VerificationReason  `json:"reason_code"`
+	VerifiedAt            string              `json:"verified_at"`
+}
+
 func caseToWire(value domain.CaseRef) caseWire {
 	return caseWire{value.OrganizationID, value.TenantID, value.CaseID}
 }
@@ -209,4 +223,10 @@ func receiptToWire(value Receipt) receiptWire {
 		value.IdempotencyDigest, value.IntentDigest, value.DecisionDigest, value.CustodyID, value.Sequence,
 		value.RecordDigest, value.ChainHash, value.AuditEventDigest, value.ProvenanceDigest,
 		formatTime(value.CreatedAt), value.ReceiptDigest}
+}
+
+func verificationToWire(value VerificationReport) verificationWire {
+	return verificationWire{value.SchemaVersion, value.ContractVersion, caseToWire(value.Case),
+		value.FromSequence, value.ToSequence, value.HeadChainHash, clonePointer(value.AuditCheckpointID),
+		clonePointer(value.AuditCheckpointDigest), value.Outcome, value.ReasonCode, formatTime(value.VerifiedAt)}
 }

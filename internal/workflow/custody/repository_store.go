@@ -117,14 +117,12 @@ func (store *RepositoryStore) Append(ctx context.Context, idempotencyKey, intent
 		ContractVersion: workflowbase.StorageContractVersion, IdempotencyKey: transactionKey,
 		Mutations: mutations, Outbox: []workflowbase.OutboxMessage{outbox}})
 	if err != nil {
-		if workflowbase.StorageCode(err) == workflowbase.StorageConflict {
-			recovered, found, recoverErr := store.Recover(ctx, record.Case, receipt.IdempotencyDigest)
-			if recoverErr == nil && found && recovered.IntentDigest == intent {
-				return recovered, true, nil
-			}
-			if recoverErr != nil {
-				return Receipt{}, false, recoverErr
-			}
+		recovered, found, recoverErr := store.Recover(ctx, record.Case, receipt.IdempotencyDigest)
+		if recoverErr == nil && found && recovered.IntentDigest == intent {
+			return recovered, true, nil
+		}
+		if recoverErr != nil && workflowbase.StorageCode(err) == workflowbase.StorageConflict {
+			return Receipt{}, false, recoverErr
 		}
 		return Receipt{}, false, mapCustodyStorageError("custody_commit", err)
 	}

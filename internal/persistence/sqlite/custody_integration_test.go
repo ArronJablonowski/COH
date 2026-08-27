@@ -67,6 +67,17 @@ type custodySQLiteAuditor struct {
 	sequence uint64
 }
 
+type custodyLostResponseStore struct{ workflow.MetadataStore }
+
+func (store custodyLostResponseStore) Transact(ctx context.Context,
+	transaction workflow.Transaction) (workflow.CommitResult, error) {
+	if _, err := store.MetadataStore.Transact(ctx, transaction); err != nil {
+		return workflow.CommitResult{}, err
+	}
+	return workflow.CommitResult{}, workflow.NewStorageError(workflow.StorageUnavailable,
+		"transact", "driver", "commit response lost", nil)
+}
+
 func (auditor *custodySQLiteAuditor) AppendCustodyEvent(_ context.Context,
 	event tamperaudit.Event) (custody.AuditProof, error) {
 	auditor.mu.Lock()
@@ -167,6 +178,46 @@ func TestCustodyChainAndResponseSurviveSQLiteRestart(t *testing.T) {
 	}
 	if original, err := ledger.Read(context.Background(), command.Case, 0, 2); err == nil || original != nil {
 		t.Fatal("closed pre-restart ledger unexpectedly remained usable")
+	}
+}
+
+func TestCustodyRecoversExactResponseWhenCommitResponseIsLost(t *testing.T) {
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	root := t.TempDir()
+	backup := filepath.Join(root, "backups")
+	if err := os.MkdirAll(backup, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	driver := openCaseSQLite(t, filepath.Join(root, "coh.sqlite3"), backup, now)
+	defer driver.Close()
+	guarded, err := workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command, current, verified := custodySQLiteFixture(now)
+	ledger, err := custody.NewRepositoryStore(custodyLostResponseStore{MetadataStore: guarded})
+	if err != nil {
+		t.Fatal(err)
+	}
+	auditor := &custodySQLiteAuditor{proofs: make(map[string]custody.AuditProof)}
+	controller, err := custody.New(custodySQLiteAuthority{now: now}, custodySQLiteCases{current: current},
+		custodySQLiteEvidence{verified: verified}, ledger, auditor, custodySQLiteClock{now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := controller.Execute(context.Background(), command)
+	if err != nil || !result.Replayed || result.Receipt.Sequence != 1 {
+		t.Fatalf("lost response recovery=%+v err=%v", result, err)
+	}
+	records, err := ledger.Read(context.Background(), command.Case, 0, 2)
+	if err != nil || len(records) != 1 || records[0].RecordDigest != result.Receipt.RecordDigest {
+		t.Fatalf("records=%+v err=%v", records, err)
+	}
+	deliveries, err := guarded.ClaimOutbox(context.Background(), workflow.OutboxClaim{
+		OrganizationID: command.Case.OrganizationID, TenantID: command.Case.TenantID,
+		WorkerID: "custody-lost-response", Limit: 2, LeaseUntil: now.Add(time.Minute)})
+	if err != nil || len(deliveries) != 1 {
+		t.Fatalf("outbox=%+v err=%v", deliveries, err)
 	}
 }
 
