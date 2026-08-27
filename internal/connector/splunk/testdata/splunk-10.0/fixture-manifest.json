@@ -1,0 +1,17 @@
+{
+  "schema_version": "coh.splunk-vendor-fixture/v1",
+  "contract_version": "1.0.0",
+  "vendor": "splunk",
+  "product": "Splunk Enterprise",
+  "qualified_minor": "10.0",
+  "origin": "Sanitized deterministic recordings derived from documented Splunk management REST response shapes",
+  "sensitive_values": "none",
+  "records": [
+    {"file": "server-info.json", "operation": "splunk.server_info"},
+    {"file": "current-context.json", "operation": "splunk.current_context"},
+    {"file": "indexes.json", "operation": "splunk.indexes"},
+    {"file": "registered-fields.json", "operation": "splunk.fields"},
+    {"file": "privilege-denied.json", "operation": "redacted_denial"},
+    {"file": "malformed-duplicate.json", "operation": "adversarial_duplicate_key"}
+  ]
+}
