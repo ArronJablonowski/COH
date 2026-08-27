@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -68,12 +69,9 @@ func TestHTTPClientUsesOnlyPinnedTypedReadOperations(t *testing.T) {
 		writer.Header().Set("Content-Type", "application/json")
 		switch request.URL.Path {
 		case "/services/server/info":
-			writeJSON(t, writer, map[string]any{"entry": []any{map[string]any{"name": "server-info", "content": map[string]any{
-				"guid": "12345678-1234-1234-1234-123456789abc", "product_type": "enterprise", "version": "10.0.0",
-				"build": "example-build", "server_roles": []string{"search_head"}}}}})
+			_, _ = writer.Write(readSplunkFixture(t, "server-info.json"))
 		case "/services/authentication/current-context":
-			writeJSON(t, writer, map[string]any{"entry": []any{map[string]any{"name": "context", "content": map[string]any{
-				"capabilities": []string{"search", "get_metadata"}}}}})
+			_, _ = writer.Write(readSplunkFixture(t, "current-context.json"))
 		case "/services/data/indexes":
 			writeJSON(t, writer, map[string]any{"entry": []any{map[string]any{"name": "security", "content": map[string]any{}},
 				map[string]any{"name": "audit", "content": map[string]any{}}, map[string]any{"name": "network", "content": map[string]any{}}}})
@@ -275,4 +273,13 @@ func writeJSON(t testing.TB, writer io.Writer, value any) {
 	if err := json.NewEncoder(writer).Encode(value); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func readSplunkFixture(t testing.TB, name string) []byte {
+	t.Helper()
+	value, err := os.ReadFile("testdata/splunk-10.0/" + name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
 }
