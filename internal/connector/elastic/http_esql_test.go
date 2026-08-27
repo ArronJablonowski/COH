@@ -103,6 +103,24 @@ func TestHTTPESQLRejectsVendorWarnings(t *testing.T) {
 	}
 }
 
+func TestHTTPESQLPreservesAuthenticationErrorPrecedence(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Warning", `299 Elasticsearch "warning must not mask auth"`)
+		http.Error(writer, "forbidden", http.StatusForbidden)
+	}))
+	defer server.Close()
+	config, roots := httpTestConfig(t, server)
+	client, err := NewHTTPClient(config, &credentialStub{secret: []byte("key"), decision: testDigest("8")}, roots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := ESQLRequest{Binding: CallBinding{Scope: testScope(), Authority: testAuthority(), Operation: "elastic.esql",
+		Targets: []string{"logs-security-000001"}}, Indices: []string{"logs-security-000001"}, Plan: testESQLPlan(t)}
+	if _, _, err := client.ExecuteESQL(context.Background(), request); queryconnector.Reason(err) != "elastic_authentication_or_privilege_denied" {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func testESQLPlan(t testing.TB) elasticesql.ValidatedPlan {
 	t.Helper()
 	compiler, err := elasticesql.New(elasticesql.Definition{SourceID: "elastic-prod", Resources: []string{"securityevent"},

@@ -244,11 +244,6 @@ func (client *HTTPClient) doChecked(ctx context.Context, binding CallBinding, me
 		if transportDigest != client.config.TransportIdentityDigest {
 			return conflict("elastic_tls_identity_mismatch")
 		}
-		if checkHeaders != nil {
-			if err := checkHeaders(response.Header.Clone()); err != nil {
-				return err
-			}
-		}
 		maximum := int64(client.config.HardLimits.MaximumBytes)
 		if maximum > queryconnector.MaximumDocumentBytes {
 			maximum = queryconnector.MaximumDocumentBytes
@@ -266,6 +261,11 @@ func (client *HTTPClient) doChecked(ctx context.Context, binding CallBinding, me
 				return denied("elastic_authentication_or_privilege_denied")
 			}
 			return queryconnector.NewError(queryconnector.Unavailable, "elastic_vendor_unavailable", nil)
+		}
+		if checkHeaders != nil {
+			if err := checkHeaders(response.Header.Clone()); err != nil {
+				return err
+			}
 		}
 		return nil
 	})

@@ -10,6 +10,8 @@ import (
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
 
+const maximumESQLRuntimeEntries = 4096
+
 type SchemaResolver interface {
 	ResolveSchema(context.Context, queryconnector.ValidatedQuery) (queryconnector.ValidatedSchemaPage, error)
 }
@@ -25,6 +27,7 @@ type validatedESQL struct {
 type executionFlight struct {
 	done             chan struct{}
 	validationDigest string
+	expiresAt        time.Time
 	execution        queryconnector.ValidatedExecution
 	err              error
 }
@@ -110,6 +113,10 @@ func (runtime *ESQLRuntime) Validate(ctx context.Context,
 	}
 	runtime.mu.Lock()
 	runtime.removeExpiredLocked(now)
+	if _, exists := runtime.validated[query.Digest()]; !exists && len(runtime.validated) >= maximumESQLRuntimeEntries {
+		runtime.mu.Unlock()
+		return queryconnector.ValidatedValidation{}, denied("elastic_esql_runtime_capacity_reached")
+	}
 	queryValue.NativeText = ""
 	runtime.validated[query.Digest()] = validatedESQL{queryDigest: query.Digest(), query: queryValue,
 		validation: validation, plan: *plan, expiresAt: expiresAt}
@@ -136,13 +143,17 @@ func (runtime *ESQLRuntime) Execute(ctx context.Context, query queryconnector.Va
 		runtime.mu.Unlock()
 		return waitExecution(ctx, pending)
 	}
+	if len(runtime.executions) >= maximumESQLRuntimeEntries || len(runtime.jobs) >= maximumESQLRuntimeEntries {
+		runtime.mu.Unlock()
+		return queryconnector.ValidatedExecution{}, denied("elastic_esql_runtime_capacity_reached")
+	}
 	prepared, ok := runtime.validated[query.Digest()]
 	if !ok || prepared.validation.Digest() != validation.Digest() ||
 		prepared.plan.Digest() != validation.Value().ProvenanceDigest || !now.Before(prepared.expiresAt) {
 		runtime.mu.Unlock()
 		return queryconnector.ValidatedExecution{}, conflict("elastic_esql_validation_mismatch")
 	}
-	pending := &executionFlight{done: make(chan struct{}), validationDigest: validation.Digest()}
+	pending := &executionFlight{done: make(chan struct{}), validationDigest: validation.Digest(), expiresAt: prepared.expiresAt}
 	runtime.executions[query.Digest()] = pending
 	runtime.mu.Unlock()
 
@@ -333,6 +344,10 @@ func (runtime *ESQLRuntime) removeExpiredLocked(now time.Time) {
 	for key, value := range runtime.validated {
 		if !now.Before(value.expiresAt) {
 			delete(runtime.validated, key)
+		}
+	}
+	for key, value := range runtime.executions {
+		if !now.Before(value.expiresAt) {
 			delete(runtime.executions, key)
 		}
 	}

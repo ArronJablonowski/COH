@@ -1,0 +1,12 @@
+{
+  "schema_version": "coh.elastic-esql-redacted-error/v1",
+  "reason": "elastic_esql_response_incomplete",
+  "query_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "plan_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "request_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "credential_exposed": false,
+  "native_text_exposed": false,
+  "parameter_exposed": false,
+  "result_row_exposed": false,
+  "vendor_body_exposed": false
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "coh.elastic-esql-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"reason": "esql_resource_denied", "class": "scope", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "esql_command_unsupported", "class": "grammar", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "esql_field_denied", "class": "schema", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "esql_literal_type_mismatch", "class": "type", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "esql_limit_invalid", "class": "bounds", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "elastic_esql_response_incomplete", "class": "completeness", "covered_by": "TestESQLResponseFailsClosedOnPartialDriftAndMalformedCells"},
+    {"reason": "elastic_esql_response_warning", "class": "drift", "covered_by": "TestHTTPESQLRejectsVendorWarnings"},
+    {"reason": "elastic_esql_runtime_capacity_reached", "class": "capacity", "covered_by": "TestESQLRuntimeFailsClosedAtProcessLocalCapacity"},
+    {"reason": "elastic_esql_job_unavailable", "class": "unknown", "covered_by": "TestESQLRuntimeReportsLostAdapterStateAsUnknown"}
+  ]
+}

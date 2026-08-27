@@ -2,12 +2,20 @@ package elastic
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/connector/elasticesql"
+	"github.com/ArronJablonowski/COH/internal/domain/querybounds"
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
+	"github.com/ArronJablonowski/COH/internal/domain/queryruntime"
+	"github.com/ArronJablonowski/COH/internal/helper/domaincontract"
 )
 
 type schemaResolverStub struct {
@@ -188,6 +196,142 @@ func TestESQLRuntimeReportsLostAdapterStateAsUnknown(t *testing.T) {
 	if err != nil || cancellation.Value().Outcome != "uncertain" || cancellation.Value().ConfirmedAt != nil {
 		t.Fatalf("cancellation=%+v err=%v", cancellation.Value(), err)
 	}
+}
+
+func TestESQLRuntimeRetriesFailedExecutionAndExpiresAllState(t *testing.T) {
+	runtime, capability, client := testESQLRuntime(t)
+	query := runtimeQuery(t, capability.Digest())
+	validation, err := runtime.Validate(context.Background(), query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.err = errors.New("temporary vendor outage")
+	if _, err := runtime.Execute(context.Background(), query, validation); err == nil {
+		t.Fatal("vendor outage was accepted")
+	}
+	client.err = nil
+	execution, err := runtime.Execute(context.Background(), query, validation)
+	if err != nil || client.count() != 2 {
+		t.Fatalf("execution=%+v calls=%d err=%v", execution.Value(), client.count(), err)
+	}
+	runtime.clock.(*fixedClock).now = testNow.Add(11 * time.Minute)
+	if _, err := runtime.Poll(context.Background(), queryconnector.PollRequest{QueryID: query.Value().QueryID,
+		AttemptID: execution.Value().AttemptID, Handle: execution.Value().Handle, Authority: query.Value().Authority}); queryconnector.Reason(err) != "elastic_esql_job_unavailable" {
+		t.Fatalf("expired poll err=%v", err)
+	}
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	if len(runtime.validated) != 0 || len(runtime.executions) != 0 || len(runtime.jobs) != 0 {
+		t.Fatalf("expired state retained: validated=%d executions=%d jobs=%d",
+			len(runtime.validated), len(runtime.executions), len(runtime.jobs))
+	}
+}
+
+func TestESQLRuntimeFailsClosedAtProcessLocalCapacity(t *testing.T) {
+	runtime, capability, _ := testESQLRuntime(t)
+	query := runtimeQuery(t, capability.Digest())
+	runtime.mu.Lock()
+	for index := range maximumESQLRuntimeEntries {
+		runtime.validated[fmt.Sprintf("entry-%d", index)] = validatedESQL{expiresAt: testNow.Add(time.Hour)}
+	}
+	runtime.mu.Unlock()
+	if _, err := runtime.Validate(context.Background(), query); queryconnector.Code(err) != queryconnector.Denied ||
+		queryconnector.Reason(err) != "elastic_esql_runtime_capacity_reached" {
+		t.Fatalf("capacity err=%v", err)
+	}
+}
+
+type esqlBoundsAudit struct{ decisions []querybounds.Decision }
+
+func (audit *esqlBoundsAudit) AppendQueryBoundDecision(_ context.Context, decision querybounds.Decision) error {
+	audit.decisions = append(audit.decisions, decision)
+	return nil
+}
+
+type esqlReplayGuard struct{}
+
+func (esqlReplayGuard) Observe(context.Context, string, string) (bool, error) { return false, nil }
+
+type esqlRuntimeRecorder struct{ sessions []queryruntime.Session }
+
+func (recorder *esqlRuntimeRecorder) RecordQuerySession(_ context.Context, session queryruntime.Session) error {
+	recorder.sessions = append(recorder.sessions, session)
+	return nil
+}
+
+type esqlRateGate struct{ sequence uint64 }
+
+func (gate *esqlRateGate) Reserve(_ context.Context, request queryruntime.RateRequest) (queryruntime.RateReservation, error) {
+	gate.sequence++
+	keyDigest := esqlRateKeyDigest(request)
+	requested, _ := time.Parse(timestampLayout, request.RequestedAt)
+	return queryruntime.FinalizeRateReservation(queryruntime.RateReservation{SchemaVersion: queryruntime.RateSchemaVersion,
+		ContractVersion: queryruntime.ContractVersion, KeyDigest: keyDigest, SessionID: request.SessionID,
+		Operation: request.Operation, Sequence: gate.sequence, ReservedAt: request.RequestedAt,
+		ValidUntil: requested.Add(time.Minute).Format(timestampLayout)})
+}
+
+func TestESQLRuntimeFeedsBoundedSharedRuntimeEvidence(t *testing.T) {
+	runtime, capability, _ := testESQLRuntime(t)
+	query := runtimeQuery(t, capability.Digest())
+	validation, err := runtime.Validate(context.Background(), query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	audit := &esqlBoundsAudit{}
+	bounds, err := querybounds.New(audit, runtime.clock, esqlReplayGuard{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	queryValue := query.Value()
+	authority := querybounds.AuthoritySnapshot{OrganizationID: queryValue.Scope.OrganizationID,
+		TenantID: queryValue.Scope.TenantID, CaseID: queryValue.Scope.CaseID, ActorID: queryValue.Authority.ActorID,
+		ActorRevision: 1, ActorActive: true, SourceID: queryValue.Scope.SourceID, SourceRevision: 1, SourceActive: true,
+		ResourceIDs: queryValue.Scope.ResourceIDs, AllowlistRevision: 1, AllowlistActive: true,
+		CapabilityDigest: queryValue.CapabilityDigest, CapabilityRevision: 1, CapabilityActive: true,
+		AuthorizationAllowed: true, AuthorizationDecisionDigest: queryValue.Authority.AuthorizationDigest,
+		PolicyAllowed: true, PolicyDecisionDigest: queryValue.Authority.PolicyDecisionDigest, PolicyRevision: 1,
+		AuditReservationDigest: queryValue.Authority.AuditReservationDigest, RevocationRevision: 1,
+		MaximumInterval: 2 * time.Hour, MaximumLimits: queryValue.Limits, ObservedAt: runtime.clock.Now()}
+	admission, err := bounds.Admit(context.Background(), query, authority)
+	if err != nil {
+		t.Fatal(err)
+	}
+	execution, err := runtime.Execute(context.Background(), query, validation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder := &esqlRuntimeRecorder{}
+	profile := queryruntime.Profile{Limits: queryValue.Limits, MinimumPollInterval: time.Millisecond,
+		MaximumPollInterval: time.Second}
+	controller, err := queryruntime.New(queryruntime.Config{Interactive: queryruntime.Profile{Mode: "interactive",
+		Limits: profile.Limits, MinimumPollInterval: profile.MinimumPollInterval, MaximumPollInterval: profile.MaximumPollInterval},
+		Export: queryruntime.Profile{Mode: "export", Limits: profile.Limits, MinimumPollInterval: profile.MinimumPollInterval,
+			MaximumPollInterval: profile.MaximumPollInterval}, MaximumSessions: 10, CancellationWait: time.Second,
+		RecordWait: time.Second}, runtime, &esqlRateGate{}, recorder, runtime.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := controller.Start(context.Background(), queryruntime.StartRequest{Mode: "interactive",
+		Admission: admission, Execution: execution})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := controller.Poll(context.Background(), queryruntime.SessionRef{SessionID: session.SessionID,
+		SessionDigest: session.SessionDigest})
+	if err != nil || result.Session.Status != "complete" || !result.HasPage ||
+		result.Session.BoundsDecisionDigest != admission.Decision.DecisionDigest ||
+		result.Session.ExecutionDigest != execution.Digest() || result.Session.LastPageDigest != result.Page.Digest() ||
+		len(audit.decisions) != 1 || len(recorder.sessions) != 2 {
+		t.Fatalf("session=%+v audit=%d records=%d err=%v", result.Session, len(audit.decisions), len(recorder.sessions), err)
+	}
+}
+
+func esqlRateKeyDigest(request queryruntime.RateRequest) string {
+	encoded, _ := json.Marshal(request)
+	canonical, _ := domaincontract.Canonicalize(encoded)
+	sum := sha256.Sum256(append([]byte("COH-QUERY-RATE-KEY-V1\x00"), canonical...))
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func testESQLRuntime(t testing.TB) (*ESQLRuntime, queryconnector.ValidatedCapability, *esqlClientStub) {

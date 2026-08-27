@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.example/contracts/elastic-esql/v1/elastic-esql-definition.schema.json",
+  "title": "COH bounded Elastic ES|QL definition v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source_id", "resources", "fields", "default_projection", "stable_sort", "timestamp_field", "hard_maximum_rows"],
+  "properties": {
+    "schema_version": {"const": "coh.elastic-esql-definition/v1"},
+    "source_id": {"$ref": "#/$defs/name"},
+    "resources": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/name"}},
+    "fields": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/field"}},
+    "default_projection": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/name"}},
+    "stable_sort": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/sort"}},
+    "timestamp_field": {"$ref": "#/$defs/name"},
+    "tenant_field": {"$ref": "#/$defs/optionalName"},
+    "source_field": {"$ref": "#/$defs/optionalName"},
+    "hard_maximum_rows": {"type": "integer", "minimum": 1, "maximum": 100000}
+  },
+  "$defs": {
+    "name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "optionalName": {"type": "string", "pattern": "^$|^[a-z][a-z0-9_.-]{0,127}$"},
+    "vendorName": {"type": "string", "pattern": "^@?[A-Za-z_][A-Za-z0-9_.-]{0,127}$"},
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "vendor_name", "type", "projectable", "filterable", "sortable"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "vendor_name": {"$ref": "#/$defs/vendorName"},
+        "type": {"enum": ["string", "integer", "boolean", "timestamp", "ip"]},
+        "projectable": {"type": "boolean"},
+        "filterable": {"type": "boolean"},
+        "sortable": {"type": "boolean"}
+      }
+    },
+    "sort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "direction"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "direction": {"enum": ["ASC", "DESC"]}
+      }
+    }
+  }
+}
