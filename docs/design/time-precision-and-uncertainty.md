@@ -44,7 +44,7 @@ CYB-82 record as separately resolvable provenance.
 | Clock | `source`, `collector`, `server`, `device`, `unknown` | Calibration identity and signed skew convention are retained. `skew = source_clock - reference_clock`; corrected UTC subtracts skew. | `calibration_unresolved` |
 | Skew | exact signed estimate plus non-negative radius, or unknown | True time uses `[source lower - (estimate + radius), source upper - (estimate - radius)]`; all arithmetic is overflow checked. | `arithmetic_overflow`, `calibration_unresolved` |
 | Interval | `bounded`, `unbounded` | Bounds are inclusive UTC nanoseconds and `earliest <= latest`; no sentinel timestamp represents infinity or unknown. | `interval_invalid` |
-| Normalization | `normalized`, `unresolved`, `denied`, `canceled`, `timeout`, `dependency_unavailable` | Only `normalized` has bounded UTC. All terminal states retain command and provenance digests. | Closed reason code matching the state. |
+| Normalization | `normalized`, `unresolved`, `denied`, `canceled`, `timeout`, `dependency_unavailable` | Only `normalized` selects a normalized UTC instant. A fold may be unresolved with bounded candidates; missing/gap/unknown states are unbounded. All terminal states retain command and provenance digests. | Closed reason code matching the state. |
 | Comparison | `before`, `after`, `equal`, `overlap`, `duplicate`, `conflicting`, `unknown` | Strict order is emitted only for disjoint bounded intervals. Overlap never becomes before/after. | `unknown` with rationale. |
 | Gap/negative evidence | `observed`, `negative`, `gap`, `partial`, `conflicting` | These are evidence facts, not absence inferred from missing rows. Completeness and evidence bindings are retained. | `evidence_state_invalid` |
 | Replay | first, exact replay, changed replay | Idempotency key binds the canonical command digest. Exact replay returns the stored receipt; changed replay is denied. | `idempotency_conflict` |
@@ -117,8 +117,9 @@ Comparison is symmetric and deterministic:
 Confidence is `exact` only for singleton, non-ambiguous, zero-radius values;
 `bounded` for other bounded results; `ambiguous` for DST folds or conflicting
 source assertions; and `unknown` for unresolved results. The comparison stores
-the exact rationale and input record digests. A positive gap duration may be
-reported only for `before` or `after`; whether it represents missing evidence
+the exact rationale and input record digests. A non-negative uncovered gap (the
+distance between inclusive bounds minus one nanosecond) is reported only for
+`before` or `after`; whether it represents missing evidence
 depends on separately bound completeness and `gap` evidence facts.
 
 ## EVAL-017 fixture matrix

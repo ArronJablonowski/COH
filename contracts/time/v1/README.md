@@ -16,8 +16,10 @@ records:
 - `coh.time-normalization-receipt/v1` makes command handling, audit, provenance,
   exact replay, and lost-response recovery durable.
 
-Unknown or unresolved time uses an explicit unbounded interval and a null
-normalized UTC value. The schema never uses a minimum/maximum timestamp as an
+Missing or wholly unresolved time uses an explicit unbounded interval and a
+null normalized UTC value. A DST fold is unresolved but may retain a bounded
+conservative interval and both candidate instants; it still has no selected
+normalized UTC. The schema never uses a minimum/maximum timestamp as an
 infinity sentinel. Canonical wire timestamps use exactly nine fractional UTC
 digits. Signed clock skew is `source clock - reference clock`; normalization
 subtracts that skew.
@@ -25,4 +27,3 @@ subtracts that skew.
 Compatibility, precision, DST, skew, comparison, privacy, migration, recovery,
 and rollback semantics are frozen in
 `docs/design/time-precision-and-uncertainty.md`.
-

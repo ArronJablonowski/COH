@@ -72,7 +72,15 @@
           }
         },
         {
-          "if": {"properties": {"outcome": {"enum": ["unresolved", "denied", "canceled", "timeout", "dependency_unavailable"]}}, "required": ["outcome"]},
+          "if": {"properties": {"outcome": {"const": "unresolved"}}, "required": ["outcome"]},
+          "then": {
+            "properties": {
+              "normalized_utc": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"enum": ["denied", "canceled", "timeout", "dependency_unavailable"]}}, "required": ["outcome"]},
           "then": {
             "properties": {
               "interval": {"$ref": "#/$defs/unbounded_interval"},
@@ -96,13 +104,13 @@
         "outcome": {"enum": ["before", "after", "equal", "overlap", "duplicate", "conflicting", "unknown"]},
         "confidence": {"enum": ["exact", "bounded", "ambiguous", "unknown"]},
         "rationale": {"enum": ["disjoint_intervals", "equal_singleton", "intersecting_intervals", "same_binding_same_record", "same_binding_incompatible_facts", "unbounded_interval", "unresolved_input"]},
-        "gap_nanoseconds": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 9223372036854775807}, {"type": "null"}]},
+        "gap_nanoseconds": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 9223372036854775807}, {"type": "null"}]},
         "created_at": {"$ref": "#/$defs/timestamp"}
       },
       "allOf": [
         {
           "if": {"properties": {"outcome": {"enum": ["before", "after"]}}, "required": ["outcome"]},
-          "then": {"properties": {"gap_nanoseconds": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}, "rationale": {"const": "disjoint_intervals"}}}
+          "then": {"properties": {"gap_nanoseconds": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807}, "rationale": {"const": "disjoint_intervals"}}}
         },
         {
           "if": {"properties": {"outcome": {"enum": ["equal", "overlap", "duplicate", "conflicting", "unknown"]}}, "required": ["outcome"]},
