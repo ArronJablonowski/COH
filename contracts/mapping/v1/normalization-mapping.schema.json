@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/mapping/v1/normalization-mapping.schema.json",
+  "title": "COH normalization mapping registry records v1",
+  "oneOf": [
+    {"$ref": "#/$defs/signed_mapping"},
+    {"$ref": "#/$defs/command"},
+    {"$ref": "#/$defs/outcome"},
+    {"$ref": "#/$defs/receipt"}
+  ],
+  "$defs": {
+    "signed_mapping": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "manifest", "manifest_digest", "publisher_id", "publisher_key_id", "publisher_key_revision", "signature_algorithm", "signature"],
+      "properties": {
+        "schema_version": {"const": "coh.signed-normalization-mapping/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "manifest": {"$ref": "#/$defs/manifest"},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "publisher_id": {"$ref": "#/$defs/uuid_v7"},
+        "publisher_key_id": {"$ref": "#/$defs/token"},
+        "publisher_key_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "signature_algorithm": {"const": "ed25519"},
+        "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+      },
+      "additionalProperties": false
+    },
+    "manifest": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "mapping_id", "name", "version", "revision", "predecessor_digest", "source", "compatibility", "rules", "ignored_fields", "unmapped_policy", "limits", "issuer_id", "review_digest", "created_at", "not_before", "not_after", "revocation"],
+      "properties": {
+        "schema_version": {"const": "coh.normalization-mapping/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "mapping_id": {"$ref": "#/$defs/uuid_v7"},
+        "name": {"$ref": "#/$defs/token"},
+        "version": {"$ref": "#/$defs/semver"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "predecessor_digest": {"$ref": "#/$defs/optional_digest"},
+        "source": {"$ref": "#/$defs/source_matcher"},
+        "compatibility": {"$ref": "#/$defs/compatibility"},
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 512,
+          "items": {"$ref": "#/$defs/rule"}
+        },
+        "ignored_fields": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {"$ref": "#/$defs/ignored_field"}
+        },
+        "unmapped_policy": {"enum": ["deny", "record_partial"]},
+        "limits": {"$ref": "#/$defs/limits"},
+        "issuer_id": {"$ref": "#/$defs/uuid_v7"},
+        "review_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "not_before": {"$ref": "#/$defs/timestamp"},
+        "not_after": {"$ref": "#/$defs/timestamp"},
+        "revocation": {"$ref": "#/$defs/revocation_binding"}
+      },
+      "additionalProperties": false
+    },
+    "source_matcher": {
+      "type": "object",
+      "required": ["source_kind", "product", "product_digest", "source_schema", "source_schema_version", "source_schema_digest", "collection_method", "collection_method_version", "source_identity_digest"],
+      "properties": {
+        "source_kind": {"enum": ["upload", "connector", "query", "tool", "model", "derived", "import"]},
+        "product": {"$ref": "#/$defs/token"},
+        "product_digest": {"$ref": "#/$defs/digest"},
+        "source_schema": {"$ref": "#/$defs/token"},
+        "source_schema_version": {"$ref": "#/$defs/opaque"},
+        "source_schema_digest": {"$ref": "#/$defs/digest"},
+        "collection_method": {"$ref": "#/$defs/token"},
+        "collection_method_version": {"$ref": "#/$defs/opaque"},
+        "source_identity_digest": {"$ref": "#/$defs/optional_digest"}
+      },
+      "additionalProperties": false
+    },
+    "compatibility": {
+      "type": "object",
+      "required": ["target_manifest_digest", "normalized_envelope_schema", "ocsf_version", "ocsf_commit", "ecs_version", "ecs_commit"],
+      "properties": {
+        "target_manifest_digest": {"const": "sha256:82b23c1229c4bb1dbdc047859614d8da924d5bd3e5bdf9efba62b31a397408c1"},
+        "normalized_envelope_schema": {"const": "coh.normalized-event-envelope/v1"},
+        "ocsf_version": {"const": "1.9.0"},
+        "ocsf_commit": {"const": "856d462bd20dc46cc1ffed2dfffe3b91ef0fbeba"},
+        "ecs_version": {"const": "9.5.0"},
+        "ecs_commit": {"const": "401807e0547301525acd28c4fb667203fec66d59"}
+      },
+      "additionalProperties": false
+    },
+    "rule": {
+      "type": "object",
+      "required": ["rule_id", "sequence", "operation", "input_path", "output_namespace", "output_path", "input_type", "output_type", "required", "constant_value", "enum_table", "integer_range", "reversibility", "loss_state", "loss_reason", "entity_hint"],
+      "properties": {
+        "rule_id": {"$ref": "#/$defs/token"},
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 512},
+        "operation": {"enum": ["copy", "constant", "enum", "to_integer", "to_string", "timestamp_reference"]},
+        "input_path": {"$ref": "#/$defs/optional_input_path"},
+        "output_namespace": {"enum": ["ocsf", "ecs"]},
+        "output_path": {"$ref": "#/$defs/output_path"},
+        "input_type": {"$ref": "#/$defs/value_type"},
+        "output_type": {"$ref": "#/$defs/value_type"},
+        "required": {"type": "boolean"},
+        "constant_value": {"$ref": "#/$defs/optional_scalar"},
+        "enum_table": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/enum_entry"}
+        },
+        "integer_range": {"$ref": "#/$defs/optional_integer_range"},
+        "reversibility": {"enum": ["reversible", "not_reversible"]},
+        "loss_state": {"enum": ["lossless", "lossy"]},
+        "loss_reason": {"enum": ["none", "constant", "lexical_normalization", "type_narrowing", "enum_many_to_one", "source_precision", "declared_vendor_loss"]},
+        "entity_hint": {"oneOf": [{"$ref": "#/$defs/entity_hint"}, {"type": "null"}]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"operation": {"const": "constant"}}, "required": ["operation"]},
+          "then": {
+            "properties": {
+              "input_path": {"type": "null"},
+              "constant_value": {"$ref": "#/$defs/scalar"},
+              "required": {"const": false},
+              "reversibility": {"const": "not_reversible"},
+              "loss_reason": {"const": "constant"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"operation": {"const": "enum"}}, "required": ["operation"]},
+          "then": {"properties": {"input_path": {"$ref": "#/$defs/input_path"}, "enum_table": {"minItems": 1}}}
+        },
+        {
+          "if": {"properties": {"operation": {"enum": ["copy", "to_integer", "to_string", "timestamp_reference"]}}, "required": ["operation"]},
+          "then": {"properties": {"input_path": {"$ref": "#/$defs/input_path"}, "constant_value": {"type": "null"}, "enum_table": {"maxItems": 0}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "enum_entry": {
+      "type": "object",
+      "required": ["source", "target"],
+      "properties": {"source": {"$ref": "#/$defs/scalar"}, "target": {"$ref": "#/$defs/scalar"}},
+      "additionalProperties": false
+    },
+    "entity_hint": {
+      "type": "object",
+      "required": ["role", "identifier_type", "normalization", "confidence_ceiling_millionths"],
+      "properties": {
+        "role": {"enum": ["host.name", "user.name", "network.ip", "process.id", "file.hash", "cloud.resource_id"]},
+        "identifier_type": {"enum": ["hostname", "username", "ipv4", "ipv6", "process_id", "sha256", "cloud_resource_id"]},
+        "normalization": {"enum": ["identity", "lowercase_ascii", "ip_canonical", "decimal_canonical", "sha256_lowercase"]},
+        "confidence_ceiling_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000}
+      },
+      "additionalProperties": false
+    },
+    "ignored_field": {
+      "type": "object",
+      "required": ["path", "reason"],
+      "properties": {
+        "path": {"$ref": "#/$defs/input_path"},
+        "reason": {"enum": ["duplicate_vendor_metadata", "nonsemantic_display", "unsupported_vendor_extension", "privacy_minimized", "reserved"]}
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "required": ["max_rules", "max_input_leaves", "max_output_leaves", "max_value_bytes", "max_depth"],
+      "properties": {
+        "max_rules": {"type": "integer", "minimum": 1, "maximum": 512},
+        "max_input_leaves": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "max_output_leaves": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "max_value_bytes": {"type": "integer", "minimum": 1, "maximum": 65536},
+        "max_depth": {"type": "integer", "minimum": 1, "maximum": 64}
+      },
+      "additionalProperties": false
+    },
+    "revocation_binding": {
+      "type": "object",
+      "required": ["list_id", "list_digest", "minimum_revision"],
+      "properties": {
+        "list_id": {"$ref": "#/$defs/uuid_v7"},
+        "list_digest": {"$ref": "#/$defs/digest"},
+        "minimum_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "operation_id", "idempotency_key", "operation", "case", "source_binding", "source", "mapping_digest", "signed_mapping", "expected_registry_revision", "requested_at", "deadline"],
+      "properties": {
+        "schema_version": {"const": "coh.mapping-registry-command/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "operation_id": {"$ref": "#/$defs/uuid_v7"},
+        "idempotency_key": {"$ref": "#/$defs/digest"},
+        "operation": {"enum": ["register", "promote", "rollback", "revoke", "apply"]},
+        "case": {"$ref": "#/$defs/case"},
+        "source_binding": {"$ref": "#/$defs/source_binding"},
+        "source": {"$ref": "#/$defs/source_matcher"},
+        "mapping_digest": {"$ref": "#/$defs/digest"},
+        "signed_mapping": {"oneOf": [{"$ref": "#/$defs/signed_mapping"}, {"type": "null"}]},
+        "expected_registry_revision": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+        "requested_at": {"$ref": "#/$defs/timestamp"},
+        "deadline": {"$ref": "#/$defs/timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"operation": {"const": "register"}}, "required": ["operation"]},
+          "then": {"properties": {"signed_mapping": {"$ref": "#/$defs/signed_mapping"}}}
+        },
+        {
+          "if": {"properties": {"operation": {"enum": ["promote", "rollback", "revoke", "apply"]}}, "required": ["operation"]},
+          "then": {"properties": {"signed_mapping": {"type": "null"}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "outcome": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "operation_id", "command_digest", "mapping_digest", "registry_revision", "status", "reason_code", "normalized_envelope_digest", "coverage", "applied_rules", "unmapped_paths", "lossy_paths", "entity_hints", "reverse_results", "created_at"],
+      "properties": {
+        "schema_version": {"const": "coh.mapping-registry-outcome/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "operation_id": {"$ref": "#/$defs/uuid_v7"},
+        "command_digest": {"$ref": "#/$defs/digest"},
+        "mapping_digest": {"$ref": "#/$defs/digest"},
+        "registry_revision": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+        "status": {"enum": ["registered", "promoted", "rolled_back", "revoked", "applied", "denied", "canceled", "timeout", "dependency_unavailable"]},
+        "reason_code": {"$ref": "#/$defs/reason_code"},
+        "normalized_envelope_digest": {"$ref": "#/$defs/optional_digest"},
+        "coverage": {"enum": ["complete", "partial", "unmapped", "none"]},
+        "applied_rules": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/token"}},
+        "unmapped_paths": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/input_path"}},
+        "lossy_paths": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/input_path"}},
+        "entity_hints": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/emitted_entity_hint"}},
+        "reverse_results": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/reverse_result"}},
+        "created_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "emitted_entity_hint": {
+      "type": "object",
+      "required": ["rule_id", "output_path", "source_field_digest", "role", "identifier_type", "normalization", "confidence_ceiling_millionths"],
+      "properties": {
+        "rule_id": {"$ref": "#/$defs/token"},
+        "output_path": {"$ref": "#/$defs/output_path"},
+        "source_field_digest": {"$ref": "#/$defs/digest"},
+        "role": {"enum": ["host.name", "user.name", "network.ip", "process.id", "file.hash", "cloud.resource_id"]},
+        "identifier_type": {"enum": ["hostname", "username", "ipv4", "ipv6", "process_id", "sha256", "cloud_resource_id"]},
+        "normalization": {"enum": ["identity", "lowercase_ascii", "ip_canonical", "decimal_canonical", "sha256_lowercase"]},
+        "confidence_ceiling_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000}
+      },
+      "additionalProperties": false
+    },
+    "reverse_result": {
+      "type": "object",
+      "required": ["rule_id", "source_path_digest", "output_path_digest", "result"],
+      "properties": {
+        "rule_id": {"$ref": "#/$defs/token"},
+        "source_path_digest": {"$ref": "#/$defs/digest"},
+        "output_path_digest": {"$ref": "#/$defs/digest"},
+        "result": {"enum": ["passed", "not_applicable"]}
+      },
+      "additionalProperties": false
+    },
+    "receipt": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "operation_id", "idempotency_key", "command_digest", "outcome_digest", "status", "reason_code", "audit_digest", "previous_provenance_digest", "provenance_digest", "created_at", "updated_at"],
+      "properties": {
+        "schema_version": {"const": "coh.mapping-registry-receipt/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "operation_id": {"$ref": "#/$defs/uuid_v7"},
+        "idempotency_key": {"$ref": "#/$defs/digest"},
+        "command_digest": {"$ref": "#/$defs/digest"},
+        "outcome_digest": {"$ref": "#/$defs/digest"},
+        "status": {"enum": ["registered", "promoted", "rolled_back", "revoked", "applied", "denied", "canceled", "timeout", "dependency_unavailable"]},
+        "reason_code": {"$ref": "#/$defs/reason_code"},
+        "audit_digest": {"$ref": "#/$defs/digest"},
+        "previous_provenance_digest": {"$ref": "#/$defs/optional_digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {"organization_id": {"$ref": "#/$defs/uuid_v7"}, "tenant_id": {"$ref": "#/$defs/uuid_v7"}, "case_id": {"$ref": "#/$defs/uuid_v7"}},
+      "additionalProperties": false
+    },
+    "source_binding": {
+      "type": "object",
+      "required": ["envelope_id", "envelope_digest", "artifact_digest", "manifest_digest", "ingest_receipt_digest", "source_provenance_digest", "original_fields_digest"],
+      "properties": {
+        "envelope_id": {"$ref": "#/$defs/uuid_v7"},
+        "envelope_digest": {"$ref": "#/$defs/digest"},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "ingest_receipt_digest": {"$ref": "#/$defs/digest"},
+        "source_provenance_digest": {"$ref": "#/$defs/digest"},
+        "original_fields_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "reason_code": {"enum": ["registered", "promoted", "rolled_back", "revoked", "applied", "manifest_invalid", "manifest_digest_mismatch", "signature_invalid", "publisher_untrusted", "manifest_not_yet_valid", "manifest_expired", "manifest_revoked", "revocation_stale", "source_mismatch", "mapping_not_found", "mapping_ambiguous", "target_incompatible", "mapping_downgrade", "rule_invalid", "output_collision", "type_mismatch", "conversion_overflow", "unmapped_field_denied", "coverage_invalid", "reverse_validation_failed", "evidence_binding_mismatch", "idempotency_conflict", "context_canceled", "context_deadline", "dependency_unavailable"]},
+    "value_type": {"enum": ["string", "integer", "boolean", "null", "timestamp_text"]},
+    "scalar": {"type": ["string", "integer", "boolean", "null"]},
+    "optional_scalar": {"oneOf": [{"$ref": "#/$defs/scalar"}, {"type": "object", "maxProperties": 0}]},
+    "integer_range": {
+      "type": "object",
+      "required": ["minimum", "maximum"],
+      "properties": {"minimum": {"type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807}, "maximum": {"type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807}},
+      "additionalProperties": false
+    },
+    "optional_integer_range": {"oneOf": [{"$ref": "#/$defs/integer_range"}, {"type": "null"}]},
+    "input_path": {"type": "string", "pattern": "^original(\\.[A-Za-z0-9_-]{1,128}){1,16}$", "maxLength": 1024},
+    "optional_input_path": {"oneOf": [{"$ref": "#/$defs/input_path"}, {"type": "null"}]},
+    "output_path": {"type": "string", "pattern": "^(ocsf|ecs)(\\.[A-Za-z0-9_-]{1,128}){1,16}$", "maxLength": 1024},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "opaque": {"type": "string", "minLength": 1, "maxLength": 256},
+    "semver": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$", "maxLength": 128},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "optional_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{9}Z$"}
+  }
+}
