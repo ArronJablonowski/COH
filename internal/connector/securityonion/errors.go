@@ -20,6 +20,10 @@ func conflict(reason string) error {
 	return queryconnector.NewError(queryconnector.Conflict, reason, nil)
 }
 
+func unsupported(reason string) error {
+	return queryconnector.NewError(queryconnector.Unsupported, reason, nil)
+}
+
 func mapHTTPError(err error) error {
 	if err == nil {
 		return nil

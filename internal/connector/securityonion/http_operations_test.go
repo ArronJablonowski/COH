@@ -71,7 +71,8 @@ func TestHTTPClientUsesFreshOAuthAndOnlyQualifiedReadPaths(t *testing.T) {
 			}
 			response := []any{map[string]any{
 				"completeTime": "2026-08-27T18:00:00Z", "createTime": "2026-08-27T17:59:59Z",
-				"criteria": map[string]any{"beginTime": "", "createTime": "", "dateRange": "", "endTime": "",
+				"criteria": map[string]any{"beginTime": "2026-08-27T17:00:00Z", "createTime": "", "dateRange": "",
+					"endTime":    "2026-08-27T18:00:00Z",
 					"eventLimit": plan.EventLimit, "metricLimit": plan.MetricLimit, "query": plan.RenderedQuery},
 				"elapsedMs": 12, "errors": []any{}, "metrics": map[string]any{}, "totalEvents": 1,
 				"events": []any{map[string]any{"id": "event-1", "payload": map[string]any{
@@ -129,8 +130,8 @@ func TestHTTPClientRejectsEmbeddedErrorsBeforeProjection(t *testing.T) {
 			return
 		}
 		_ = json.NewEncoder(writer).Encode([]any{map[string]any{
-			"completeTime": "", "createTime": "", "criteria": map[string]any{"beginTime": "", "createTime": "",
-				"dateRange": "", "endTime": "", "eventLimit": plan.EventLimit, "metricLimit": plan.MetricLimit,
+			"completeTime": "", "createTime": "", "criteria": map[string]any{"beginTime": "2026-08-27T17:00:00Z", "createTime": "",
+				"dateRange": "", "endTime": "2026-08-27T18:00:00Z", "eventLimit": plan.EventLimit, "metricLimit": plan.MetricLimit,
 				"query": plan.RenderedQuery}, "elapsedMs": 1, "errors": []string{"all shards failed"},
 			"events": []any{}, "metrics": map[string]any{}, "totalEvents": 0,
 		}})

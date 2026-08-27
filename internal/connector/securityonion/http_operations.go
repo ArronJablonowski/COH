@@ -191,12 +191,14 @@ func decodeEventQueryResult(body []byte, plan OQLPlan) (EventQueryResult, error)
 	envelope := response[0]
 	if len(envelope.Errors) != 0 || envelope.Criteria.Query != plan.RenderedQuery ||
 		envelope.Criteria.EventLimit != plan.EventLimit || envelope.Criteria.MetricLimit != plan.MetricLimit ||
-		envelope.ElapsedMillis > plan.MaximumDurationMillis {
+		envelope.ElapsedMillis > plan.MaximumDurationMillis || !criteriaMatchesRange(envelope.Criteria.BeginTime,
+		envelope.Criteria.EndTime, plan.Range) {
 		return EventQueryResult{}, denied("securityonion_query_response_mismatch")
 	}
 	result := EventQueryResult{TotalEvents: envelope.TotalEvents, ElapsedMillis: envelope.ElapsedMillis}
 	if plan.Mode == "events" {
-		if len(envelope.Events) > int(plan.EventLimit) || len(envelope.Metrics) != 0 {
+		if len(envelope.Events) > int(plan.EventLimit) || len(envelope.Metrics) != 0 ||
+			envelope.TotalEvents < uint64(len(envelope.Events)) {
 			return EventQueryResult{}, denied("securityonion_event_response_invalid")
 		}
 		result.Events = make([]EventRecord, len(envelope.Events))
@@ -317,9 +319,12 @@ func projectMetrics(input map[string]json.RawMessage, groups []OQLColumn, limit 
 		return nil, false, denied("securityonion_metric_response_invalid")
 	}
 	var aggregation struct {
-		Buckets []struct {
-			Key      json.RawMessage `json:"key"`
-			DocCount uint64          `json:"doc_count"`
+		DocCountErrorUpperBound uint64 `json:"doc_count_error_upper_bound"`
+		SumOtherDocCount        uint64 `json:"sum_other_doc_count"`
+		Buckets                 []struct {
+			Key         json.RawMessage `json:"key"`
+			KeyAsString string          `json:"key_as_string"`
+			DocCount    uint64          `json:"doc_count"`
 		} `json:"buckets"`
 	}
 	for _, raw := range input {
@@ -335,7 +340,21 @@ func projectMetrics(input map[string]json.RawMessage, groups []OQLColumn, limit 
 		}
 		result[index] = MetricRecord{Keys: keys, Value: bucket.DocCount}
 	}
-	return result, uint64(len(result)) >= limit, nil
+	return result, uint64(len(result)) >= limit || aggregation.SumOtherDocCount != 0 ||
+		aggregation.DocCountErrorUpperBound != 0, nil
+}
+
+func criteriaMatchesRange(begin, end, planned string) bool {
+	parts := strings.Split(planned, " - ")
+	if len(parts) != 2 {
+		return false
+	}
+	plannedBegin, beginErr := time.ParseInLocation(connectRangeLayout, parts[0], time.UTC)
+	plannedEnd, endErr := time.ParseInLocation(connectRangeLayout, parts[1], time.UTC)
+	actualBegin, actualBeginErr := time.Parse(time.RFC3339Nano, begin)
+	actualEnd, actualEndErr := time.Parse(time.RFC3339Nano, end)
+	return beginErr == nil && endErr == nil && actualBeginErr == nil && actualEndErr == nil &&
+		plannedBegin.Equal(actualBegin) && plannedEnd.Equal(actualEnd)
 }
 
 func decodeMetricKeys(raw json.RawMessage, groups []OQLColumn) ([]string, error) {
