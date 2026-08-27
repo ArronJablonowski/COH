@@ -1,0 +1,16 @@
+{
+  "schema_version": "coh.security-onion-redacted-error/v1",
+  "contract_version": "1.0.0",
+  "event": "securityonion_query_denied",
+  "reason_code": "securityonion_authentication_denied",
+  "source_id": "security-onion-prod",
+  "request_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "response_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "transport_identity_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "credential_exposed": false,
+  "bearer_exposed": false,
+  "native_text_exposed": false,
+  "literal_exposed": false,
+  "result_row_exposed": false,
+  "vendor_body_exposed": false
+}

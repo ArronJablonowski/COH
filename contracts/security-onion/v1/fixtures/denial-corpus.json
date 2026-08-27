@@ -1,0 +1,18 @@
+{
+  "schema_version": "coh.security-onion-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"class": "openapi", "reason": "operation drift", "covered_by": "TestQualifierRejectsAmbiguityAndContractDrift"},
+    {"class": "route", "reason": "forbidden endpoint", "covered_by": "TestQualifierBindsOnlyExactReadOperations"},
+    {"class": "oql", "reason": "raw pipe injection", "covered_by": "TestOQLCompilerDenialCorpus"},
+    {"class": "oql", "reason": "field substitution", "covered_by": "TestOQLCompilerDenialCorpus"},
+    {"class": "binding", "reason": "schema or scope drift", "covered_by": "TestOQLCompilerBindsLanguageSchemaQualificationAndCancellation"},
+    {"class": "response", "reason": "criteria range drift", "covered_by": "TestDecoderDeniesAmbiguousDriftedAndMalformedResponses"},
+    {"class": "response", "reason": "embedded backend error", "covered_by": "TestDecoderDeniesAmbiguousDriftedAndMalformedResponses"},
+    {"class": "response", "reason": "duplicate or unknown JSON", "covered_by": "TestDecoderDeniesAmbiguousDriftedAndMalformedResponses"},
+    {"class": "oauth", "reason": "authentication denied", "covered_by": "TestHTTPClientDistinguishesOutageAuthTLSAndTimeout"},
+    {"class": "tls", "reason": "peer substitution", "covered_by": "TestHTTPClientDistinguishesOutageAuthTLSAndTimeout"},
+    {"class": "runtime", "reason": "cap-filled truncation", "covered_by": "TestOQLRuntimeReportsCapFilledAndUnconfirmedResults"},
+    {"class": "runtime", "reason": "lost adapter state", "covered_by": "TestOQLRuntimeRetriesOutageAndReportsLostState"}
+  ]
+}

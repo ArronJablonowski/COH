@@ -1,0 +1,9 @@
+{
+  "schema_version": "coh.security-onion-vendor-fixture/v1",
+  "contract_version": "1.0.0",
+  "vendor": "security-onion",
+  "family": "3.x",
+  "source": "sanitized official Connect API shapes",
+  "sensitive_values": "none",
+  "records": ["openapi-qualified.json", "info.json", "events.json", "metrics.json", "error.json"]
+}

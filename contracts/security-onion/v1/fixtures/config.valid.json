@@ -1,0 +1,28 @@
+{
+  "schema_version": "coh.security-onion-config/v1",
+  "contract_version": "1.0.0",
+  "source_id": "security-onion-prod",
+  "adapter_version": "security-onion-1.0.0",
+  "endpoint": "https://manager.example",
+  "credential_reference": "security-onion-query-client",
+  "tls_root_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "transport_identity_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "permissions": ["events/read"],
+  "resources": ["securityevent"],
+  "fields": [
+    {"name": "event_id", "vendor_name": "event.id", "type": "string", "exact": true, "range": false, "exists": true, "projectable": true, "groupable": false, "sortable": true},
+    {"name": "event_timestamp", "vendor_name": "@timestamp", "type": "timestamp", "exact": true, "range": true, "exists": true, "projectable": true, "groupable": false, "sortable": true},
+    {"name": "source_ip", "vendor_name": "source.ip", "type": "ip", "exact": true, "range": true, "exists": true, "projectable": true, "groupable": true, "sortable": false}
+  ],
+  "projection": ["event_timestamp", "event_id", "source_ip"],
+  "stable_sort": ["event_timestamp", "event_id"],
+  "timestamp_field": "event_timestamp",
+  "tenant_field": "",
+  "source_field": "",
+  "hard_limits": {"maximum_rows": 1000, "maximum_bytes": 1048576, "maximum_duration_millis": 60000, "maximum_pages": 1, "maximum_slices": 1, "maximum_cost_millionths": 1000000, "requests_per_minute": 12},
+  "maximum_interval_seconds": 86400,
+  "maximum_event_limit": 1000,
+  "maximum_metric_limit": 100,
+  "maximum_openapi_bytes": 1048576,
+  "qualification_lifetime_seconds": 600
+}

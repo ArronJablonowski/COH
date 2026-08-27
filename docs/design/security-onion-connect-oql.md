@@ -35,10 +35,11 @@ client generation from the current API definition. COH consequently qualifies
 the exact live OpenAPI bytes before enabling the adapter. Qualification binds a
 canonical OpenAPI digest, manager identity, adapter version, supported
 operations, required parameters, response media types, and security scheme.
-Safe additive response properties may be ignored only inside explicitly typed
-success envelopes; path, method, parameter, security, type, or required-field
-drift denies qualification. A changed digest requires requalification even when
-the compatibility check passes. No unqualified version family is assumed.
+Additive response properties are denied until a sanitized fixture and
+compatibility review explicitly admit them; path, method, parameter, security,
+type, or required-field drift also denies qualification. A changed digest
+requires requalification even when the compatibility check passes. No
+unqualified version family is assumed.
 
 Authoritative references:
 
@@ -133,8 +134,8 @@ and one explicitly typed result envelope. Any non-empty `errors` collection,
 invalid timestamps, criteria mismatch, negative/overflow count or duration,
 missing event identity/time, malformed event payload, unsafe dynamic value,
 metric shape drift, or multiple unexplained result envelopes fails closed.
-Unknown additive envelope fields are ignored only after qualification and are
-never copied to metadata.
+Unknown envelope and aggregation fields are rejected and never copied to
+metadata.
 
 Events are projected into configured logical scalar fields. Source/index names,
 raw payloads, scores, query criteria, errors, and unrequested dynamic fields are
@@ -146,10 +147,11 @@ The adapter implements the common query connector lifecycle with bounded
 process-local validated plans, execution flights, results, exact replay
 coalescing, opaque handles, deadline expiry, shared rate/bounds control, and
 protective cancellation. Because the documented events call is synchronous and
-has no cancellation endpoint, cancellation stops the local HTTP request and is
-confirmed only before a response is accepted; lost or ambiguous transport state
-is uncertain. A successful response can be replayed from bounded local state
-until recorded, then its native data is destroyed.
+has no cancellation endpoint, context cancellation stops the local HTTP request
+before acceptance. After a response is stored, cancellation confirms only local
+release suppression; it does not claim a vendor-side cancel. Lost or ambiguous
+transport state is uncertain. A successful response can be replayed from
+bounded local state until its query deadline, when it is destroyed.
 
 Evidence binds the qualification/OpenAPI digest, source identity, typed plan,
 rendered-query digest, range digest, limit decision, request/response receipts,
