@@ -29,7 +29,7 @@ func (store *Store) Verify(ctx context.Context, object evidenceingest.EncryptedO
 	if err != nil {
 		return err
 	}
-	file, info, err := openRegular(path)
+	file, info, err := store.files.openRegular(path)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (store *Store) Publish(ctx context.Context, staged evidenceingest.Encrypted
 	if err = ensurePrivateDirectory(filepath.Dir(finalPath)); err != nil {
 		return evidenceingest.EncryptedObject{}, false, err
 	}
-	if err = os.Link(stagePath, finalPath); err != nil {
+	if err = store.files.link(stagePath, finalPath); err != nil {
 		if !errors.Is(err, os.ErrExist) {
 			return evidenceingest.EncryptedObject{}, false, newError(Unavailable, "publish_link_failed", err)
 		}
@@ -189,15 +189,15 @@ func (store *Store) Publish(ctx context.Context, staged evidenceingest.Encrypted
 		if verifyErr := store.Verify(ctx, existing); verifyErr != nil {
 			return evidenceingest.EncryptedObject{}, false, verifyErr
 		}
-		if removeErr := os.Remove(stagePath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+		if removeErr := store.files.remove(stagePath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
 			return evidenceingest.EncryptedObject{}, false, newError(Unavailable, "stage_cleanup_failed", removeErr)
 		}
 		return existing, true, nil
 	}
-	if err = syncDirectory(filepath.Dir(finalPath)); err != nil {
+	if err = store.files.syncDirectory(filepath.Dir(finalPath)); err != nil {
 		return evidenceingest.EncryptedObject{}, false, err
 	}
-	if err = os.Remove(stagePath); err != nil {
+	if err = store.files.remove(stagePath); err != nil {
 		return evidenceingest.EncryptedObject{}, false, newError(Unavailable, "stage_unlink_failed", err)
 	}
 	published := staged
@@ -270,14 +270,14 @@ func (store *Store) Abandon(_ context.Context, object evidenceingest.EncryptedOb
 	if err != nil {
 		return err
 	}
-	if err = os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err = store.files.remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return newError(Unavailable, "stage_abandon_failed", err)
 	}
 	return nil
 }
 
 func (store *Store) inspectPublished(path string, scope domain.CaseRef, locator string) (evidenceingest.EncryptedObject, error) {
-	file, info, err := openRegular(path)
+	file, info, err := store.files.openRegular(path)
 	if err != nil {
 		return evidenceingest.EncryptedObject{}, err
 	}
@@ -366,7 +366,7 @@ func (store *Store) finalPath(scope domain.CaseRef, digestValue string) (string,
 	return filepath.Join(store.root, relative), locator, nil
 }
 
-func openRegular(path string) (*os.File, os.FileInfo, error) {
+func realOpenRegular(path string) (*os.File, os.FileInfo, error) {
 	before, err := os.Lstat(path)
 	if err != nil || !before.Mode().IsRegular() || before.Mode()&os.ModeSymlink != 0 || before.Mode().Perm() != 0o600 {
 		return nil, nil, newError(Denied, "object_file_invalid", err)
@@ -383,7 +383,7 @@ func openRegular(path string) (*os.File, os.FileInfo, error) {
 	return file, after, nil
 }
 
-func syncDirectory(path string) error {
+func realSyncDirectory(path string) error {
 	directory, err := os.Open(path)
 	if err != nil {
 		return newError(Unavailable, "directory_open_failed", err)

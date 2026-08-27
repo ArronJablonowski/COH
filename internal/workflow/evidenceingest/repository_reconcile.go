@@ -151,8 +151,10 @@ func (store *RepositoryStore) commitTracked(ctx context.Context,
 	if err != nil {
 		return workflowbase.CommitResult{}, err
 	}
-	if len(pending) != 2 || !pendingMatchesReceipt(pending[0], receipt) ||
-		!pendingMatchesReceipt(pending[1], receipt) {
+	if len(pending) != 2 {
+		return workflowbase.CommitResult{}, newError(Conflict, "tracked_publication_changed", true, nil)
+	}
+	if !pendingMatchesReceipt(pending[0], receipt) || !pendingMatchesReceipt(pending[1], receipt) {
 		return workflowbase.CommitResult{}, newError(Denied, "tracked_publication_invalid", false, nil)
 	}
 	receiptKey := ingestionReceiptKey(receipt.Case, receipt.IdempotencyDigest)

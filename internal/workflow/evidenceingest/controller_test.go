@@ -20,11 +20,20 @@ type ingestAuthority struct {
 	now     time.Time
 	outcome string
 	calls   int
+	err     error
+	block   bool
 }
 
-func (authority *ingestAuthority) AuthorizeIngestion(_ context.Context,
+func (authority *ingestAuthority) AuthorizeIngestion(requestContext context.Context,
 	request AuthorizationRequest) (Decision, error) {
 	authority.calls++
+	if authority.err != nil {
+		return Decision{}, authority.err
+	}
+	if authority.block {
+		<-requestContext.Done()
+		return Decision{}, requestContext.Err()
+	}
 	value := Decision{SchemaVersion: DecisionSchemaVersion, ContractVersion: ContractVersion,
 		DecisionID:          deterministicUUID("test-decision", request.Command.RequestID+strconv.Itoa(authority.calls)),
 		AuthorizationDigest: request.AuthorizationDigest, IntentDigest: request.IntentDigest,
@@ -41,29 +50,40 @@ func (authority *ingestAuthority) AuthorizeIngestion(_ context.Context,
 	return value, nil
 }
 
-type ingestTransport struct{ calls int }
+type ingestTransport struct {
+	calls int
+	err   error
+}
 
 func (transport *ingestTransport) VerifyTransport(context.Context, TransportContext) error {
 	transport.calls++
-	return nil
+	return transport.err
 }
 
 type ingestCases struct {
 	snapshot CaseSnapshot
 	found    bool
 	calls    int
+	err      error
 }
 
 func (cases *ingestCases) LoadCase(context.Context, domain.CaseRef) (CaseSnapshot, bool, error) {
 	cases.calls++
-	return cases.snapshot, cases.found, nil
+	return cases.snapshot, cases.found, cases.err
 }
 
 type ingestCAS struct {
-	objects      map[string]EncryptedObject
-	stageCount   int
-	resolveCount int
-	failStageAt  int
+	objects       map[string]EncryptedObject
+	stageCount    int
+	verifyCount   int
+	prepareCount  int
+	publishCount  int
+	resolveCount  int
+	failStageAt   int
+	failVerifyAt  int
+	failPrepareAt int
+	failPublishAt int
+	failResolveAt int
 }
 
 func (store *ingestCAS) Stage(ctx context.Context, request StageRequest, source Source) (EncryptedObject, error) {
@@ -96,8 +116,18 @@ func (store *ingestCAS) Stage(ctx context.Context, request StageRequest, source 
 	return object, nil
 }
 
-func (*ingestCAS) Verify(context.Context, EncryptedObject) error { return nil }
+func (store *ingestCAS) Verify(context.Context, EncryptedObject) error {
+	store.verifyCount++
+	if store.failVerifyAt == store.verifyCount {
+		return errors.New("injected verify failure")
+	}
+	return nil
+}
 func (store *ingestCAS) Prepare(_ context.Context, value EncryptedObject) (PublishedObject, bool, error) {
+	store.prepareCount++
+	if store.failPrepareAt == store.prepareCount {
+		return PublishedObject{}, false, errors.New("injected prepare failure")
+	}
 	value.Status = Published
 	value.LocatorDigest = testDigest("published-" + value.PlaintextDigest)
 	existing, found := store.objects[value.LocatorDigest]
@@ -107,6 +137,10 @@ func (store *ingestCAS) Prepare(_ context.Context, value EncryptedObject) (Publi
 	return publishedObject(value), false, nil
 }
 func (store *ingestCAS) Publish(_ context.Context, value EncryptedObject) (EncryptedObject, bool, error) {
+	store.publishCount++
+	if store.failPublishAt == store.publishCount {
+		return EncryptedObject{}, false, errors.New("injected publish failure")
+	}
 	value.Status = Published
 	value.LocatorDigest = testDigest("published-" + value.PlaintextDigest)
 	if store.objects == nil {
@@ -118,6 +152,9 @@ func (store *ingestCAS) Publish(_ context.Context, value EncryptedObject) (Encry
 }
 func (store *ingestCAS) Resolve(_ context.Context, reference PublishedObject) (EncryptedObject, error) {
 	store.resolveCount++
+	if store.failResolveAt == store.resolveCount {
+		return EncryptedObject{}, errors.New("injected resolve failure")
+	}
 	value, found := store.objects[reference.LocatorDigest]
 	if !found || publishedObject(value) != reference {
 		return EncryptedObject{}, newError(Denied, "object_missing", false, nil)
@@ -137,17 +174,25 @@ func (*ingestCAS) Staged(context.Context, time.Time, uint16) ([]StagedCandidate,
 func (*ingestCAS) Abandon(context.Context, EncryptedObject) error { return nil }
 
 type ingestManifests struct {
-	receipt Receipt
-	found   bool
-	commits int
-	pending map[PublicationRole]PendingObject
-	refs    map[PublishedObject]bool
+	receipt     Receipt
+	found       bool
+	commits     int
+	pending     map[PublicationRole]PendingObject
+	refs        map[PublishedObject]bool
+	recoverErr  error
+	failTrackAt int
+	trackCount  int
+	commitErr   error
 }
 
 func (store *ingestManifests) Recover(context.Context, domain.CaseRef, string) (Receipt, bool, error) {
-	return store.receipt, store.found, nil
+	return store.receipt, store.found, store.recoverErr
 }
 func (store *ingestManifests) Track(_ context.Context, _, _ string, value PendingObject) error {
+	store.trackCount++
+	if store.failTrackAt == store.trackCount {
+		return errors.New("injected track failure")
+	}
 	if store.pending == nil {
 		store.pending = map[PublicationRole]PendingObject{}
 	}
@@ -168,6 +213,9 @@ func (store *ingestManifests) Referenced(_ context.Context, value PublishedObjec
 }
 func (store *ingestManifests) Commit(_ context.Context, _, _ string, value Receipt) (Receipt, bool, error) {
 	store.commits++
+	if store.commitErr != nil {
+		return Receipt{}, false, store.commitErr
+	}
 	if store.found {
 		return store.receipt, true, nil
 	}
@@ -271,6 +319,100 @@ func TestControllerRejectsChangedReplayBeforeTransportOrCAS(t *testing.T) {
 		transport.calls != 1 || cas.resolveCount != 2 || manifests.commits != 1 {
 		t.Fatalf("changed replay code=%s transport=%d resolves=%d commits=%d", CodeOf(err),
 			transport.calls, cas.resolveCount, manifests.commits)
+	}
+}
+
+func TestControllerFailsClosedAtEveryOrchestrationBoundary(t *testing.T) {
+	plaintext := []byte("boundary fault evidence")
+	command := commandForBytes(plaintext)
+	tests := []struct {
+		name      string
+		configure func(*Controller, *ingestAuthority, *ingestTransport, *ingestCAS, *ingestManifests)
+		unread    bool
+	}{
+		{name: "receipt recovery", unread: true, configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, _ *ingestCAS, store *ingestManifests) {
+			store.recoverErr = errors.New("recover")
+		}},
+		{name: "transport", unread: true, configure: func(_ *Controller, _ *ingestAuthority,
+			transport *ingestTransport, _ *ingestCAS, _ *ingestManifests) {
+			transport.err = errors.New("transport")
+		}},
+		{name: "case load", unread: true, configure: func(controller *Controller, _ *ingestAuthority,
+			_ *ingestTransport, _ *ingestCAS, _ *ingestManifests) {
+			controller.cases.(*ingestCases).err = errors.New("case")
+		}},
+		{name: "authority", unread: true, configure: func(_ *Controller, authority *ingestAuthority,
+			_ *ingestTransport, _ *ingestCAS, _ *ingestManifests) {
+			authority.err = errors.New("authority")
+		}},
+		{name: "artifact verify", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, cas *ingestCAS, _ *ingestManifests) {
+			cas.failVerifyAt = 1
+		}},
+		{name: "artifact prepare", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, cas *ingestCAS, _ *ingestManifests) {
+			cas.failPrepareAt = 1
+		}},
+		{name: "artifact track", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, _ *ingestCAS, store *ingestManifests) {
+			store.failTrackAt = 1
+		}},
+		{name: "artifact publish", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, cas *ingestCAS, _ *ingestManifests) {
+			cas.failPublishAt = 1
+		}},
+		{name: "artifact resolve", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, cas *ingestCAS, _ *ingestManifests) {
+			cas.failResolveAt = 1
+		}},
+		{name: "manifest verify", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, cas *ingestCAS, _ *ingestManifests) {
+			cas.failVerifyAt = 2
+		}},
+		{name: "manifest track", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, _ *ingestCAS, store *ingestManifests) {
+			store.failTrackAt = 2
+		}},
+		{name: "manifest publish", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, cas *ingestCAS, _ *ingestManifests) {
+			cas.failPublishAt = 2
+		}},
+		{name: "manifest resolve", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, cas *ingestCAS, _ *ingestManifests) {
+			cas.failResolveAt = 2
+		}},
+		{name: "receipt commit", configure: func(_ *Controller, _ *ingestAuthority,
+			_ *ingestTransport, _ *ingestCAS, store *ingestManifests) {
+			store.commitErr = errors.New("commit")
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			controller, authority, transport, cas, manifests, _ := newIngestController(t, command)
+			test.configure(controller, authority, transport, cas, manifests)
+			source := &countingSource{data: plaintext}
+			if _, err := controller.Execute(t.Context(), command, source); CodeOf(err) != Unavailable || manifests.found {
+				t.Fatalf("code=%s committed=%v err=%v", CodeOf(err), manifests.found, err)
+			}
+			if test.unread && source.reads != 0 {
+				t.Fatalf("source was read %d times before authorization", source.reads)
+			}
+		})
+	}
+}
+
+func TestControllerAuthorityTimeoutReadsNoSource(t *testing.T) {
+	plaintext := []byte("authority timeout evidence")
+	command := commandForBytes(plaintext)
+	controller, authority, _, _, manifests, _ := newIngestController(t, command)
+	authority.block = true
+	source := &countingSource{data: plaintext}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := controller.Execute(ctx, command, source); CodeOf(err) != Timeout || source.reads != 0 ||
+		manifests.found {
+		t.Fatalf("code=%s reads=%d committed=%v err=%v", CodeOf(err), source.reads, manifests.found, err)
 	}
 }
 

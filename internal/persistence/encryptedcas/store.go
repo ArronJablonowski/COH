@@ -39,6 +39,7 @@ type Store struct {
 	random    io.Reader
 	clock     func() time.Time
 	chunkSize uint32
+	files     fileOperations
 }
 
 func Open(config Config) (*Store, error) {
@@ -58,7 +59,7 @@ func Open(config Config) (*Store, error) {
 		return nil, newError(InvalidInput, "chunk_size_invalid", nil)
 	}
 	store := &Store{root: config.Root, keys: config.Keys, random: config.Random,
-		clock: config.Clock, chunkSize: config.ChunkSize}
+		clock: config.Clock, chunkSize: config.ChunkSize, files: defaultFileOperations()}
 	if err := store.ensureRoot(); err != nil {
 		return nil, err
 	}
@@ -92,11 +93,11 @@ func (store *Store) Stage(ctx context.Context, request evidenceingest.StageReque
 	if err != nil {
 		return evidenceingest.EncryptedObject{}, err
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	file, err := store.files.create(path)
 	if err != nil {
 		return evidenceingest.EncryptedObject{}, newError(Unavailable, "stage_create_failed", err)
 	}
-	cleanup := func() { _ = file.Close(); _ = os.Remove(path) }
+	cleanup := func() { _ = store.files.close(file); _ = store.files.remove(path) }
 	keyContext := KeyContext{Case: request.Case, KeyProfile: request.KeyProfile,
 		KeyProfileDigest: request.KeyProfileDigest, EncryptionContextDigest: contextDigest}
 	dataKey, err := store.keys.GenerateDataKey(opCtx, keyContext)
@@ -126,7 +127,7 @@ func (store *Store) Stage(ctx context.Context, request evidenceingest.StageReque
 		EncryptionContextDigest: contextDigest, NoncePrefix: encodeBinary(noncePrefix),
 		CreatedAt: formatTime(now)}
 	cipherHash := sha256.New()
-	destination := io.MultiWriter(file, cipherHash)
+	destination := io.MultiWriter(store.files.writer(file), cipherHash)
 	headerBytes, err := writeHeader(destination, header)
 	if err != nil {
 		cleanup()
@@ -180,14 +181,14 @@ func (store *Store) Stage(ctx context.Context, request evidenceingest.StageReque
 		cleanup()
 		return evidenceingest.EncryptedObject{}, newError(Unavailable, "footer_write_failed", err)
 	}
-	if err = file.Sync(); err != nil {
+	if err = store.files.sync(file); err != nil {
 		cleanup()
 		return evidenceingest.EncryptedObject{}, newError(Unavailable, "stage_sync_failed", err)
 	}
-	info, statErr := file.Stat()
-	closeErr := file.Close()
+	info, statErr := store.files.stat(file)
+	closeErr := store.files.close(file)
 	if statErr != nil || closeErr != nil {
-		_ = os.Remove(path)
+		_ = store.files.remove(path)
 		return evidenceingest.EncryptedObject{}, newError(Unavailable, "stage_close_failed", errors.Join(statErr, closeErr))
 	}
 	object := evidenceingest.EncryptedObject{SchemaVersion: evidenceingest.EncryptedObjectSchemaVersion,

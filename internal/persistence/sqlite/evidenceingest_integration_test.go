@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -48,11 +49,22 @@ func (evidenceTransport) VerifyTransport(context.Context, evidenceingest.Transpo
 	return nil
 }
 
-type evidenceAuditor struct{ events []tamperaudit.Event }
+type evidenceAuditor struct {
+	mu     sync.Mutex
+	events []tamperaudit.Event
+}
 
 func (auditor *evidenceAuditor) AppendAuditEvent(_ context.Context, event tamperaudit.Event) error {
+	auditor.mu.Lock()
+	defer auditor.mu.Unlock()
 	auditor.events = append(auditor.events, event)
 	return nil
+}
+
+func (auditor *evidenceAuditor) count() int {
+	auditor.mu.Lock()
+	defer auditor.mu.Unlock()
+	return len(auditor.events)
 }
 
 type evidenceSource struct {
@@ -111,8 +123,8 @@ func TestEvidenceReceiptAndEncryptedObjectsSurviveSQLiteRestart(t *testing.T) {
 	plaintext := []byte("sqlite restart evidence must remain encrypted")
 	command := evidenceCommand(create, plaintext, now)
 	result, err := controller.Execute(t.Context(), command, &evidenceSource{value: plaintext})
-	if err != nil || result.Replayed || len(auditor.events) != 1 {
-		t.Fatalf("ingest=%+v audit=%d err=%v", result, len(auditor.events), err)
+	if err != nil || result.Replayed || auditor.count() != 1 {
+		t.Fatalf("ingest=%+v audit=%d err=%v", result, auditor.count(), err)
 	}
 	if err = driver.Close(); err != nil {
 		t.Fatal(err)
@@ -126,8 +138,119 @@ func TestEvidenceReceiptAndEncryptedObjectsSurviveSQLiteRestart(t *testing.T) {
 		casRoot, wrappingKey[:], now)
 	replayed, err := restarted.Execute(t.Context(), command, nil)
 	if err != nil || !replayed.Replayed || replayed.Receipt.ReceiptDigest != result.Receipt.ReceiptDigest ||
-		len(restartedAuditor.events) != 2 {
-		t.Fatalf("replay=%+v audit=%d err=%v", replayed, len(restartedAuditor.events), err)
+		restartedAuditor.count() != 2 {
+		t.Fatalf("replay=%+v audit=%d err=%v", replayed, restartedAuditor.count(), err)
+	}
+}
+
+func TestConcurrentExactEvidenceIngestionsConvergeOnOneReceipt(t *testing.T) {
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	root := t.TempDir()
+	backupPath, casRoot := filepath.Join(root, "backups"), filepath.Join(root, "encrypted-cas")
+	if err := os.MkdirAll(backupPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(casRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	driver := openCaseSQLite(t, filepath.Join(root, "coh.sqlite3"), backupPath, now)
+	defer driver.Close()
+	caseController, caseRepository := composeCaseController(t, driver, now, &caseAuditor{})
+	create := caseCreateCommand(now)
+	if _, err := caseController.Execute(t.Context(), create); err != nil {
+		t.Fatal(err)
+	}
+	wrappingKey := sha256.Sum256([]byte("concurrent-evidence-wrapping-key"))
+	controller, _ := composeEvidenceController(t, driver, caseRepository, casRoot, wrappingKey[:], now)
+	plaintext := []byte("two callers must converge on one immutable receipt")
+	command := evidenceCommand(create, plaintext, now)
+	type outcome struct {
+		result evidenceingest.Result
+		err    error
+	}
+	outcomes := make(chan outcome, 2)
+	start := make(chan struct{})
+	var wait sync.WaitGroup
+	for range 2 {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			<-start
+			result, err := controller.Execute(context.Background(), command, &evidenceSource{value: plaintext})
+			outcomes <- outcome{result: result, err: err}
+		}()
+	}
+	close(start)
+	wait.Wait()
+	close(outcomes)
+	results := make([]evidenceingest.Result, 0, 2)
+	for value := range outcomes {
+		if value.err != nil {
+			t.Fatalf("concurrent ingestion failed: %v", value.err)
+		}
+		results = append(results, value.result)
+	}
+	if len(results) != 2 || results[0].Receipt.ReceiptDigest != results[1].Receipt.ReceiptDigest ||
+		results[0].Replayed == results[1].Replayed {
+		t.Fatalf("concurrent results=%+v", results)
+	}
+}
+
+func TestConcurrentChangedEvidenceIngestionsDenySharedKeyReuse(t *testing.T) {
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	root := t.TempDir()
+	backupPath, casRoot := filepath.Join(root, "backups"), filepath.Join(root, "encrypted-cas")
+	if err := os.MkdirAll(backupPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(casRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	driver := openCaseSQLite(t, filepath.Join(root, "coh.sqlite3"), backupPath, now)
+	defer driver.Close()
+	caseController, caseRepository := composeCaseController(t, driver, now, &caseAuditor{})
+	create := caseCreateCommand(now)
+	if _, err := caseController.Execute(t.Context(), create); err != nil {
+		t.Fatal(err)
+	}
+	wrappingKey := sha256.Sum256([]byte("changed-concurrent-wrapping-key"))
+	controller, _ := composeEvidenceController(t, driver, caseRepository, casRoot, wrappingKey[:], now)
+	inputs := [][]byte{[]byte("first concurrent identity"), []byte("changed concurrent identity")}
+	commands := []evidenceingest.Command{evidenceCommand(create, inputs[0], now), evidenceCommand(create, inputs[1], now)}
+	type outcome struct {
+		result evidenceingest.Result
+		err    error
+	}
+	outcomes := make(chan outcome, 2)
+	start := make(chan struct{})
+	var wait sync.WaitGroup
+	for index := range commands {
+		wait.Add(1)
+		go func(index int) {
+			defer wait.Done()
+			<-start
+			result, err := controller.Execute(context.Background(), commands[index],
+				&evidenceSource{value: inputs[index]})
+			outcomes <- outcome{result: result, err: err}
+		}(index)
+	}
+	close(start)
+	wait.Wait()
+	close(outcomes)
+	successes, denials := 0, 0
+	for value := range outcomes {
+		if value.err == nil {
+			successes++
+			continue
+		}
+		if evidenceingest.CodeOf(value.err) == evidenceingest.Denied {
+			denials++
+			continue
+		}
+		t.Fatalf("unexpected concurrent outcome: %v", value.err)
+	}
+	if successes != 1 || denials != 1 {
+		t.Fatalf("successes=%d denials=%d", successes, denials)
 	}
 }
 
