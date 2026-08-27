@@ -280,7 +280,8 @@ func validFinalExport(t *testing.T, command Command, intent, decision string) (R
 		Artifacts:    record.Artifacts,
 		RecordDigest: record.RecordDigest, ArtifactSetDigest: command.ArtifactSetDigest, PackageDigest: &packageDigest,
 		ManifestDigest: &manifestDigest, SignatureDigest: &signatureDigest, LifecycleReceiptDigest: &lifecycleReceipt,
-		CompletionCustodyReceiptDigest: &completedCustody, AuditEventDigest: record.AuditEventDigest,
+		AuthorizationCustodyReceiptDigest: &authorizedCustody,
+		CompletionCustodyReceiptDigest:    &completedCustody, AuditEventDigest: record.AuditEventDigest,
 		ProvenanceDigest: record.ProvenanceDigest, CreatedAt: lifecycleTestNow}
 	receipt.ReceiptDigest, err = ReceiptBindingDigest(receipt)
 	if err != nil {

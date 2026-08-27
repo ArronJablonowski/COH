@@ -70,6 +70,7 @@ type CustodyRequest struct {
 	PurposeDigest                *string
 	DestinationDigest            *string
 	ReasonDigest                 *string
+	ApprovalDigest               *string
 	SignatureDigest              *string
 	LifecycleReceiptDigest       *string
 	PriorAuthorizationDigest     *string

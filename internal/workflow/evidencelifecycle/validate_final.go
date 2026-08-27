@@ -53,7 +53,8 @@ func validateReceiptShape(value Receipt, bound bool) error {
 		value.RecordDigest, value.AuditEventDigest, value.ProvenanceDigest) ||
 		!validFinalArtifacts(value.Operation, value.Artifacts) ||
 		!allPointerDigests(value.ArtifactSetDigest, value.PackageDigest, value.ManifestDigest, value.SignatureDigest,
-			value.VerificationReportDigest, value.LifecycleReceiptDigest, value.CompletionCustodyReceiptDigest,
+			value.VerificationReportDigest, value.LifecycleReceiptDigest, value.AuthorizationCustodyReceiptDigest,
+			value.CompletionCustodyReceiptDigest,
 			value.DispositionAttestationDigest) || !validTime(value.CreatedAt) ||
 		(bound && !digestPattern.MatchString(value.ReceiptDigest)) || (!bound && value.ReceiptDigest != "") ||
 		!validReceiptFields(value) {
@@ -87,19 +88,23 @@ func validReceiptFields(value Receipt) bool {
 	case Export:
 		return value.ArtifactSetDigest != nil && value.PackageDigest != nil && value.ManifestDigest != nil &&
 			value.SignatureDigest != nil && value.VerificationReportDigest == nil && value.LifecycleReceiptDigest != nil &&
-			value.CompletionCustodyReceiptDigest != nil && value.DispositionAttestationDigest == nil
+			value.AuthorizationCustodyReceiptDigest != nil && value.CompletionCustodyReceiptDigest != nil &&
+			value.DispositionAttestationDigest == nil
 	case Import:
 		return value.ArtifactSetDigest != nil && value.PackageDigest != nil && value.ManifestDigest != nil &&
 			value.SignatureDigest != nil && value.VerificationReportDigest != nil && value.LifecycleReceiptDigest == nil &&
-			value.CompletionCustodyReceiptDigest != nil && value.DispositionAttestationDigest == nil
+			value.AuthorizationCustodyReceiptDigest == nil && value.CompletionCustodyReceiptDigest != nil &&
+			value.DispositionAttestationDigest == nil
 	case PlaceHold, ReleaseHold:
 		return value.ArtifactSetDigest != nil && allNil(value.PackageDigest, value.ManifestDigest, value.SignatureDigest,
-			value.VerificationReportDigest, value.DispositionAttestationDigest) && value.LifecycleReceiptDigest != nil &&
+			value.VerificationReportDigest, value.AuthorizationCustodyReceiptDigest,
+			value.DispositionAttestationDigest) && value.LifecycleReceiptDigest != nil &&
 			value.CompletionCustodyReceiptDigest != nil
 	case Delete:
 		return value.ArtifactSetDigest != nil && allNil(value.PackageDigest, value.ManifestDigest, value.SignatureDigest,
 			value.VerificationReportDigest) && value.LifecycleReceiptDigest != nil &&
-			value.CompletionCustodyReceiptDigest != nil && value.DispositionAttestationDigest != nil
+			value.AuthorizationCustodyReceiptDigest != nil && value.CompletionCustodyReceiptDigest != nil &&
+			value.DispositionAttestationDigest != nil
 	default:
 		return false
 	}

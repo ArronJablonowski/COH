@@ -166,29 +166,30 @@ type Record struct {
 }
 
 type Receipt struct {
-	SchemaVersion                  string
-	ContractVersion                string
-	RequestID                      string
-	OperationID                    string
-	Case                           domain.CaseRef
-	Operation                      Operation
-	IdempotencyDigest              string
-	IntentDigest                   string
-	DecisionDigest                 string
-	RecordDigest                   string
-	Artifacts                      []EvidenceReference
-	ArtifactSetDigest              *string
-	PackageDigest                  *string
-	ManifestDigest                 *string
-	SignatureDigest                *string
-	VerificationReportDigest       *string
-	LifecycleReceiptDigest         *string
-	CompletionCustodyReceiptDigest *string
-	DispositionAttestationDigest   *string
-	AuditEventDigest               string
-	ProvenanceDigest               string
-	CreatedAt                      time.Time
-	ReceiptDigest                  string
+	SchemaVersion                     string
+	ContractVersion                   string
+	RequestID                         string
+	OperationID                       string
+	Case                              domain.CaseRef
+	Operation                         Operation
+	IdempotencyDigest                 string
+	IntentDigest                      string
+	DecisionDigest                    string
+	RecordDigest                      string
+	Artifacts                         []EvidenceReference
+	ArtifactSetDigest                 *string
+	PackageDigest                     *string
+	ManifestDigest                    *string
+	SignatureDigest                   *string
+	VerificationReportDigest          *string
+	LifecycleReceiptDigest            *string
+	AuthorizationCustodyReceiptDigest *string
+	CompletionCustodyReceiptDigest    *string
+	DispositionAttestationDigest      *string
+	AuditEventDigest                  string
+	ProvenanceDigest                  string
+	CreatedAt                         time.Time
+	ReceiptDigest                     string
 }
 
 type Result struct {

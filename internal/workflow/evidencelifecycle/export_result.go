@@ -47,8 +47,9 @@ func buildExportResult(state exportState, idempotency string, authorization, com
 		DecisionDigest: state.Decision.DecisionDigest, ArtifactSetDigest: state.Command.ArtifactSetDigest,
 		Artifacts:     evidenceReferences(state.Evidence.Artifacts),
 		PackageDigest: &packageDigest, ManifestDigest: &manifestDigest, SignatureDigest: &signatureDigest,
-		LifecycleReceiptDigest: &lifecycleDigest, CompletionCustodyReceiptDigest: &completionDigest,
-		ProvenanceDigest: record.ProvenanceDigest, CreatedAt: progress.UpdatedAt}
+		LifecycleReceiptDigest: &lifecycleDigest, AuthorizationCustodyReceiptDigest: &authorizationDigest,
+		CompletionCustodyReceiptDigest: &completionDigest,
+		ProvenanceDigest:               record.ProvenanceDigest, CreatedAt: progress.UpdatedAt}
 	return record, receipt, progress, event, expected, nil
 }
 

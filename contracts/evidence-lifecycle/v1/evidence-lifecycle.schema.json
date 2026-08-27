@@ -400,7 +400,7 @@
     },
     "receipt": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "request_id", "operation_id", "case", "operation", "idempotency_digest", "intent_digest", "decision_digest", "record_digest", "artifacts", "artifact_set_digest", "package_digest", "manifest_digest", "signature_digest", "verification_report_digest", "lifecycle_receipt_digest", "completion_custody_receipt_digest", "disposition_attestation_digest", "audit_event_digest", "provenance_digest", "created_at", "receipt_digest"],
+      "required": ["schema_version", "contract_version", "request_id", "operation_id", "case", "operation", "idempotency_digest", "intent_digest", "decision_digest", "record_digest", "artifacts", "artifact_set_digest", "package_digest", "manifest_digest", "signature_digest", "verification_report_digest", "lifecycle_receipt_digest", "authorization_custody_receipt_digest", "completion_custody_receipt_digest", "disposition_attestation_digest", "audit_event_digest", "provenance_digest", "created_at", "receipt_digest"],
       "properties": {
         "schema_version": {"const": "coh.evidence-lifecycle-receipt/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -419,6 +419,7 @@
         "signature_digest": {"$ref": "#/$defs/nullable_digest"},
         "verification_report_digest": {"$ref": "#/$defs/nullable_digest"},
         "lifecycle_receipt_digest": {"$ref": "#/$defs/nullable_digest"},
+        "authorization_custody_receipt_digest": {"$ref": "#/$defs/nullable_digest"},
         "completion_custody_receipt_digest": {"$ref": "#/$defs/nullable_digest"},
         "disposition_attestation_digest": {"$ref": "#/$defs/nullable_digest"},
         "audit_event_digest": {"$ref": "#/$defs/digest"},

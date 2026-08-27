@@ -210,6 +210,9 @@ func (stub *holdLifecycle) ApplyCaseOperation(_ context.Context, request Lifecyc
 	hold := request.Operation == PlaceHold
 	stub.cases.snapshot.Revision++
 	stub.cases.snapshot.LegalHold = hold
+	if request.Operation == Delete {
+		stub.cases.snapshot.State = "deleted"
+	}
 	stub.cases.snapshot.ProvenanceDigest = lifecycleDigest("case-provenance-" + string(request.Operation))
 	stub.cases.pending = request.Operation == ReleaseHold
 	proof := LifecycleProof{Operation: request.Operation, Case: request.Case, Revision: stub.cases.snapshot.Revision,
