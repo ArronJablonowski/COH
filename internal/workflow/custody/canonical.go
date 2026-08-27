@@ -233,3 +233,11 @@ func formatTime(value time.Time) string {
 	}
 	return value.UTC().Format(timestampLayout)
 }
+
+func parseTime(value string) (time.Time, error) {
+	parsed, err := time.Parse(timestampLayout, value)
+	if err != nil || formatTime(parsed) != value {
+		return time.Time{}, newError(Denied, "timestamp_invalid", false, err)
+	}
+	return parsed.UTC(), nil
+}
