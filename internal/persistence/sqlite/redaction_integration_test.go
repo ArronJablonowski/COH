@@ -76,6 +76,15 @@ func TestRedactionProgressAndReceiptSurviveSQLiteRestartAndLostResponse(t *testi
 	if err != nil || !found || recovered.ReceiptDigest != receipt.ReceiptDigest || recovered.RecordDigest != record.RecordDigest {
 		t.Fatalf("recovered=%+v found=%v err=%v", recovered, found, err)
 	}
+	resolved, found, err := restarted.ResolveReceipt(context.Background(), command.Case, receipt.ReceiptDigest)
+	if err != nil || !found || resolved != recovered {
+		t.Fatalf("resolved=%+v found=%v err=%v", resolved, found, err)
+	}
+	resolvedRecord, found, err := restarted.ResolveRecord(context.Background(), command.Case, receipt.RedactionID)
+	if err != nil || !found || resolvedRecord.RecordDigest != record.RecordDigest ||
+		resolvedRecord.Command.Source != record.Command.Source {
+		t.Fatalf("resolved record=%+v found=%v err=%v", resolvedRecord, found, err)
+	}
 	progress, found, err := restarted.LoadProgress(context.Background(), command.Case, receipt.IdempotencyDigest)
 	if err != nil || !found || progress.Phase != redaction.PhaseCustodied || progress.Revision != 3 ||
 		progress.Custody == nil || progress.Custody.ReceiptDigest != record.CustodyReceiptDigest {

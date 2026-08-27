@@ -41,13 +41,29 @@ func NewRepositoryStore(repository workflowbase.MetadataStore) (*RepositoryStore
 
 func (store *RepositoryStore) Recover(ctx context.Context, scope domain.CaseRef,
 	idempotency string) (Receipt, bool, error) {
+	return store.resolveReceipt(ctx, redactionReceiptKey(scope, idempotency), scope,
+		"receipt", idempotency, "")
+}
+
+// ResolveReceipt loads an immutable redaction receipt by its canonical digest.
+// The digest index contains the complete receipt, which is decoded and checked
+// against its immutable record before being returned.
+func (store *RepositoryStore) ResolveReceipt(ctx context.Context, scope domain.CaseRef,
+	receiptDigest string) (Receipt, bool, error) {
+	return store.resolveReceipt(ctx, redactionReceiptIndexKey(scope, receiptDigest), scope,
+		"receipt_index", "", receiptDigest)
+}
+
+func (store *RepositoryStore) resolveReceipt(ctx context.Context, key workflowbase.RecordKey,
+	scope domain.CaseRef, entryType, idempotency, receiptDigest string) (Receipt, bool, error) {
 	if err := contextError(ctx); err != nil {
 		return Receipt{}, false, err
 	}
-	if !validCase(scope) || !digestPattern.MatchString(idempotency) {
+	if !validCase(scope) || idempotency != "" && !digestPattern.MatchString(idempotency) ||
+		receiptDigest != "" && !digestPattern.MatchString(receiptDigest) {
 		return Receipt{}, false, newError(InvalidInput, "receipt_key_invalid", false, nil)
 	}
-	receipt, found, err := store.loadReceipt(ctx, redactionReceiptKey(scope, idempotency), scope, idempotency)
+	receipt, found, err := store.loadReceipt(ctx, key, scope, entryType, idempotency, receiptDigest)
 	if err != nil || !found {
 		return Receipt{}, found, err
 	}
@@ -59,6 +75,19 @@ func (store *RepositoryStore) Recover(ctx context.Context, scope domain.CaseRef,
 		return Receipt{}, false, newError(Denied, "receipt_record_invalid", false, nil)
 	}
 	return cloneReceipt(receipt), true, nil
+}
+
+// ResolveRecord loads an immutable redaction record by its stable redaction ID.
+func (store *RepositoryStore) ResolveRecord(ctx context.Context, scope domain.CaseRef,
+	redactionID string) (Record, bool, error) {
+	if err := contextError(ctx); err != nil {
+		return Record{}, false, err
+	}
+	if !validCase(scope) || !uuidPattern.MatchString(redactionID) {
+		return Record{}, false, newError(InvalidInput, "record_key_invalid", false, nil)
+	}
+	value, found, err := store.loadRecord(ctx, redactionRecordKey(scope, redactionID), scope, redactionID)
+	return cloneRecord(value), found, err
 }
 
 func (store *RepositoryStore) LoadProgress(ctx context.Context, scope domain.CaseRef,
@@ -157,7 +186,7 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 	if recovered, found, err := store.Recover(ctx, record.Case, receipt.IdempotencyDigest); err != nil {
 		return Receipt{}, false, err
 	} else if found {
-		if recovered.IntentDigest != intent {
+		if recovered.IntentDigest != intent || recovered.ReceiptDigest != receipt.ReceiptDigest {
 			return Receipt{}, false, newError(Denied, "changed_replay", false, nil)
 		}
 		return recovered, true, nil
@@ -171,6 +200,7 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 	}
 	recordKey := redactionRecordKey(record.Case, record.RedactionID)
 	receiptKey := redactionReceiptKey(record.Case, receipt.IdempotencyDigest)
+	receiptIndexKey := redactionReceiptIndexKey(record.Case, receipt.ReceiptDigest)
 	recordMetadata, err := redactionMetadata(recordKey, 1, "record", record.CreatedAt, recordToWire(record))
 	if err != nil {
 		return Receipt{}, false, err
@@ -179,9 +209,15 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 	if err != nil {
 		return Receipt{}, false, err
 	}
+	receiptIndexMetadata, err := redactionMetadata(receiptIndexKey, 1, "receipt_index",
+		receipt.CreatedAt, receiptToWire(receipt))
+	if err != nil {
+		return Receipt{}, false, err
+	}
 	mutations := []workflowbase.Mutation{
 		{Kind: workflowbase.MutationPut, Key: recordKey, ExpectedRevision: 0, Record: &recordMetadata},
 		{Kind: workflowbase.MutationPut, Key: receiptKey, ExpectedRevision: 0, Record: &receiptMetadata},
+		{Kind: workflowbase.MutationPut, Key: receiptIndexKey, ExpectedRevision: 0, Record: &receiptIndexMetadata},
 	}
 	sort.Slice(mutations, func(i, j int) bool { return mutations[i].Key.ID < mutations[j].Key.ID })
 	outbox := workflowbase.OutboxMessage{ID: deterministicUUID("COH-REDACTION-OUTBOX-ID-V1\x00", record.RedactionID),
@@ -194,14 +230,14 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 		IdempotencyKey: transactionKey, Mutations: mutations, Outbox: []workflowbase.OutboxMessage{outbox}})
 	if err != nil {
 		recovered, found, recoverErr := store.Recover(ctx, record.Case, receipt.IdempotencyDigest)
-		if recoverErr == nil && found && recovered.IntentDigest == intent {
+		if recoverErr == nil && found && recovered.IntentDigest == intent && recovered.ReceiptDigest == receipt.ReceiptDigest {
 			return recovered, true, nil
 		}
 		return Receipt{}, false, mapStorageError("redaction_commit", err)
 	}
 	if result.Replayed {
 		recovered, found, recoverErr := store.Recover(ctx, record.Case, receipt.IdempotencyDigest)
-		if recoverErr != nil || !found || recovered.IntentDigest != intent {
+		if recoverErr != nil || !found || recovered.IntentDigest != intent || recovered.ReceiptDigest != receipt.ReceiptDigest {
 			return Receipt{}, false, newError(Denied, "replayed_receipt_invalid", false, recoverErr)
 		}
 		return recovered, true, nil
@@ -248,12 +284,12 @@ func validateReceiptRecord(receipt Receipt, record Record) error {
 }
 
 func (store *RepositoryStore) loadReceipt(ctx context.Context, key workflowbase.RecordKey,
-	scope domain.CaseRef, idempotency string) (Receipt, bool, error) {
+	scope domain.CaseRef, entryType, idempotency, receiptDigest string) (Receipt, bool, error) {
 	metadata, found, err := store.loadMetadata(ctx, key)
 	if err != nil || !found {
 		return Receipt{}, found, err
 	}
-	envelope, err := decodeRepositoryEnvelope(metadata, key, "receipt")
+	envelope, err := decodeRepositoryEnvelope(metadata, key, entryType)
 	if err != nil {
 		return Receipt{}, false, err
 	}
@@ -263,7 +299,8 @@ func (store *RepositoryStore) loadReceipt(ctx context.Context, key workflowbase.
 	}
 	value, err := receiptFromWire(wire)
 	if err != nil || ValidateReceipt(value) != nil || value.Case != scope ||
-		value.IdempotencyDigest != idempotency || metadata.Revision != 1 ||
+		idempotency != "" && value.IdempotencyDigest != idempotency ||
+		receiptDigest != "" && value.ReceiptDigest != receiptDigest || metadata.Revision != 1 ||
 		envelope.CreatedAt != formatTime(value.CreatedAt) {
 		return Receipt{}, false, newError(Denied, "receipt_record_invalid", false, err)
 	}
@@ -368,6 +405,12 @@ func redactionReceiptKey(scope domain.CaseRef, idempotency string) workflowbase.
 	return workflowbase.RecordKey{Case: scope, Kind: repositoryKind,
 		ID: deterministicUUID("COH-REDACTION-RECEIPT-ID-V1\x00", scope.OrganizationID+"\x00"+
 			scope.TenantID+"\x00"+scope.CaseID+"\x00"+idempotency)}
+}
+
+func redactionReceiptIndexKey(scope domain.CaseRef, receiptDigest string) workflowbase.RecordKey {
+	return workflowbase.RecordKey{Case: scope, Kind: repositoryKind,
+		ID: deterministicUUID("COH-REDACTION-RECEIPT-INDEX-ID-V1\x00", scope.OrganizationID+"\x00"+
+			scope.TenantID+"\x00"+scope.CaseID+"\x00"+receiptDigest)}
 }
 
 func redactionRecordKey(scope domain.CaseRef, redactionID string) workflowbase.RecordKey {

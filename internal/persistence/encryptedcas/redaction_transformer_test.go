@@ -44,7 +44,20 @@ func TestEncryptedCASRedactionTransformsTwicePublishesAndRetainsSource(t *testin
 	}
 	mappingArtifact := domain.ArtifactRef{Digest: testCASDigest(mappingBytes),
 		MediaType: "application/vnd.coh.redaction-mapping+json", Classification: "restricted", Length: int64(len(mappingBytes))}
-	_ = publishDerivedStream(t, store, mappingArtifact, &sliceSource{data: mappingBytes}, now)
+	mappingObject := publishDerivedStream(t, store, mappingArtifact, &sliceSource{data: mappingBytes}, now)
+	mappingReceipt := mappingIngestionReceipt(t, mappingArtifact, mappingObject, now)
+	resolvedMapping, err := store.ResolveRedactionMapping(t.Context(), mappingReceipt)
+	if err != nil || resolvedMapping.MappingDigest != derivation.Mapping.MappingDigest ||
+		resolvedMapping.Source != request.Source || resolvedMapping.DerivedArtifact != derivation.DerivedArtifact {
+		t.Fatalf("resolved mapping=%+v err=%v", resolvedMapping, err)
+	}
+	tamperedReceipt := mappingReceipt
+	tamperedReceipt.EncryptedArtifact.CiphertextDigest = testCASDigest([]byte("substituted-ciphertext"))
+	tamperedReceipt.ReceiptDigest = ""
+	tamperedReceipt.ReceiptDigest, _ = evidenceingest.ReceiptBindingDigest(tamperedReceipt)
+	if _, err = store.ResolveRedactionMapping(t.Context(), tamperedReceipt); CodeOf(err) != Denied {
+		t.Fatalf("mapping substitution code=%s err=%v", CodeOf(err), err)
+	}
 
 	resolvedSource, err := store.Resolve(t.Context(), publishedReference(sourceObject))
 	if err != nil || resolvedSource.PlaintextDigest != request.Source.Artifact.Digest || len(objectFiles(t, root)) != 3 {
@@ -59,6 +72,36 @@ func TestEncryptedCASRedactionTransformsTwicePublishesAndRetainsSource(t *testin
 			t.Fatalf("plaintext appeared at rest in %s err=%v", path, readErr)
 		}
 	}
+}
+
+func mappingIngestionReceipt(t *testing.T, artifact domain.ArtifactRef,
+	object evidenceingest.EncryptedObject, now time.Time) evidenceingest.Receipt {
+	t.Helper()
+	scope := object.Case
+	manifest := domain.ArtifactRef{Digest: testCASDigest([]byte("mapping-manifest")),
+		MediaType: "application/vnd.coh.artifact-manifest+json", Classification: artifact.Classification, Length: 512}
+	manifestObject := evidenceingest.PublishedObject{Case: scope, PlaintextDigest: manifest.Digest,
+		PlaintextLength: manifest.Length, CiphertextDigest: testCASDigest([]byte("mapping-manifest-ciphertext")),
+		CiphertextLength: manifest.Length + 64, EncryptionFormat: evidenceingest.EncryptionFormatVersion,
+		EncryptionContextDigest: testCASDigest([]byte("mapping-manifest-context")),
+		LocatorDigest:           testCASDigest([]byte("mapping-manifest-locator"))}
+	value := evidenceingest.Receipt{SchemaVersion: evidenceingest.ReceiptSchemaVersion,
+		ContractVersion: evidenceingest.ContractVersion, RequestID: casUUID("mapping-receipt-request"), Case: scope,
+		ActorID: casUUID("mapping-receipt-actor"), ActorRevision: 1,
+		IntentDigest:        testCASDigest([]byte("mapping-receipt-intent")),
+		IdempotencyDigest:   testCASDigest([]byte("mapping-receipt-idempotency")),
+		AuthorizationDigest: testCASDigest([]byte("mapping-receipt-authorization")),
+		DecisionDigest:      testCASDigest([]byte("mapping-receipt-decision")),
+		RevocationDigest:    testCASDigest([]byte("mapping-receipt-revocation")),
+		TransportDigest:     testCASDigest([]byte("mapping-receipt-transport")), Artifact: artifact,
+		Manifest: manifest, EncryptedArtifact: publishedReference(object), EncryptedManifest: manifestObject,
+		ManifestProvenanceDigest: testCASDigest([]byte("mapping-manifest-provenance")),
+		AuditEventDigest:         testCASDigest([]byte("mapping-receipt-audit")), CreatedAt: now}
+	value.ReceiptDigest, _ = evidenceingest.ReceiptBindingDigest(value)
+	if _, err := evidenceingest.CanonicalReceipt(value); err != nil {
+		t.Fatal(err)
+	}
+	return value
 }
 
 func TestEncryptedCASRedactionRejectsSegmentAndRuleMaterialDrift(t *testing.T) {

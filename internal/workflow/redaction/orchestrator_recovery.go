@@ -119,7 +119,7 @@ func validateProgressForState(progress Progress, state authorizedState, idempote
 }
 
 func (service *orchestrator) verifyRecoveredAudit(ctx context.Context, receipt Receipt) error {
-	eventID := deterministicUUID("COH-REDACTION-AUDIT-ID-V1\x00", receipt.RedactionID+"\x00completed")
+	eventID := CompletedAuditEventID(receipt.RedactionID)
 	proof, err := service.auditor.VerifyRedactionEvent(ctx, receipt.Case, eventID, receipt.AuditEventDigest)
 	if err != nil {
 		return mapDependency(ctx, "audit_verification_unavailable", err)

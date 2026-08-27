@@ -253,6 +253,26 @@ func CanonicalMapping(value Mapping) ([]byte, error) {
 	}
 	return canonicalValue(mappingToWire(value))
 }
+
+// DecodeMapping strictly decodes canonical mapping plaintext recovered from
+// encrypted storage and revalidates all lineage and digest bindings.
+func DecodeMapping(data []byte) (Mapping, error) {
+	var wire mappingWire
+	if err := decodeRepositoryValue(data, &wire); err != nil {
+		return Mapping{}, err
+	}
+	value, err := mappingFromWire(wire)
+	if err != nil || ValidateMapping(value) != nil {
+		return Mapping{}, newError(Denied, "mapping_decode_invalid", false, err)
+	}
+	return value, nil
+}
+
+// CompletedAuditEventID is the stable identifier used for the immutable
+// completion audit event of a redaction record.
+func CompletedAuditEventID(redactionID string) string {
+	return deterministicUUID("COH-REDACTION-AUDIT-ID-V1\x00", redactionID+"\x00completed")
+}
 func CanonicalRecord(value Record) ([]byte, error) {
 	if err := ValidateRecord(value); err != nil {
 		return nil, err

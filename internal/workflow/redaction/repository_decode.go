@@ -50,6 +50,24 @@ func commandFromWire(value commandWire) (Command, error) {
 		ExpectedCaseRevision: value.ExpectedCaseRevision, ExpectedCustodyHead: head, Deadline: deadline}, nil
 }
 
+func mappingFromWire(value mappingWire) (Mapping, error) {
+	created, err := parseTime(value.CreatedAt)
+	if err != nil {
+		return Mapping{}, err
+	}
+	entries := make([]MappingEntry, len(value.Entries))
+	for index, entry := range value.Entries {
+		entries[index] = MappingEntry(entry)
+	}
+	return Mapping{SchemaVersion: value.SchemaVersion, ContractVersion: value.ContractVersion,
+		MappingID: value.MappingID, Case: caseFromWire(value.Case), Source: evidenceFromWire(value.Source),
+		DerivedArtifact: artifactFromWire(value.DerivedArtifact), PlanDigest: value.PlanDigest,
+		RuleDigest: value.RuleDigest, ReasonDigest: value.ReasonDigest,
+		ApprovalFingerprintDigest: value.ApprovalFingerprintDigest, Entries: entries, CreatedAt: created,
+		PreviousProvenanceDigest: value.PreviousProvenanceDigest, ProvenanceDigest: value.ProvenanceDigest,
+		MappingDigest: value.MappingDigest}, nil
+}
+
 func recordFromWire(value recordWire) (Record, error) {
 	command, err := commandFromWire(value.Command)
 	if err != nil {
