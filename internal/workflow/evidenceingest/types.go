@@ -28,6 +28,21 @@ const (
 	Published Status = "published"
 )
 
+type PublicationRole string
+
+const (
+	ArtifactPublication PublicationRole = "artifact"
+	ManifestPublication PublicationRole = "manifest"
+)
+
+type ReconciliationStatus string
+
+const (
+	PendingMissing      ReconciliationStatus = "missing"
+	PendingUnreferenced ReconciliationStatus = "unreferenced"
+	PendingReferenced   ReconciliationStatus = "referenced"
+)
+
 type TransportMode string
 
 const (
@@ -223,6 +238,32 @@ type PublishedObject struct {
 	LocatorDigest           string
 }
 
+// PendingObject is a stable, non-sensitive pre-publication identity. It omits
+// randomized ciphertext facts so an interrupted request can safely restage.
+type PendingObject struct {
+	Role                    PublicationRole
+	Case                    domain.CaseRef
+	PlaintextDigest         string
+	PlaintextLength         int64
+	MediaType               string
+	Classification          string
+	EncryptionContextDigest string
+	LocatorDigest           string
+	CreatedAt               time.Time
+}
+
+type ReconciliationCandidate struct {
+	Pending   PendingObject
+	Status    ReconciliationStatus
+	Published *PublishedObject
+}
+
+type StagedCandidate struct {
+	LocatorDigest    string
+	CiphertextLength int64
+	ModifiedAt       time.Time
+}
+
 type Receipt struct {
 	SchemaVersion            string
 	ContractVersion          string
@@ -296,13 +337,19 @@ type CaseStore interface {
 type EncryptedCAS interface {
 	Stage(context.Context, StageRequest, Source) (EncryptedObject, error)
 	Verify(context.Context, EncryptedObject) error
+	Prepare(context.Context, EncryptedObject) (PublishedObject, bool, error)
 	Publish(context.Context, EncryptedObject) (EncryptedObject, bool, error)
 	Resolve(context.Context, PublishedObject) (EncryptedObject, error)
+	Find(context.Context, PendingObject) (EncryptedObject, bool, error)
+	Staged(context.Context, time.Time, uint16) ([]StagedCandidate, error)
 	Abandon(context.Context, EncryptedObject) error
 }
 
 type ManifestStore interface {
 	Recover(context.Context, domain.CaseRef, string) (Receipt, bool, error)
+	Track(context.Context, string, string, PendingObject) error
+	RecoverPending(context.Context, domain.CaseRef, string) ([]PendingObject, error)
+	Referenced(context.Context, PublishedObject) (bool, error)
 	Commit(context.Context, string, string, Receipt) (Receipt, bool, error)
 }
 

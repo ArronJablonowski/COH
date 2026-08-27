@@ -50,7 +50,7 @@ func (store *RepositoryStore) Recover(ctx context.Context, scope domain.CaseRef,
 	if err != nil || !found {
 		return Receipt{}, found, err
 	}
-	envelope, err := decodeIngestionEnvelope(metadata, key)
+	envelope, err := decodeIngestionEnvelope(metadata, key, "receipt")
 	if err != nil {
 		return Receipt{}, false, err
 	}
@@ -77,38 +77,35 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 		IdempotencyBindingDigest(idempotencyKey) != receipt.IdempotencyDigest {
 		return Receipt{}, false, newError(InvalidInput, "receipt_commit_invalid", false, nil)
 	}
-	if recovered, found, err := store.Recover(ctx, receipt.Case, receipt.IdempotencyDigest); err != nil {
-		return Receipt{}, false, err
-	} else if found {
-		if recovered.IntentDigest != intent {
-			return Receipt{}, false, newError(Denied, "changed_replay", false, nil)
+	for attempt := 0; attempt < 2; attempt++ {
+		if recovered, found, err := store.Recover(ctx, receipt.Case, receipt.IdempotencyDigest); err != nil {
+			return Receipt{}, false, err
+		} else if found {
+			if recovered.IntentDigest != intent {
+				return Receipt{}, false, newError(Denied, "changed_replay", false, nil)
+			}
+			return recovered, true, nil
 		}
-		return recovered, true, nil
-	}
-	key := ingestionReceiptKey(receipt.Case, receipt.IdempotencyDigest)
-	metadata, err := ingestionMetadata(key, receipt)
-	if err != nil {
-		return Receipt{}, false, err
-	}
-	transactionKey := digest("COH-EVIDENCE-INGEST-TRANSACTION-V1\x00", []byte(receipt.Case.OrganizationID+"\x00"+
-		receipt.Case.TenantID+"\x00"+receipt.Case.CaseID+"\x00"+receipt.IdempotencyDigest))
-	result, err := store.repository.Transact(ctx, workflowbase.Transaction{ContractVersion: workflowbase.StorageContractVersion,
-		IdempotencyKey: transactionKey, Mutations: []workflowbase.Mutation{{Kind: workflowbase.MutationPut,
-			Key: key, ExpectedRevision: 0, Record: &metadata}}})
-	if err != nil {
-		return Receipt{}, false, mapStorageError("receipt_commit", err)
-	}
-	if result.Replayed {
-		recovered, found, recoverErr := store.Recover(ctx, receipt.Case, receipt.IdempotencyDigest)
-		if recoverErr != nil {
-			return Receipt{}, false, recoverErr
+		result, err := store.commitTracked(ctx, receipt)
+		if err != nil {
+			if CodeOf(err) == Conflict && attempt == 0 {
+				continue
+			}
+			return Receipt{}, false, err
 		}
-		if !found || recovered.IntentDigest != intent {
-			return Receipt{}, false, newError(Denied, "replayed_receipt_invalid", false, nil)
+		if result.Replayed {
+			recovered, found, recoverErr := store.Recover(ctx, receipt.Case, receipt.IdempotencyDigest)
+			if recoverErr != nil {
+				return Receipt{}, false, recoverErr
+			}
+			if !found || recovered.IntentDigest != intent {
+				return Receipt{}, false, newError(Denied, "replayed_receipt_invalid", false, nil)
+			}
+			return recovered, true, nil
 		}
-		return recovered, true, nil
+		return receipt, false, nil
 	}
-	return receipt, false, nil
+	return Receipt{}, false, newError(Conflict, "receipt_commit_conflict", true, nil)
 }
 
 func (store *RepositoryStore) loadMetadata(ctx context.Context,
@@ -124,7 +121,7 @@ func (store *RepositoryStore) loadMetadata(ctx context.Context,
 }
 
 func decodeIngestionEnvelope(metadata workflowbase.MetadataRecord,
-	key workflowbase.RecordKey) (repositoryEnvelope, error) {
+	key workflowbase.RecordKey, entryType string) (repositoryEnvelope, error) {
 	var envelope repositoryEnvelope
 	if err := decodeIngestionRecord(metadata.Canonical, &envelope); err != nil {
 		return repositoryEnvelope{}, err
@@ -132,9 +129,9 @@ func decodeIngestionEnvelope(metadata workflowbase.MetadataRecord,
 	if envelope.Schema != repositoryRecordSchema || envelope.Kind != repositoryKind || envelope.ID != key.ID ||
 		envelope.OrganizationID != key.Case.OrganizationID || envelope.TenantID != key.Case.TenantID ||
 		envelope.CaseID == nil || *envelope.CaseID != key.Case.CaseID || envelope.Revision != metadata.Revision ||
-		envelope.EntryType != "receipt" || metadata.Key != key || metadata.Schema != repositoryRecordSchema ||
+		envelope.EntryType != entryType || metadata.Key != key || metadata.Schema != repositoryRecordSchema ||
 		metadata.Digest != contentDigest(metadata.Canonical) {
-		return repositoryEnvelope{}, newError(Denied, "receipt_envelope_invalid", false, nil)
+		return repositoryEnvelope{}, newError(Denied, entryType+"_envelope_invalid", false, nil)
 	}
 	return envelope, nil
 }

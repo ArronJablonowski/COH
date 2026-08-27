@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -57,6 +58,21 @@ func (auditor *evidenceAuditor) AppendAuditEvent(_ context.Context, event tamper
 type evidenceSource struct {
 	value  []byte
 	offset int
+}
+
+type failStageCAS struct {
+	evidenceingest.EncryptedCAS
+	count  int
+	failAt int
+}
+
+func (store *failStageCAS) Stage(ctx context.Context, request evidenceingest.StageRequest,
+	source evidenceingest.Source) (evidenceingest.EncryptedObject, error) {
+	store.count++
+	if store.count == store.failAt {
+		return evidenceingest.EncryptedObject{}, errors.New("injected stage failure")
+	}
+	return store.EncryptedCAS.Stage(ctx, request, source)
 }
 
 func (source *evidenceSource) ReadContext(ctx context.Context, output []byte) (int, error) {
@@ -115,8 +131,59 @@ func TestEvidenceReceiptAndEncryptedObjectsSurviveSQLiteRestart(t *testing.T) {
 	}
 }
 
+func TestEvidencePendingPublicationIdentifiesUnreferencedObjectAfterRestart(t *testing.T) {
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	root := t.TempDir()
+	databasePath := filepath.Join(root, "coh.sqlite3")
+	backupPath := filepath.Join(root, "backups")
+	casRoot := filepath.Join(root, "encrypted-cas")
+	if err := os.MkdirAll(backupPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(casRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	wrappingKey := sha256.Sum256([]byte("sqlite-pending-wrapping-key"))
+	driver := openCaseSQLite(t, databasePath, backupPath, now)
+	caseController, caseRepository := composeCaseController(t, driver, now, &caseAuditor{})
+	create := caseCreateCommand(now)
+	if _, err := caseController.Execute(t.Context(), create); err != nil {
+		t.Fatal(err)
+	}
+	nativeCAS := openEvidenceCAS(t, casRoot, wrappingKey[:], now)
+	failedCAS := &failStageCAS{EncryptedCAS: nativeCAS, failAt: 2}
+	controller, _ := composeEvidenceControllerWithCAS(t, driver, caseRepository, failedCAS, now)
+	plaintext := []byte("published artifact with interrupted manifest")
+	command := evidenceCommand(create, plaintext, now)
+	if _, err := controller.Execute(t.Context(), command, &evidenceSource{value: plaintext}); evidenceingest.CodeOf(err) != evidenceingest.Unavailable {
+		t.Fatalf("failure code=%s err=%v", evidenceingest.CodeOf(err), err)
+	}
+	if err := driver.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	driver = openCaseSQLite(t, databasePath, backupPath, now)
+	defer driver.Close()
+	_, restartedCases := composeCaseController(t, driver, now, &caseAuditor{})
+	restarted, _ := composeEvidenceController(t, driver, restartedCases, casRoot, wrappingKey[:], now)
+	candidates, err := restarted.IdentifyPending(t.Context(), command.Case, command.IdempotencyKey)
+	if err != nil || len(candidates) != 1 ||
+		candidates[0].Status != evidenceingest.PendingUnreferenced || candidates[0].Published == nil ||
+		candidates[0].Pending.Role != evidenceingest.ArtifactPublication {
+		t.Fatalf("candidates=%+v err=%v", candidates, err)
+	}
+}
+
 func composeEvidenceController(t *testing.T, driver *sqlite.Store, caseRepository *caselifecycle.RepositoryStore,
 	casRoot string, wrappingKey []byte, now time.Time) (*evidenceingest.Controller, *evidenceAuditor) {
+	t.Helper()
+	return composeEvidenceControllerWithCAS(t, driver, caseRepository,
+		openEvidenceCAS(t, casRoot, wrappingKey, now), now)
+}
+
+func composeEvidenceControllerWithCAS(t *testing.T, driver *sqlite.Store,
+	caseRepository *caselifecycle.RepositoryStore, cas evidenceingest.EncryptedCAS,
+	now time.Time) (*evidenceingest.Controller, *evidenceAuditor) {
 	t.Helper()
 	guarded, err := workflow.GuardStorage(driver)
 	if err != nil {
@@ -130,14 +197,6 @@ func composeEvidenceController(t *testing.T, driver *sqlite.Store, caseRepositor
 	if err != nil {
 		t.Fatal(err)
 	}
-	keys, err := encryptedcas.NewAESKeyManager("operator_evidence_key", 1, wrappingKey, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cas, err := encryptedcas.Open(encryptedcas.Config{Root: casRoot, Keys: keys, Clock: func() time.Time { return now }})
-	if err != nil {
-		t.Fatal(err)
-	}
 	auditor := &evidenceAuditor{}
 	controller, err := evidenceingest.New(evidenceAuthority{now: now}, evidenceTransport{}, cases, cas,
 		receipts, auditor, evidenceClock{now: now})
@@ -145,6 +204,20 @@ func composeEvidenceController(t *testing.T, driver *sqlite.Store, caseRepositor
 		t.Fatal(err)
 	}
 	return controller, auditor
+}
+
+func openEvidenceCAS(t *testing.T, root string, wrappingKey []byte, now time.Time) *encryptedcas.Store {
+	t.Helper()
+	keys, err := encryptedcas.NewAESKeyManager("operator_evidence_key", 1, wrappingKey, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := encryptedcas.Open(encryptedcas.Config{Root: root, Keys: keys,
+		Clock: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return store
 }
 
 func evidenceCommand(createCommand caselifecycle.Command, plaintext []byte, now time.Time) evidenceingest.Command {

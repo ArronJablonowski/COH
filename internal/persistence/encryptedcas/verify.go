@@ -130,6 +130,36 @@ func decodeFooter(value []byte) (fileFooter, error) {
 	return footer, nil
 }
 
+func (store *Store) Prepare(ctx context.Context,
+	staged evidenceingest.EncryptedObject) (evidenceingest.PublishedObject, bool, error) {
+	if staged.Status != evidenceingest.Staged && staged.Status != evidenceingest.Verified {
+		return evidenceingest.PublishedObject{}, false, newError(InvalidInput, "prepare_status_invalid", nil)
+	}
+	if err := store.Verify(ctx, staged); err != nil {
+		return evidenceingest.PublishedObject{}, false, err
+	}
+	finalPath, locator, err := store.finalPath(staged.Case, staged.PlaintextDigest)
+	if err != nil {
+		return evidenceingest.PublishedObject{}, false, err
+	}
+	if _, statErr := os.Lstat(finalPath); statErr == nil {
+		existing, inspectErr := store.inspectPublished(finalPath, staged.Case, locator)
+		if inspectErr != nil || !samePlainObject(existing, staged) {
+			return evidenceingest.PublishedObject{}, false, newError(Conflict, "published_object_conflict", inspectErr)
+		}
+		if verifyErr := store.Verify(ctx, existing); verifyErr != nil {
+			return evidenceingest.PublishedObject{}, false, verifyErr
+		}
+		return referenceFromObject(existing), true, nil
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return evidenceingest.PublishedObject{}, false, newError(Unavailable, "published_object_inspect_failed", statErr)
+	}
+	planned := staged
+	planned.Status = evidenceingest.Published
+	planned.LocatorDigest = locator
+	return referenceFromObject(planned), false, nil
+}
+
 func (store *Store) Publish(ctx context.Context, staged evidenceingest.EncryptedObject) (evidenceingest.EncryptedObject, bool, error) {
 	if staged.Status != evidenceingest.Staged && staged.Status != evidenceingest.Verified {
 		return evidenceingest.EncryptedObject{}, false, newError(InvalidInput, "publish_status_invalid", nil)
@@ -203,6 +233,35 @@ func (store *Store) Resolve(ctx context.Context, reference evidenceingest.Publis
 	return object, nil
 }
 
+func (store *Store) Find(ctx context.Context,
+	pending evidenceingest.PendingObject) (evidenceingest.EncryptedObject, bool, error) {
+	if err := contextError(ctx); err != nil {
+		return evidenceingest.EncryptedObject{}, false, err
+	}
+	if evidenceingest.ValidatePendingObject(pending) != nil {
+		return evidenceingest.EncryptedObject{}, false, newError(InvalidInput, "pending_object_invalid", nil)
+	}
+	path, locator, err := store.finalPath(pending.Case, pending.PlaintextDigest)
+	if err != nil || locator != pending.LocatorDigest {
+		return evidenceingest.EncryptedObject{}, false, newError(Denied, "pending_locator_invalid", err)
+	}
+	if _, statErr := os.Lstat(path); errors.Is(statErr, os.ErrNotExist) {
+		return evidenceingest.EncryptedObject{}, false, nil
+	} else if statErr != nil {
+		return evidenceingest.EncryptedObject{}, false, newError(Unavailable, "pending_object_inspect_failed", statErr)
+	}
+	object, err := store.inspectPublished(path, pending.Case, locator)
+	if err != nil || object.PlaintextLength != pending.PlaintextLength || object.MediaType != pending.MediaType ||
+		object.Classification != pending.Classification ||
+		object.EncryptionContextDigest != pending.EncryptionContextDigest {
+		return evidenceingest.EncryptedObject{}, false, newError(Denied, "pending_object_mismatch", err)
+	}
+	if err = store.Verify(ctx, object); err != nil {
+		return evidenceingest.EncryptedObject{}, false, err
+	}
+	return object, true, nil
+}
+
 func (store *Store) Abandon(_ context.Context, object evidenceingest.EncryptedObject) error {
 	if object.Status != evidenceingest.Staged && object.Status != evidenceingest.Verified {
 		return newError(Denied, "abandon_published_denied", nil)
@@ -268,6 +327,13 @@ func samePlainObject(left, right evidenceingest.EncryptedObject) bool {
 	return left.Case == right.Case && left.PlaintextDigest == right.PlaintextDigest &&
 		left.PlaintextLength == right.PlaintextLength && left.MediaType == right.MediaType &&
 		left.Classification == right.Classification && left.EncryptionContextDigest == right.EncryptionContextDigest
+}
+
+func referenceFromObject(value evidenceingest.EncryptedObject) evidenceingest.PublishedObject {
+	return evidenceingest.PublishedObject{Case: value.Case, PlaintextDigest: value.PlaintextDigest,
+		PlaintextLength: value.PlaintextLength, CiphertextDigest: value.CiphertextDigest,
+		CiphertextLength: value.CiphertextLength, EncryptionFormat: value.EncryptionFormat,
+		EncryptionContextDigest: value.EncryptionContextDigest, LocatorDigest: value.LocatorDigest}
 }
 
 func (store *Store) objectPath(object evidenceingest.EncryptedObject) (string, error) {

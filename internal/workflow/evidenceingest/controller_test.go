@@ -97,6 +97,15 @@ func (store *ingestCAS) Stage(ctx context.Context, request StageRequest, source 
 }
 
 func (*ingestCAS) Verify(context.Context, EncryptedObject) error { return nil }
+func (store *ingestCAS) Prepare(_ context.Context, value EncryptedObject) (PublishedObject, bool, error) {
+	value.Status = Published
+	value.LocatorDigest = testDigest("published-" + value.PlaintextDigest)
+	existing, found := store.objects[value.LocatorDigest]
+	if found {
+		return publishedObject(existing), true, nil
+	}
+	return publishedObject(value), false, nil
+}
 func (store *ingestCAS) Publish(_ context.Context, value EncryptedObject) (EncryptedObject, bool, error) {
 	value.Status = Published
 	value.LocatorDigest = testDigest("published-" + value.PlaintextDigest)
@@ -115,16 +124,47 @@ func (store *ingestCAS) Resolve(_ context.Context, reference PublishedObject) (E
 	}
 	return value, nil
 }
+func (store *ingestCAS) Find(_ context.Context, pending PendingObject) (EncryptedObject, bool, error) {
+	value, found := store.objects[pending.LocatorDigest]
+	if !found {
+		return EncryptedObject{}, false, nil
+	}
+	return value, true, nil
+}
+func (*ingestCAS) Staged(context.Context, time.Time, uint16) ([]StagedCandidate, error) {
+	return []StagedCandidate{}, nil
+}
 func (*ingestCAS) Abandon(context.Context, EncryptedObject) error { return nil }
 
 type ingestManifests struct {
 	receipt Receipt
 	found   bool
 	commits int
+	pending map[PublicationRole]PendingObject
+	refs    map[PublishedObject]bool
 }
 
 func (store *ingestManifests) Recover(context.Context, domain.CaseRef, string) (Receipt, bool, error) {
 	return store.receipt, store.found, nil
+}
+func (store *ingestManifests) Track(_ context.Context, _, _ string, value PendingObject) error {
+	if store.pending == nil {
+		store.pending = map[PublicationRole]PendingObject{}
+	}
+	store.pending[value.Role] = value
+	return nil
+}
+func (store *ingestManifests) RecoverPending(context.Context, domain.CaseRef, string) ([]PendingObject, error) {
+	result := []PendingObject{}
+	for _, role := range []PublicationRole{ArtifactPublication, ManifestPublication} {
+		if value, found := store.pending[role]; found {
+			result = append(result, value)
+		}
+	}
+	return result, nil
+}
+func (store *ingestManifests) Referenced(_ context.Context, value PublishedObject) (bool, error) {
+	return store.refs[value], nil
 }
 func (store *ingestManifests) Commit(_ context.Context, _, _ string, value Receipt) (Receipt, bool, error) {
 	store.commits++
@@ -132,6 +172,8 @@ func (store *ingestManifests) Commit(_ context.Context, _, _ string, value Recei
 		return store.receipt, true, nil
 	}
 	store.receipt, store.found = value, true
+	store.refs = map[PublishedObject]bool{value.EncryptedArtifact: true, value.EncryptedManifest: true}
+	store.pending = map[PublicationRole]PendingObject{}
 	return value, false, nil
 }
 
@@ -156,6 +198,10 @@ func TestControllerPublishesArtifactManifestReceiptAndExactReplay(t *testing.T) 
 	if err != nil || result.Replayed || result.Artifact.Digest != command.ExpectedDigest ||
 		result.Manifest.MediaType != manifestMediaType || manifests.commits != 1 || cas.stageCount != 2 {
 		t.Fatalf("result=%+v commits=%d stages=%d err=%v", result, manifests.commits, cas.stageCount, err)
+	}
+	if candidates, identifyErr := controller.IdentifyPending(t.Context(), command.Case,
+		command.IdempotencyKey); identifyErr != nil || len(candidates) != 0 {
+		t.Fatalf("committed reconciliation=%+v err=%v", candidates, identifyErr)
 	}
 	if len(auditor.events) != 1 || auditor.events[0].Outcome != "allowed" ||
 		result.Receipt.AuditEventDigest == "" || result.Receipt.ManifestProvenanceDigest == "" {
@@ -205,6 +251,11 @@ func TestControllerDenialAndManifestFailureReadOrReferenceNothingPartial(t *test
 		manifests.commits != 0 || len(cas.objects) != 1 {
 		t.Fatalf("manifest failure code=%s commits=%d published=%d", CodeOf(err), manifests.commits, len(cas.objects))
 	}
+	candidates, err := controller.IdentifyPending(t.Context(), command.Case, command.IdempotencyKey)
+	if err != nil || len(candidates) != 1 || candidates[0].Status != PendingUnreferenced ||
+		candidates[0].Pending.Role != ArtifactPublication || candidates[0].Published == nil {
+		t.Fatalf("orphan candidates=%+v err=%v", candidates, err)
+	}
 }
 
 func TestControllerRejectsChangedReplayBeforeTransportOrCAS(t *testing.T) {
@@ -250,7 +301,7 @@ func newIngestController(t *testing.T, command Command) (*Controller, *ingestAut
 	cases := &ingestCases{found: true, snapshot: CaseSnapshot{Case: command.Case, Revision: 2,
 		State: "open", Classification: "restricted", ProvenanceDigest: testDigest("case-provenance")}}
 	cas := &ingestCAS{objects: map[string]EncryptedObject{}}
-	manifests := &ingestManifests{}
+	manifests := &ingestManifests{pending: map[PublicationRole]PendingObject{}, refs: map[PublishedObject]bool{}}
 	auditor := &ingestAuditor{}
 	controller, err := New(authority, transport, cases, cas, manifests, auditor, ingestClock{now: testNow})
 	if err != nil {

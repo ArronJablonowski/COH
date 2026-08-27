@@ -76,7 +76,7 @@ func (controller *Controller) Execute(ctx context.Context, command Command, sour
 	if decision.Outcome != "allow" {
 		return Result{}, controller.deny(ctx, command, intent, decision, decision.ReasonCode, now)
 	}
-	artifact, err := controller.publishArtifact(opCtx, command, source)
+	artifact, err := controller.publishArtifact(opCtx, command, intent, source)
 	if err != nil {
 		return Result{}, err
 	}
@@ -89,7 +89,7 @@ func (controller *Controller) Execute(ctx context.Context, command Command, sour
 	if err != nil {
 		return Result{}, err
 	}
-	manifestObject, err := controller.publishManifest(opCtx, command, manifestRef, canonical)
+	manifestObject, err := controller.publishManifest(opCtx, command, intent, manifestRef, canonical)
 	if err != nil {
 		return Result{}, err
 	}
@@ -214,22 +214,22 @@ func (controller *Controller) authorize(ctx context.Context, command Command, in
 	return decision, nil
 }
 
-func (controller *Controller) publishArtifact(ctx context.Context, command Command,
+func (controller *Controller) publishArtifact(ctx context.Context, command Command, intent string,
 	source Source) (EncryptedObject, error) {
 	request := stageRequest(command.Case, command.ExpectedDigest, command.ExpectedLength, command.MediaType,
 		command.Classification, command.KeyProfile, command.KeyProfileDigest, command.Deadline)
-	return controller.stageAndPublish(ctx, request, source)
+	return controller.stageAndPublish(ctx, command, intent, ArtifactPublication, request, source)
 }
 
-func (controller *Controller) publishManifest(ctx context.Context, command Command, reference domain.ArtifactRef,
-	canonical []byte) (EncryptedObject, error) {
+func (controller *Controller) publishManifest(ctx context.Context, command Command, intent string,
+	reference domain.ArtifactRef, canonical []byte) (EncryptedObject, error) {
 	request := stageRequest(command.Case, reference.Digest, reference.Length, reference.MediaType,
 		reference.Classification, command.KeyProfile, command.KeyProfileDigest, command.Deadline)
-	return controller.stageAndPublish(ctx, request, &byteSource{value: canonical})
+	return controller.stageAndPublish(ctx, command, intent, ManifestPublication, request, &byteSource{value: canonical})
 }
 
-func (controller *Controller) stageAndPublish(ctx context.Context, request StageRequest,
-	source Source) (EncryptedObject, error) {
+func (controller *Controller) stageAndPublish(ctx context.Context, command Command, intent string,
+	role PublicationRole, request StageRequest, source Source) (EncryptedObject, error) {
 	staged, err := controller.cas.Stage(ctx, request, source)
 	if err != nil {
 		return EncryptedObject{}, mapDependency(ctx, "cas_stage_unavailable", err)
@@ -242,11 +242,24 @@ func (controller *Controller) stageAndPublish(ctx context.Context, request Stage
 		_ = controller.cas.Abandon(context.WithoutCancel(ctx), staged)
 		return EncryptedObject{}, mapDependency(ctx, "cas_verify_unavailable", err)
 	}
+	planned, _, err := controller.cas.Prepare(ctx, staged)
+	if err != nil {
+		return EncryptedObject{}, mapDependency(ctx, "cas_prepare_unavailable", err)
+	}
+	pending := pendingFrom(role, staged, planned.LocatorDigest)
+	if validatePublishedObject(planned) != nil || validatePendingObject(pending) != nil ||
+		!publishedMatchesPending(planned, pending) {
+		return EncryptedObject{}, newError(Denied, "cas_plan_invalid", false, nil)
+	}
+	if err = controller.manifests.Track(ctx, command.IdempotencyKey, intent, pending); err != nil {
+		return EncryptedObject{}, mapDependency(ctx, "publication_tracking_unavailable", err)
+	}
 	published, _, err := controller.cas.Publish(ctx, staged)
 	if err != nil {
 		return EncryptedObject{}, mapDependency(ctx, "cas_publish_unavailable", err)
 	}
-	if published.Status != Published || !objectMatchesStage(published, request) {
+	if published.Status != Published || !objectMatchesStage(published, request) ||
+		!publishedMatchesPending(publishedObject(published), pending) {
 		return EncryptedObject{}, newError(Denied, "cas_publication_invalid", false, nil)
 	}
 	resolved, err := controller.cas.Resolve(ctx, publishedObject(published))
@@ -257,6 +270,82 @@ func (controller *Controller) stageAndPublish(ctx context.Context, request Stage
 		return EncryptedObject{}, newError(Denied, "cas_publication_resolution_invalid", false, nil)
 	}
 	return published, nil
+}
+
+func pendingFrom(role PublicationRole, value EncryptedObject, locator string) PendingObject {
+	return PendingObject{Role: role, Case: value.Case, PlaintextDigest: value.PlaintextDigest,
+		PlaintextLength: value.PlaintextLength, MediaType: value.MediaType, Classification: value.Classification,
+		EncryptionContextDigest: value.EncryptionContextDigest, LocatorDigest: locator, CreatedAt: value.CreatedAt}
+}
+
+func publishedMatchesPending(value PublishedObject, pending PendingObject) bool {
+	return value.Case == pending.Case && value.PlaintextDigest == pending.PlaintextDigest &&
+		value.PlaintextLength == pending.PlaintextLength &&
+		value.EncryptionContextDigest == pending.EncryptionContextDigest && value.LocatorDigest == pending.LocatorDigest
+}
+
+// IdentifyPending returns a conservative snapshot for one interrupted
+// idempotency scope. It never deletes an object and never infers reference
+// state from filesystem marker absence.
+func (controller *Controller) IdentifyPending(ctx context.Context, scope domain.CaseRef,
+	idempotencyKey string) ([]ReconciliationCandidate, error) {
+	if err := contextError(ctx); err != nil {
+		return nil, err
+	}
+	if !validCase(scope) || !validOpaque(idempotencyKey, 1, 256) {
+		return nil, newError(InvalidInput, "reconciliation_key_invalid", false, nil)
+	}
+	pending, err := controller.manifests.RecoverPending(ctx, scope, IdempotencyBindingDigest(idempotencyKey))
+	if err != nil {
+		return nil, mapDependency(ctx, "pending_recovery_unavailable", err)
+	}
+	result := make([]ReconciliationCandidate, 0, len(pending))
+	for _, candidate := range pending {
+		object, found, findErr := controller.cas.Find(ctx, candidate)
+		if findErr != nil {
+			return nil, mapDependency(ctx, "pending_object_inspection_unavailable", findErr)
+		}
+		if !found {
+			result = append(result, ReconciliationCandidate{Pending: candidate, Status: PendingMissing})
+			continue
+		}
+		reference := publishedObject(object)
+		referenced, referenceErr := controller.manifests.Referenced(ctx, reference)
+		if referenceErr != nil {
+			return nil, mapDependency(ctx, "reference_lookup_unavailable", referenceErr)
+		}
+		status := PendingUnreferenced
+		if referenced {
+			status = PendingReferenced
+		}
+		copyReference := reference
+		result = append(result, ReconciliationCandidate{Pending: candidate, Status: status,
+			Published: &copyReference})
+	}
+	return result, nil
+}
+
+// IdentifyStaged returns only stale hidden stages. By contract, staged
+// locators cannot appear in receipts, so every returned entry is unreferenced.
+func (controller *Controller) IdentifyStaged(ctx context.Context, before time.Time,
+	limit uint16) ([]StagedCandidate, error) {
+	if err := contextError(ctx); err != nil {
+		return nil, err
+	}
+	if !validTime(before) || limit == 0 || limit > 256 {
+		return nil, newError(InvalidInput, "staged_reconciliation_invalid", false, nil)
+	}
+	values, err := controller.cas.Staged(ctx, before, limit)
+	if err != nil {
+		return nil, mapDependency(ctx, "staged_reconciliation_unavailable", err)
+	}
+	for _, value := range values {
+		if !digestPattern.MatchString(value.LocatorDigest) || value.CiphertextLength <= 0 ||
+			!validTime(value.ModifiedAt) || !value.ModifiedAt.Before(before) {
+			return nil, newError(Denied, "staged_candidate_invalid", false, nil)
+		}
+	}
+	return values, nil
 }
 
 func objectMatchesStage(value EncryptedObject, request StageRequest) bool {

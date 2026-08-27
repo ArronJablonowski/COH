@@ -53,11 +53,30 @@ func TestEncryptedCASStagesVerifiesPublishesResolvesAndDeduplicates(t *testing.T
 	if err = store.Verify(t.Context(), staged); err != nil {
 		t.Fatalf("verify staged: %v", err)
 	}
+	if candidates, candidateErr := store.Staged(t.Context(), time.Now().UTC().Add(time.Hour), 10); candidateErr != nil || len(candidates) != 1 || candidates[0].LocatorDigest != staged.LocatorDigest {
+		t.Fatalf("staged candidates=%+v err=%v", candidates, candidateErr)
+	}
+	planned, replayed, err := store.Prepare(t.Context(), staged)
+	if err != nil || replayed || planned.LocatorDigest == staged.LocatorDigest {
+		t.Fatalf("prepare=%+v replayed=%v err=%v", planned, replayed, err)
+	}
+	pending := evidenceingest.PendingObject{Role: evidenceingest.ArtifactPublication, Case: staged.Case,
+		PlaintextDigest: staged.PlaintextDigest, PlaintextLength: staged.PlaintextLength,
+		MediaType: staged.MediaType, Classification: staged.Classification,
+		EncryptionContextDigest: staged.EncryptionContextDigest, LocatorDigest: planned.LocatorDigest,
+		CreatedAt: staged.CreatedAt}
+	if _, found, findErr := store.Find(t.Context(), pending); findErr != nil || found {
+		t.Fatalf("pre-publication find found=%v err=%v", found, findErr)
+	}
 	published, replayed, err := store.Publish(t.Context(), staged)
 	if err != nil || replayed || published.Status != evidenceingest.Published {
 		t.Fatalf("publish=%+v replayed=%v err=%v", published, replayed, err)
 	}
 	reference := publishedReference(published)
+	if foundObject, found, findErr := store.Find(t.Context(), pending); findErr != nil || !found ||
+		foundObject.CiphertextDigest != published.CiphertextDigest {
+		t.Fatalf("post-publication find=%+v found=%v err=%v", foundObject, found, findErr)
+	}
 	resolved, err := store.Resolve(t.Context(), reference)
 	if err != nil || resolved.CiphertextDigest != published.CiphertextDigest {
 		t.Fatalf("resolve=%+v err=%v", resolved, err)

@@ -192,6 +192,24 @@ func validatePublishedObject(value PublishedObject) error {
 	return nil
 }
 
+func validatePendingObject(value PendingObject) error {
+	if (value.Role != ArtifactPublication && value.Role != ManifestPublication) || !validCase(value.Case) ||
+		!digestPattern.MatchString(value.PlaintextDigest) || value.PlaintextLength <= 0 ||
+		value.PlaintextLength > maximumArtifactBytes || !mediaTypePattern.MatchString(value.MediaType) ||
+		!validClassification(value.Classification) ||
+		!allDigests(value.EncryptionContextDigest, value.LocatorDigest) || !validTime(value.CreatedAt) {
+		return newError(Denied, "pending_object_invalid", false, nil)
+	}
+	if value.Role == ManifestPublication && value.MediaType != manifestMediaType {
+		return newError(Denied, "pending_manifest_invalid", false, nil)
+	}
+	return nil
+}
+
+// ValidatePendingObject validates the stable reconciliation identity exposed
+// to persistence adapters without exposing ciphertext or key material.
+func ValidatePendingObject(value PendingObject) error { return validatePendingObject(value) }
+
 func validateReceipt(value Receipt) error {
 	if err := validateReceiptShape(value, true); err != nil {
 		return err
