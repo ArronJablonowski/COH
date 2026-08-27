@@ -168,6 +168,7 @@ type TimelineEntry struct {
 	DuplicateOf               *string     `json:"duplicate_of"`
 	GapDigests                []string    `json:"gap_digests"`
 	ConflictDigests           []string    `json:"conflict_digests"`
+	Unknowns                  []Unknown   `json:"unknowns"`
 }
 
 type Projection struct {

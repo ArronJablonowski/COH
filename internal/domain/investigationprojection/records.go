@@ -107,6 +107,7 @@ func cloneTimeline(values []TimelineEntry) []TimelineEntry {
 		result[index].DuplicateOf = cloneString(result[index].DuplicateOf)
 		result[index].GapDigests = cloneSlice(result[index].GapDigests)
 		result[index].ConflictDigests = cloneSlice(result[index].ConflictDigests)
+		result[index].Unknowns = cloneSlice(result[index].Unknowns)
 	}
 	return result
 }

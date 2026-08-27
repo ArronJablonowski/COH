@@ -22,6 +22,7 @@ type projectionMemory struct {
 	checkpointErr, evidenceErr error
 	commitErr                  error
 	returnDivergentCommit      bool
+	failAfterCommit            bool
 }
 
 func (memory *projectionMemory) VerifyCurrent(_ context.Context, _ Scope, _ StateVersion) (Watermark, error) {
@@ -77,6 +78,10 @@ func (memory *projectionMemory) Commit(_ context.Context, expected *string, proj
 		return projection, checkpoint, nil
 	}
 	memory.projection, memory.checkpoint, memory.found = projection, checkpoint, true
+	if memory.failAfterCommit {
+		memory.failAfterCommit = false
+		return Projection{}, Checkpoint{}, errors.New("commit response lost")
+	}
 	return projection, checkpoint, nil
 }
 
@@ -284,6 +289,36 @@ func TestServiceMapsDependencyCancellationAndUnavailable(t *testing.T) {
 		ErrorReason(err) != ContextCanceled {
 		t.Fatalf("owned cancellation err=%v", err)
 	}
+}
+
+func TestServiceHandlesDenialTimeoutAndLostCommitResponse(t *testing.T) {
+	t.Run("denial", func(t *testing.T) {
+		memory, query := projectionServiceFixture(t, 1)
+		memory.authorityErr = newError(DeniedError, AuthorityDenied, nil)
+		if _, err := newProjectionService(t, memory).Read(context.Background(), query); Code(err) != DeniedError ||
+			ErrorReason(err) != AuthorityDenied {
+			t.Fatalf("err=%v", err)
+		}
+	})
+	t.Run("timeout", func(t *testing.T) {
+		memory, query := projectionServiceFixture(t, 1)
+		query.RequestedAt = "2020-01-01T00:00:00.000000000Z"
+		query.Deadline = "2020-01-01T00:00:01.000000000Z"
+		query.QueryDigest = ""
+		_, query.QueryDigest, _ = canonicalValue(query)
+		if _, err := newProjectionService(t, memory).Read(context.Background(), query); Code(err) != TimeoutError ||
+			ErrorReason(err) != ContextDeadline {
+			t.Fatalf("err=%v", err)
+		}
+	})
+	t.Run("lost commit response", func(t *testing.T) {
+		memory, query := projectionServiceFixture(t, 2)
+		memory.failAfterCommit = true
+		projection, err := newProjectionService(t, memory).Read(context.Background(), query)
+		if err != nil || projection.ProjectionDigest == "" || memory.commits != 1 || memory.checkpointLoads != 2 {
+			t.Fatalf("projection=%+v err=%v commits=%d loads=%d", projection, err, memory.commits, memory.checkpointLoads)
+		}
+	})
 }
 
 func projectionServiceFixture(t *testing.T, count int) (*projectionMemory, Query) {

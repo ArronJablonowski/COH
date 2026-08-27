@@ -138,7 +138,7 @@ func validTimelineEntry(value TimelineEntry) bool {
 		validTokenSet(value.ClaimIDs) && validEntityRefs(value.EntityRefs) && validTimeRefs([]TimeRef{value.TimeRef}) &&
 		slices.Contains([]string{"genesis", "before", "after", "overlap", "equal", "uncertain"}, value.RelationToPrevious) &&
 		value.OrderConfidenceMillionths <= 1_000_000 && (value.DuplicateOf == nil || tokenPattern.MatchString(*value.DuplicateOf)) &&
-		validDigestSet(value.GapDigests) && validDigestSet(value.ConflictDigests)
+		validDigestSet(value.GapDigests) && validDigestSet(value.ConflictDigests) && validUnknowns(value.Unknowns)
 }
 
 func validateCheckpoint(ctx context.Context, value Checkpoint) error {

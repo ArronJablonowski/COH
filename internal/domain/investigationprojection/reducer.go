@@ -229,7 +229,8 @@ func applyTimeline(value *Value, fact Fact) error {
 	value.Timeline = append(value.Timeline, TimelineEntry{EntryID: fact.SubjectID, FactSequence: fact.Sequence,
 		ClaimIDs: claimIDs, EntityRefs: cloneSlice(fact.EntityRefs), TimeRef: cloneTimeRef(fact.TimeRefs[0]), RelationToPrevious: *fact.TimeRelation,
 		OrderConfidenceMillionths: *fact.OrderConfidenceMillionths, DuplicateOf: cloneString(fact.DuplicateOf),
-		GapDigests: cloneSlice(fact.GapDigests), ConflictDigests: cloneSlice(fact.ConflictDigests)})
+		GapDigests: cloneSlice(fact.GapDigests), ConflictDigests: cloneSlice(fact.ConflictDigests),
+		Unknowns: cloneSlice(fact.Unknowns)})
 	return nil
 }
 

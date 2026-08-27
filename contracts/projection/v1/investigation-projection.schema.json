@@ -207,7 +207,7 @@
     },
     "timeline_entry": {
       "type": "object",
-      "required": ["entry_id", "fact_sequence", "claim_ids", "entity_refs", "time_ref", "relation_to_previous", "order_confidence_millionths", "duplicate_of", "gap_digests", "conflict_digests"],
+      "required": ["entry_id", "fact_sequence", "claim_ids", "entity_refs", "time_ref", "relation_to_previous", "order_confidence_millionths", "duplicate_of", "gap_digests", "conflict_digests", "unknowns"],
       "properties": {
         "entry_id": {"$ref": "#/$defs/token"},
         "fact_sequence": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
@@ -218,7 +218,8 @@
         "order_confidence_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
         "duplicate_of": {"$ref": "#/$defs/nullable_token"},
         "gap_digests": {"$ref": "#/$defs/digests"},
-        "conflict_digests": {"$ref": "#/$defs/digests"}
+        "conflict_digests": {"$ref": "#/$defs/digests"},
+        "unknowns": {"$ref": "#/$defs/unknowns"}
       },
       "additionalProperties": false
     },
