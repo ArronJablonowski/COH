@@ -1,0 +1,14 @@
+{
+  "schema_version": "coh.elastic-querydsl-redacted-error/v1",
+  "reason": "elastic_pit_search_response_incomplete",
+  "query_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "plan_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "pit_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "request_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "credential_exposed": false,
+  "pit_id_exposed": false,
+  "native_text_exposed": false,
+  "literal_exposed": false,
+  "result_row_exposed": false,
+  "vendor_body_exposed": false
+}

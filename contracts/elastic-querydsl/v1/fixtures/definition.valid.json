@@ -1,0 +1,22 @@
+{
+  "schema_version": "coh.elastic-querydsl-definition/v1",
+  "source_id": "elastic-prod",
+  "resources": ["securityevent"],
+  "fields": [
+    {"name": "event_id", "vendor_name": "event.id", "type": "string", "projectable": true, "exact": true, "range": false, "exists": true, "text_searchable": false, "sortable": true},
+    {"name": "event_timestamp", "vendor_name": "@timestamp", "type": "timestamp", "projectable": true, "exact": true, "range": true, "exists": true, "text_searchable": false, "sortable": true},
+    {"name": "message", "vendor_name": "message", "type": "string", "projectable": true, "exact": false, "range": false, "exists": true, "text_searchable": true, "sortable": false},
+    {"name": "source_ip", "vendor_name": "source.ip", "type": "ip", "projectable": true, "exact": true, "range": true, "exists": true, "text_searchable": false, "sortable": false}
+  ],
+  "projection": ["event_timestamp", "event_id", "message", "source_ip"],
+  "stable_sort": [
+    {"name": "event_timestamp", "direction": "ASC"},
+    {"name": "event_id", "direction": "ASC"}
+  ],
+  "timestamp_field": "event_timestamp",
+  "tenant_field": "",
+  "source_field": "",
+  "hard_maximum_rows": 1000,
+  "hard_maximum_pages": 10,
+  "hard_page_rows": 100
+}

@@ -3,6 +3,7 @@ package elastic
 import (
 	"context"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -187,7 +188,9 @@ func TestPublishedCapabilityFixtureUsesStrictQueryContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	capability, err := queryconnector.DecodeCapability(context.Background(), input)
-	if err != nil || capability.Value().SourceID != "elastic-prod" || !capability.Value().Features.ReadOnly {
+	value := capability.Value()
+	if err != nil || value.SourceID != "elastic-prod" || !value.Features.ReadOnly || !value.Features.Polling ||
+		!value.Features.Paging || !slices.Equal(value.QueryLanguages, []string{"elastic-query-dsl", "esql"}) {
 		t.Fatalf("capability=%+v err=%v", capability.Value(), err)
 	}
 	for _, forbidden := range []string{"credential", "api_key", "authorization", "vendor_body", "secret"} {

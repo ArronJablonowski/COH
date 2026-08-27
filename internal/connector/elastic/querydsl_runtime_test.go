@@ -199,6 +199,41 @@ func TestQueryDSLRuntimeReportsTruncationAndClosesPIT(t *testing.T) {
 	}
 }
 
+func TestQueryDSLRuntimeRejectsJobAndPageHandleTheft(t *testing.T) {
+	runtime, capability, client := testQueryDSLRuntime(t)
+	query := queryDSLRuntimeQuery(t, capability.Digest())
+	validation, err := runtime.Validate(context.Background(), query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	execution, err := runtime.Execute(context.Background(), query, validation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobRequest := queryconnector.PollRequest{QueryID: query.Value().QueryID, AttemptID: execution.Value().AttemptID,
+		Handle: execution.Value().Handle, Authority: query.Value().Authority}
+	stolenJob := jobRequest
+	stolenJob.Authority.ActorID = testID("9")
+	if _, err := runtime.Poll(context.Background(), stolenJob); queryconnector.Reason(err) != "elastic_querydsl_job_mismatch" {
+		t.Fatalf("stolen job err=%v", err)
+	}
+	poll, err := runtime.Poll(context.Background(), jobRequest)
+	if err != nil || poll.Value().Page == nil || poll.Value().Page.NextPage == nil {
+		t.Fatalf("poll=%+v err=%v", poll.Value(), err)
+	}
+	pageRequest := queryconnector.PageRequest{QueryID: query.Value().QueryID, AttemptID: execution.Value().AttemptID,
+		Handle: *poll.Value().Page.NextPage, Authority: query.Value().Authority, Limits: query.Value().Limits}
+	stolenPage := pageRequest
+	stolenPage.Handle.OpaqueDigest = testDigest("9")
+	if _, err := runtime.NextPage(context.Background(), stolenPage); queryconnector.Reason(err) != "elastic_querydsl_page_handle_mismatch" {
+		t.Fatalf("stolen page err=%v", err)
+	}
+	_, _, searchCalls, _ := client.counts()
+	if searchCalls != 1 {
+		t.Fatalf("handle theft reached vendor: search calls=%d", searchCalls)
+	}
+}
+
 func TestQueryDSLRuntimeRetriesOpenAndReportsUncertainClose(t *testing.T) {
 	runtime, capability, client := testQueryDSLRuntime(t)
 	query := queryDSLRuntimeQuery(t, capability.Digest())

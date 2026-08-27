@@ -1,0 +1,18 @@
+{
+  "schema_version": "coh.elastic-querydsl-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"reason": "querydsl_json_invalid", "class": "ambiguity", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "querydsl_operator_unsupported", "class": "injection", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "querydsl_exact_field_denied", "class": "schema", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "querydsl_literal_type_mismatch", "class": "type", "covered_by": "TestCompilerDenialCorpus"},
+    {"reason": "querydsl_binding_invalid", "class": "scope", "covered_by": "TestCompilerBindsLanguageSchemaScopeAndCancellation"},
+    {"reason": "elastic_querydsl_target_invalid", "class": "target", "covered_by": "TestQueryDSLTransportRejectsBindingAndSearchAfterSubstitution"},
+    {"reason": "elastic_search_after_invalid", "class": "paging", "covered_by": "TestQueryDSLResponseFailsClosedOnCompletenessAndShapeDrift"},
+    {"reason": "elastic_pit_search_response_incomplete", "class": "completeness", "covered_by": "TestQueryDSLResponseFailsClosedOnCompletenessAndShapeDrift"},
+    {"reason": "elastic_pit_close_unconfirmed", "class": "cancellation", "covered_by": "TestQueryDSLValidationOpenAndCloseResponsesFailClosed"},
+    {"reason": "row_limit_reached", "class": "bounds", "covered_by": "TestQueryDSLRuntimeReportsTruncationAndClosesPIT"},
+    {"reason": "elastic_querydsl_page_handle_mismatch", "class": "ownership", "covered_by": "TestQueryDSLRuntimeCompletesBoundedReplayableExport"},
+    {"reason": "elastic_querydsl_job_unavailable", "class": "recovery", "covered_by": "TestQueryDSLRuntimeRetriesOpenAndReportsUncertainClose"}
+  ]
+}

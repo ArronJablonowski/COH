@@ -99,9 +99,9 @@ func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope, a
 		SnapshotID: deterministicUUID(now, identityDigest+scope.OrganizationID+scope.TenantID+scope.CaseID),
 		SourceID:   adapter.config.SourceID, AdapterVersion: adapter.config.AdapterVersion,
 		ObservedAt: now.Format(timestampLayout), ValidUntil: expiresAt.Format(timestampLayout),
-		QueryLanguages: []string{"esql", "kql", "lucene"},
+		QueryLanguages: []string{"elastic-query-dsl", "esql"},
 		Features: queryconnector.Features{ReadOnly: true, SchemaDiscovery: true, Validation: true,
-			Paging: true, Cancellation: true, Statistics: true},
+			Polling: true, Paging: true, Cancellation: true, Statistics: true},
 		HardLimits: adapter.config.HardLimits, SourceIdentityDigest: identityDigest,
 	}
 	encoded, _ := json.Marshal(value)
