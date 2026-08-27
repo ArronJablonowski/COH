@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/domain"
 	"github.com/ArronJablonowski/COH/internal/domain/queryruntime"
 )
 
@@ -189,7 +190,7 @@ func artifactRequest(command StartCommand, now time.Time) ArtifactRequest {
 func buildStart(command StartCommand, binding ArtifactBinding, now time.Time) (Record, error) {
 	session := command.RuntimeSession
 	return FinalizeRecord(Record{SchemaVersion: RecordSchemaVersion, ContractVersion: ContractVersion, Revision: 1,
-		Stream: streamFromSession(session), Case: command.Case, ActorID: command.ActorID, SourceID: command.SourceID,
+		Stream: streamFromSession(session), Case: caseBinding(command.Case), ActorID: command.ActorID, SourceID: command.SourceID,
 		QueryDigest: command.QueryDigest, BoundsDecisionDigest: command.BoundsDecisionDigest, ExecutionDigest: command.ExecutionDigest,
 		ValidatorVersion: command.ValidatorVersion, ValidatorProvenanceDigest: command.ValidatorProvenanceDigest,
 		IntervalStart: command.IntervalStart, IntervalEnd: command.IntervalEnd, ResourceScopeDigest: command.ResourceScopeDigest,
@@ -237,7 +238,7 @@ func validateRecoveredStart(record Record, command StartCommand) error {
 	if err := VerifyRecord(record); err != nil {
 		return err
 	}
-	if record.Revision != 1 || record.Stream != streamFromSession(command.RuntimeSession) || record.Case != command.Case ||
+	if record.Revision != 1 || record.Stream != streamFromSession(command.RuntimeSession) || record.Case != caseBinding(command.Case) ||
 		record.ActorID != command.ActorID || record.SourceID != command.SourceID || record.QueryDigest != command.QueryDigest ||
 		record.BoundsDecisionDigest != command.BoundsDecisionDigest || record.ExecutionDigest != command.ExecutionDigest ||
 		record.ValidatorVersion != command.ValidatorVersion || record.ValidatorProvenanceDigest != command.ValidatorProvenanceDigest ||
@@ -320,6 +321,10 @@ func sameArtifact(first, second *ArtifactBinding) bool {
 		return first == nil && second == nil
 	}
 	return *first == *second
+}
+
+func caseBinding(value domain.CaseRef) CaseBinding {
+	return CaseBinding{OrganizationID: value.OrganizationID, TenantID: value.TenantID, CaseID: value.CaseID}
 }
 
 func validateStart(command StartCommand, now time.Time) error {

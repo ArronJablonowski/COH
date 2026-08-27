@@ -131,8 +131,8 @@ func (stub *auditStub) AppendQueryEvidence(_ context.Context, event AuditEvent) 
 
 func artifact(seed string, length int64) ArtifactBinding {
 	classification := "restricted"
-	return ArtifactBinding{Artifact: domain.ArtifactRef{Digest: digest(seed), MediaType: "application/vnd.coh.native-query", Classification: classification, Length: length},
-		Manifest:                 domain.ArtifactRef{Digest: digest(seed + "-manifest"), MediaType: "application/vnd.coh.artifact-manifest+json", Classification: classification, Length: 512},
+	return ArtifactBinding{Artifact: ArtifactRef{Digest: digest(seed), MediaType: "application/vnd.coh.native-query", Classification: classification, Length: length},
+		Manifest:                 ArtifactRef{Digest: digest(seed + "-manifest"), MediaType: "application/vnd.coh.artifact-manifest+json", Classification: classification, Length: 512},
 		ManifestProvenanceDigest: digest(seed + "-provenance"), IngestionReceiptDigest: digest(seed + "-receipt")}
 }
 

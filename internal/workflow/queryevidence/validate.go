@@ -25,6 +25,9 @@ func oneOf(value string, values ...string) bool { return slices.Contains(values,
 func validCase(value domain.CaseRef) bool {
 	return uuidPattern.MatchString(value.OrganizationID) && uuidPattern.MatchString(value.TenantID) && uuidPattern.MatchString(value.CaseID)
 }
+func validCaseBinding(value CaseBinding) bool {
+	return uuidPattern.MatchString(value.OrganizationID) && uuidPattern.MatchString(value.TenantID) && uuidPattern.MatchString(value.CaseID)
+}
 func validStream(value StreamRef) bool {
 	return uuidPattern.MatchString(value.OrganizationID) && uuidPattern.MatchString(value.TenantID) && uuidPattern.MatchString(value.QueryID) && uuidPattern.MatchString(value.AttemptID)
 }
@@ -42,7 +45,7 @@ func validateRecord(value Record, digestsEmpty bool) error {
 	if value.SchemaVersion != RecordSchemaVersion || value.ContractVersion != ContractVersion ||
 		(digestsEmpty && (value.RecordDigest != "" || value.ProvenanceDigest != "" || value.TransitionID != "")) ||
 		(!digestsEmpty && (!validDigest(value.RecordDigest) || !validDigest(value.ProvenanceDigest) || !validDigest(value.TransitionID))) ||
-		value.Revision == 0 || !validStream(value.Stream) || !validCase(value.Case) ||
+		value.Revision == 0 || !validStream(value.Stream) || !validCaseBinding(value.Case) ||
 		value.Stream.OrganizationID != value.Case.OrganizationID || value.Stream.TenantID != value.Case.TenantID ||
 		!uuidPattern.MatchString(value.ActorID) || !tokenPattern.MatchString(value.SourceID) || !validDigest(value.QueryDigest) ||
 		!validDigest(value.BoundsDecisionDigest) || !validDigest(value.ExecutionDigest) || !versionPattern.MatchString(value.ValidatorVersion) ||

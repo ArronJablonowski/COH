@@ -3,6 +3,7 @@ package queryevidence
 import (
 	"context"
 
+	"github.com/ArronJablonowski/COH/internal/domain"
 	"github.com/ArronJablonowski/COH/internal/workflow/evidenceingest"
 )
 
@@ -55,9 +56,13 @@ func (adapter *EvidenceIngestAdapter) IngestNativeQuery(ctx context.Context, req
 		result.Receipt.Artifact != result.Artifact || result.Receipt.Manifest != result.Manifest {
 		return ArtifactBinding{}, newError(Conflict, "evidence_ingest_result_invalid", nil)
 	}
-	return ArtifactBinding{Artifact: result.Artifact, Manifest: result.Manifest,
+	return ArtifactBinding{Artifact: artifactRef(result.Artifact), Manifest: artifactRef(result.Manifest),
 		ManifestProvenanceDigest: result.Receipt.ManifestProvenanceDigest,
 		IngestionReceiptDigest:   result.Receipt.ReceiptDigest}, nil
+}
+
+func artifactRef(value domain.ArtifactRef) ArtifactRef {
+	return ArtifactRef{Digest: value.Digest, MediaType: value.MediaType, Classification: value.Classification, Length: value.Length}
 }
 
 var _ NativeQueryIngestor = (*EvidenceIngestAdapter)(nil)

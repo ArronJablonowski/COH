@@ -17,10 +17,23 @@ const (
 )
 
 type ArtifactBinding struct {
-	Artifact                 domain.ArtifactRef `json:"artifact"`
-	Manifest                 domain.ArtifactRef `json:"manifest"`
-	ManifestProvenanceDigest string             `json:"manifest_provenance_digest"`
-	IngestionReceiptDigest   string             `json:"ingestion_receipt_digest"`
+	Artifact                 ArtifactRef `json:"artifact"`
+	Manifest                 ArtifactRef `json:"manifest"`
+	ManifestProvenanceDigest string      `json:"manifest_provenance_digest"`
+	IngestionReceiptDigest   string      `json:"ingestion_receipt_digest"`
+}
+
+type ArtifactRef struct {
+	Digest         string `json:"digest"`
+	MediaType      string `json:"media_type"`
+	Classification string `json:"classification"`
+	Length         int64  `json:"length"`
+}
+
+type CaseBinding struct {
+	OrganizationID string `json:"organization_id"`
+	TenantID       string `json:"tenant_id"`
+	CaseID         string `json:"case_id"`
 }
 
 type StreamRef struct {
@@ -49,7 +62,7 @@ type Record struct {
 	TransitionID              string           `json:"transition_id"`
 	Revision                  uint64           `json:"revision"`
 	Stream                    StreamRef        `json:"stream"`
-	Case                      domain.CaseRef   `json:"case"`
+	Case                      CaseBinding      `json:"case"`
 	ActorID                   string           `json:"actor_id"`
 	SourceID                  string           `json:"source_id"`
 	QueryDigest               string           `json:"query_digest"`
