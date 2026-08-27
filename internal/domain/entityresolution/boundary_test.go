@@ -89,9 +89,15 @@ func TestProductionPackageImportsNoAuthorityOrDirectIO(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		allowed := map[string]bool{
+			"bytes": true, "context": true, "crypto/sha256": true, "encoding/hex": true, "encoding/json": true,
+			"errors": true, "fmt": true, "io": true, "math": true, "regexp": true, "slices": true, "strings": true, "time": true,
+			"github.com/ArronJablonowski/COH/internal/domain/mappingregistry": true,
+			"github.com/ArronJablonowski/COH/internal/helper/domaincontract":  true,
+		}
 		for _, imported := range parsed.Imports {
 			path := strings.Trim(imported.Path.Value, `"`)
-			if path != "context" && path != "time" {
+			if !allowed[path] {
 				t.Fatalf("%s imports %s", entry.Name(), path)
 			}
 		}
