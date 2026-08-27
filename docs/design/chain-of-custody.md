@@ -7,7 +7,7 @@
 | Chain scope | One append-only sequence per organization, tenant, and case |
 | Lineage scope | Directed acyclic graph of immutable artifact and manifest digests |
 | Audit anchor | Deterministic event in the tenant tamper-evident audit chain |
-| Status | Implemented; closure verification in progress |
+| Status | Implemented and verified; see `docs/evidence/CYB-79-chain-of-custody-report.md` |
 
 ## Purpose and boundary
 
