@@ -91,7 +91,7 @@ func TestProductionPackageImportsNoAuthorityOrDirectIO(t *testing.T) {
 		}
 		allowed := map[string]bool{
 			"bytes": true, "context": true, "crypto/sha256": true, "encoding/hex": true, "encoding/json": true,
-			"errors": true, "fmt": true, "io": true, "math": true, "regexp": true, "slices": true, "strings": true, "time": true,
+			"errors": true, "fmt": true, "io": true, "math": true, "reflect": true, "regexp": true, "slices": true, "strings": true, "time": true,
 			"github.com/ArronJablonowski/COH/internal/domain/mappingregistry": true,
 			"github.com/ArronJablonowski/COH/internal/helper/domaincontract":  true,
 		}
