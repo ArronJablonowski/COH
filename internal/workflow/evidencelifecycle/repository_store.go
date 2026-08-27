@@ -37,6 +37,12 @@ func (store *RepositoryStore) Recover(ctx context.Context, scope domain.CaseRef,
 	if !found || !lifecycleReceiptMatchesRecord(receipt, record) {
 		return Receipt{}, false, newError(Denied, "receipt_record_invalid", false, nil)
 	}
+	if receipt.Operation == ReleaseHold {
+		if err = store.verifyHoldReleaseState(ctx, scope, receipt.OperationID, idempotency,
+			receipt.IntentDigest, false); err != nil {
+			return Receipt{}, false, err
+		}
+	}
 	return receipt, true, nil
 }
 
@@ -82,6 +88,12 @@ func (store *RepositoryStore) Advance(ctx context.Context, idempotencyKey, inten
 		if current.IntentDigest != intent {
 			return Progress{}, false, newError(Denied, string(ReasonChangedReplay), false, nil)
 		}
+		if value.Operation == ReleaseHold {
+			if err = store.verifyHoldReleaseState(ctx, value.Case, value.OperationID,
+				idempotency, value.IntentDigest, true); err != nil {
+				return Progress{}, false, err
+			}
+		}
 		if current.ProgressDigest == value.ProgressDigest {
 			return current, true, nil
 		}
@@ -100,12 +112,27 @@ func (store *RepositoryStore) Advance(ctx context.Context, idempotencyKey, inten
 	transactionKey := digest("COH-EVIDENCE-LIFECYCLE-PROGRESS-TRANSACTION-V1\x00",
 		[]byte(value.Case.OrganizationID+"\x00"+value.Case.TenantID+"\x00"+value.Case.CaseID+"\x00"+
 			idempotency+"\x00"+value.ProgressDigest))
+	mutations := []workflowbase.Mutation{{Kind: workflowbase.MutationPut,
+		Key: key, ExpectedRevision: expected, Record: &metadata}}
+	if !found && value.Operation == ReleaseHold {
+		marker, markerErr := store.holdReleaseStartMutation(ctx, idempotency, value)
+		if markerErr != nil {
+			return Progress{}, false, markerErr
+		}
+		mutations = append(mutations, *marker)
+		sort.Slice(mutations, func(left, right int) bool { return mutations[left].Key.ID < mutations[right].Key.ID })
+	}
 	result, err := store.repository.Transact(ctx, workflowbase.Transaction{ContractVersion: workflowbase.StorageContractVersion,
-		IdempotencyKey: transactionKey, Mutations: []workflowbase.Mutation{{Kind: workflowbase.MutationPut,
-			Key: key, ExpectedRevision: expected, Record: &metadata}}})
+		IdempotencyKey: transactionKey, Mutations: mutations})
 	if err != nil {
 		recovered, recoveredFound, recoverErr := store.LoadProgress(ctx, value.Case, idempotency)
 		if recoverErr == nil && recoveredFound && recovered.ProgressDigest == value.ProgressDigest {
+			if value.Operation == ReleaseHold {
+				if markerErr := store.verifyHoldReleaseState(ctx, value.Case, value.OperationID,
+					idempotency, value.IntentDigest, true); markerErr != nil {
+					return Progress{}, false, markerErr
+				}
+			}
 			return recovered, true, nil
 		}
 		return Progress{}, false, lifecycleStorageError("progress_advance", err)
@@ -115,7 +142,19 @@ func (store *RepositoryStore) Advance(ctx context.Context, idempotencyKey, inten
 		if recoverErr != nil || !recoveredFound || recovered.ProgressDigest != value.ProgressDigest {
 			return Progress{}, false, newError(Denied, "replayed_progress_invalid", false, recoverErr)
 		}
+		if value.Operation == ReleaseHold {
+			if markerErr := store.verifyHoldReleaseState(ctx, value.Case, value.OperationID,
+				idempotency, value.IntentDigest, true); markerErr != nil {
+				return Progress{}, false, markerErr
+			}
+		}
 		return recovered, true, nil
+	}
+	if value.Operation == ReleaseHold {
+		if markerErr := store.verifyHoldReleaseState(ctx, value.Case, value.OperationID,
+			idempotency, value.IntentDigest, true); markerErr != nil {
+			return Progress{}, false, markerErr
+		}
 	}
 	return value, false, nil
 }
@@ -173,6 +212,13 @@ func (store *RepositoryStore) Commit(ctx context.Context, idempotencyKey, intent
 		{Kind: workflowbase.MutationPut, Key: progressKey, ExpectedRevision: current.Revision, Record: &progressMetadata},
 		{Kind: workflowbase.MutationPut, Key: recordKey, ExpectedRevision: 0, Record: &recordMetadata},
 		{Kind: workflowbase.MutationPut, Key: receiptKey, ExpectedRevision: 0, Record: &receiptMetadata},
+	}
+	if progress.Operation == ReleaseHold {
+		marker, markerErr := store.holdReleaseCompleteMutation(ctx, idempotency, progress)
+		if markerErr != nil {
+			return Receipt{}, false, markerErr
+		}
+		mutations = append(mutations, *marker)
 	}
 	sort.Slice(mutations, func(left, right int) bool { return mutations[left].Key.ID < mutations[right].Key.ID })
 	outbox := workflowbase.OutboxMessage{ID: deterministicUUID("COH-EVIDENCE-LIFECYCLE-OUTBOX-ID-V1\x00",

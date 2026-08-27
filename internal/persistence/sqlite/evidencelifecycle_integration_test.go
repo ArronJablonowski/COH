@@ -101,8 +101,14 @@ func TestEvidenceLifecycleSQLiteConcurrentExactProgressAndCommitConverge(t *test
 	}
 	driver := openCaseSQLite(t, filepath.Join(root, "coh.sqlite3"), backup, now)
 	defer driver.Close()
-	guarded, _ := workflow.GuardStorage(driver)
-	store, _ := evidencelifecycle.NewRepositoryStore(guarded)
+	guarded, err := workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := evidencelifecycle.NewRepositoryStore(guarded)
+	if err != nil {
+		t.Fatal(err)
+	}
 	idempotencyKey, phases, record, receipt := evidenceLifecycleSQLiteFixture(t, now)
 
 	for _, phase := range phases[:len(phases)-1] {
@@ -183,6 +189,76 @@ func TestEvidenceLifecycleSQLiteRejectsTamperedDurableReceipt(t *testing.T) {
 	}
 }
 
+func TestEvidenceLifecycleIncompleteHoldReleaseIndexSurvivesRestartAndClearsAtomically(t *testing.T) {
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	root := t.TempDir()
+	path, backup := filepath.Join(root, "coh.sqlite3"), filepath.Join(root, "backups")
+	if err := os.MkdirAll(backup, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	driver := openCaseSQLite(t, path, backup, now)
+	guarded, err := workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := evidencelifecycle.NewRepositoryStore(guarded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	idempotencyKey, phases, record, receipt := evidenceLifecycleSQLiteFixtureForOperation(
+		t, now, evidencelifecycle.ReleaseHold)
+	if _, _, err := store.Advance(context.Background(), idempotencyKey, record.IntentDigest, phases[0]); err != nil {
+		t.Fatal(err)
+	}
+	if pending, err := store.HasIncompleteHoldRelease(context.Background(), record.Case); err != nil || !pending {
+		t.Fatalf("pending before restart=%v err=%v", pending, err)
+	}
+	if err := driver.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	driver = openCaseSQLite(t, path, backup, now)
+	guarded, err = workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err = evidencelifecycle.NewRepositoryStore(guarded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending, err := store.HasIncompleteHoldRelease(context.Background(), record.Case); err != nil || !pending {
+		t.Fatalf("pending after restart=%v err=%v", pending, err)
+	}
+	advanceEvidenceLifecyclePhases(t, store, idempotencyKey, phases[1:len(phases)-1])
+	if _, _, err := store.Commit(context.Background(), idempotencyKey, record.IntentDigest,
+		phases[len(phases)-1], record, receipt); err != nil {
+		t.Fatal(err)
+	}
+	if pending, err := store.HasIncompleteHoldRelease(context.Background(), record.Case); err != nil || pending {
+		t.Fatalf("pending after commit=%v err=%v", pending, err)
+	}
+	if err := driver.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	driver = openCaseSQLite(t, path, backup, now)
+	defer driver.Close()
+	guarded, err = workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err = evidencelifecycle.NewRepositoryStore(guarded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending, err := store.HasIncompleteHoldRelease(context.Background(), record.Case); err != nil || pending {
+		t.Fatalf("pending after completed restart=%v err=%v", pending, err)
+	}
+	if recovered, found, err := store.Recover(context.Background(), record.Case, receipt.IdempotencyDigest); err != nil || !found || recovered.ReceiptDigest != receipt.ReceiptDigest {
+		t.Fatalf("recovered=%+v found=%v err=%v", recovered, found, err)
+	}
+}
+
 func advanceEvidenceLifecyclePhases(t *testing.T, store evidencelifecycle.Store,
 	idempotencyKey string, phases []evidencelifecycle.Progress) {
 	t.Helper()
@@ -215,6 +291,12 @@ func concurrentEvidenceLifecycle(t *testing.T, count int, run func() error) {
 
 func evidenceLifecycleSQLiteFixture(t *testing.T, now time.Time) (string,
 	[]evidencelifecycle.Progress, evidencelifecycle.Record, evidencelifecycle.Receipt) {
+	return evidenceLifecycleSQLiteFixtureForOperation(t, now, evidencelifecycle.PlaceHold)
+}
+
+func evidenceLifecycleSQLiteFixtureForOperation(t *testing.T, now time.Time,
+	operation evidencelifecycle.Operation) (string, []evidencelifecycle.Progress,
+	evidencelifecycle.Record, evidencelifecycle.Receipt) {
 	t.Helper()
 	idempotencyKey := "sqlite-evidence-lifecycle"
 	idempotency, err := evidencelifecycle.IdempotencyBindingDigest(idempotencyKey)
@@ -230,7 +312,7 @@ func evidenceLifecycleSQLiteFixture(t *testing.T, now time.Time) (string,
 	completionCustody := caseDigest("evidence-lifecycle-completion-custody")
 	base := evidencelifecycle.Progress{SchemaVersion: evidencelifecycle.ProgressSchemaVersion,
 		ContractVersion: evidencelifecycle.ContractVersion, OperationID: operationID, Case: scope,
-		Operation: evidencelifecycle.PlaceHold, CommandDigest: commandDigest, IntentDigest: intent,
+		Operation: operation, CommandDigest: commandDigest, IntentDigest: intent,
 		Artifacts: []evidencelifecycle.ArtifactProgress{}, UpdatedAt: now, Revision: 1}
 	phases := []evidencelifecycle.Progress{base, base, base, base}
 	phases[0].Phase = evidencelifecycle.Planned
@@ -250,7 +332,7 @@ func evidenceLifecycleSQLiteFixture(t *testing.T, now time.Time) (string,
 	}
 	record := evidencelifecycle.Record{SchemaVersion: evidencelifecycle.RecordSchemaVersion,
 		ContractVersion: evidencelifecycle.ContractVersion, OperationID: operationID, Case: scope,
-		Operation: evidencelifecycle.PlaceHold, CommandDigest: commandDigest, IntentDigest: intent,
+		Operation: operation, CommandDigest: commandDigest, IntentDigest: intent,
 		DecisionDigest: decision, RevocationDigest: revocation, Artifacts: []evidencelifecycle.EvidenceReference{},
 		ArtifactSetDigest: &artifactSet, LifecycleReceiptDigest: &lifecycleReceipt,
 		CompletionCustodyReceiptDigest: &completionCustody, AuditEventDigest: caseDigest("evidence-lifecycle-audit"),
@@ -265,7 +347,7 @@ func evidenceLifecycleSQLiteFixture(t *testing.T, now time.Time) (string,
 	}
 	receipt := evidencelifecycle.Receipt{SchemaVersion: evidencelifecycle.ReceiptSchemaVersion,
 		ContractVersion: evidencelifecycle.ContractVersion, RequestID: caseUUID("evidence-lifecycle-request"),
-		OperationID: operationID, Case: scope, Operation: evidencelifecycle.PlaceHold,
+		OperationID: operationID, Case: scope, Operation: operation,
 		IdempotencyDigest: idempotency, IntentDigest: intent, DecisionDigest: decision,
 		RecordDigest: record.RecordDigest, Artifacts: []evidencelifecycle.EvidenceReference{},
 		ArtifactSetDigest: &artifactSet, LifecycleReceiptDigest: &lifecycleReceipt,

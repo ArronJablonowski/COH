@@ -14,6 +14,8 @@ import (
 	"github.com/ArronJablonowski/COH/internal/persistence/sqlite"
 	"github.com/ArronJablonowski/COH/internal/workflow"
 	"github.com/ArronJablonowski/COH/internal/workflow/caselifecycle"
+	"github.com/ArronJablonowski/COH/internal/workflow/evidencelifecycle"
+	"github.com/ArronJablonowski/COH/internal/workflow/lifecyclecase"
 )
 
 type caseClock struct{ now time.Time }
@@ -92,6 +94,93 @@ func TestCaseLifecycleCurrentAndReceiptsSurviveSQLiteRestart(t *testing.T) {
 	if len(restartedAuditor.events) != 2 {
 		t.Fatalf("replay did not repair original audit and record fresh authority: %d", len(restartedAuditor.events))
 	}
+	resolved, found, err := restartedRepository.ResolveReceipt(context.Background(), create.Case,
+		created.Receipt.ReceiptDigest)
+	if err != nil || !found || resolved.ReceiptDigest != created.Receipt.ReceiptDigest ||
+		resolved.Record.ProvenanceDigest != created.Record.ProvenanceDigest {
+		t.Fatalf("resolved receipt=%+v found=%v err=%v", resolved, found, err)
+	}
+}
+
+func TestEvidenceLifecycleCaseAdapterAppliesReplaysAndResolvesAfterSQLiteRestart(t *testing.T) {
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	root := t.TempDir()
+	path := filepath.Join(root, "coh.sqlite3")
+	backup := filepath.Join(root, "backups")
+	if err := os.MkdirAll(backup, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	driver := openCaseSQLite(t, path, backup, now)
+	auditor := &caseAuditor{}
+	controller, repository := composeCaseController(t, driver, now, auditor)
+	create := caseCreateCommand(now)
+	created, err := controller.Execute(context.Background(), create)
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter := composeLifecycleCaseAdapter(t, driver, controller, repository)
+	snapshot, found, err := adapter.LoadCase(context.Background(), create.Case)
+	if err != nil || !found || snapshot.Revision != 1 || snapshot.Case != create.Case ||
+		snapshot.ProvenanceDigest != created.Record.ProvenanceDigest {
+		t.Fatalf("snapshot=%+v found=%v err=%v", snapshot, found, err)
+	}
+	manifest := caseDigest("export-manifest")
+	request := evidencelifecycle.LifecycleRequest{Operation: evidencelifecycle.Export,
+		Case: create.Case, ActorID: create.ActorID, ActorRevision: create.ActorRevision,
+		ExpectedCaseRevision: 1, ManifestDigest: &manifest, PolicyDigest: create.PolicyDigest,
+		IdempotencyDigest: caseDigest("evidence-export-operation"), Deadline: now.Add(time.Hour)}
+	proof, err := adapter.ApplyCaseOperation(context.Background(), request)
+	if err != nil || proof.Operation != evidencelifecycle.Export || proof.Case != create.Case ||
+		proof.Revision != 2 || proof.LegalHold || proof.ReceiptDigest == "" || proof.ProvenanceDigest == "" {
+		t.Fatalf("proof=%+v err=%v", proof, err)
+	}
+	replayed, err := adapter.ApplyCaseOperation(context.Background(), request)
+	if err != nil || replayed != proof {
+		t.Fatalf("replayed=%+v proof=%+v err=%v", replayed, proof, err)
+	}
+	resolved, found, err := adapter.ResolveLifecycleReceipt(context.Background(), create.Case,
+		proof.ReceiptDigest)
+	if err != nil || !found || resolved != proof {
+		t.Fatalf("resolved=%+v found=%v proof=%+v err=%v", resolved, found, proof, err)
+	}
+	if incomplete, indexErr := adapter.HasIncompleteHoldRelease(context.Background(), create.Case); indexErr != nil || incomplete {
+		t.Fatalf("incomplete=%v err=%v", incomplete, indexErr)
+	}
+	if err = driver.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	driver = openCaseSQLite(t, path, backup, now)
+	defer driver.Close()
+	restartedController, restartedRepository := composeCaseController(t, driver, now, &caseAuditor{})
+	restarted := composeLifecycleCaseAdapter(t, driver, restartedController, restartedRepository)
+	resolved, found, err = restarted.ResolveLifecycleReceipt(context.Background(), create.Case,
+		proof.ReceiptDigest)
+	if err != nil || !found || resolved != proof {
+		t.Fatalf("restarted resolved=%+v found=%v proof=%+v err=%v", resolved, found, proof, err)
+	}
+	snapshot, found, err = restarted.LoadCase(context.Background(), create.Case)
+	if err != nil || !found || snapshot.Revision != 2 || snapshot.ProvenanceDigest != proof.ProvenanceDigest {
+		t.Fatalf("restarted snapshot=%+v found=%v err=%v", snapshot, found, err)
+	}
+}
+
+func composeLifecycleCaseAdapter(t *testing.T, driver *sqlite.Store,
+	controller *caselifecycle.Controller, repository *caselifecycle.RepositoryStore) *lifecyclecase.Adapter {
+	t.Helper()
+	guarded, err := workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releases, err := evidencelifecycle.NewRepositoryStore(guarded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter, err := lifecyclecase.New(controller, repository, releases)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return adapter
 }
 
 func composeCaseController(t *testing.T, driver *sqlite.Store, now time.Time,
