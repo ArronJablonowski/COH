@@ -9,6 +9,8 @@ capability="contracts/elastic-discovery/v1/fixtures/capability.snapshot.json"
 error_trace="contracts/elastic-discovery/v1/fixtures/redacted-error.trace.json"
 vendor_manifest="internal/connector/elastic/testdata/elastic-8.19/fixture-manifest.json"
 
+shasum -a 256 -c docs/evidence/CYB-93-artifacts.sha256 >/dev/null
+
 jq -e '
   .additionalProperties == false
   and .properties.schema_version.const == "coh.elastic-discovery-config/v1"
