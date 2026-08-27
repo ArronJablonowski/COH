@@ -1,0 +1,37 @@
+{
+  "schema_version": "coh.splunk-plan/v1",
+  "contract_version": "1.0.0",
+  "validator_version": "splunk-parser-1.0.0",
+  "query_id": "018f0000-0000-7000-8000-000000000001",
+  "source_id": "splunk_security",
+  "resource_ids": ["endpoint"],
+  "canonical_spl": "search index=endpoint_security tenant_id=tenant_alpha action=blocked | fields _time, action, host, source | sort 0 -_time, host | head 100",
+  "columns": [
+    {"logical_name": "action", "vendor_name": "action", "type": "string", "nullable": false},
+    {"logical_name": "event_time", "vendor_name": "_time", "type": "timestamp", "nullable": false},
+    {"logical_name": "host", "vendor_name": "host", "type": "string", "nullable": true},
+    {"logical_name": "source", "vendor_name": "source", "type": "string", "nullable": true}
+  ],
+  "aggregations": [],
+  "sort": [
+    {"name": "event_time", "direction": "desc"},
+    {"name": "host", "direction": "asc"}
+  ],
+  "maximum_rows": 100,
+  "maximum_bytes": 1048576,
+  "maximum_duration_millis": 30000,
+  "subsearch_count": 0,
+  "command_count": 4,
+  "query_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  "capability_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+  "schema_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+  "authority": {
+    "actor_id": "018f0000-0000-7000-8000-000000000002",
+    "authorization_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
+    "policy_decision_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000005",
+    "audit_reservation_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000006"
+  },
+  "registry_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000007",
+  "mandatory_filter_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000008",
+  "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000009"
+}

@@ -1,0 +1,4 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/splunk-parser/v1/splunk-parser-revocation.schema.json","title":"COH Splunk parser revocation evidence","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","decision_digest","revocation_digest","audit_reservation_digest","reason_code","observed_at","execution_permitted"],"properties":{"schema_version":{"const":"coh.splunk-parser-revocation/v1"},"contract_version":{"const":"1.0.0"},"decision_digest":{"$ref":"#/$defs/digest"},"revocation_digest":{"$ref":"#/$defs/digest"},"audit_reservation_digest":{"$ref":"#/$defs/digest"},"reason_code":{"type":"string","pattern":"^[a-z][a-z0-9_]{0,63}$"},"observed_at":{"type":"string","format":"date-time"},"execution_permitted":{"const":false}},"$defs":{"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}
+}

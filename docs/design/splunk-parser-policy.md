@@ -70,7 +70,7 @@ comments, directives, wildcards, dollar substitutions, single-quoted strings,
 backticks, semicolons, control characters, and vendor index/field names are not
 part of v1.
 
-The v1 command registry contains only:
+The v1 command registry contains only six commands:
 
 | Command | Typed behavior |
 |---|---|

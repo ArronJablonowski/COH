@@ -1,0 +1,5 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/splunk-parser/v1/splunk-command-registry.schema.json","title":"COH Splunk command registry","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","registry_version","allowed_commands","prohibited_commands","backticks_allowed","macros_allowed","lookups_allowed","custom_allowed","digest"],
+  "properties":{"schema_version":{"const":"coh.splunk-command-registry/v1"},"contract_version":{"const":"1.0.0"},"registry_version":{"const":"splunk-parser-1.0.0"},"allowed_commands":{"type":"array","minItems":6,"maxItems":6,"uniqueItems":true,"items":{"type":"string"}},"prohibited_commands":{"type":"array","minItems":36,"maxItems":36,"items":{"type":"object","additionalProperties":false,"required":["name","class"],"properties":{"name":{"type":"string"},"class":{"type":"string"}}}},"backticks_allowed":{"const":false},"macros_allowed":{"const":false},"lookups_allowed":{"const":false},"custom_allowed":{"const":false},"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}
+}

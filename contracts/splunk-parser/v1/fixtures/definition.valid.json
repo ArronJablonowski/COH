@@ -1,0 +1,26 @@
+{
+  "schema_version": "coh.splunk-parser-definition/v1",
+  "contract_version": "1.0.0",
+  "validator_version": "splunk-parser-1.0.0",
+  "source_id": "splunk_security",
+  "resources": [
+    {"id": "endpoint", "vendor_index": "endpoint_security"},
+    {"id": "network", "vendor_index": "network_security"}
+  ],
+  "fields": [
+    {"name": "action", "vendor_name": "action", "type": "string", "projectable": true, "filterable": true, "sortable": true, "aggregatable": true},
+    {"name": "event_time", "vendor_name": "_time", "type": "timestamp", "projectable": true, "filterable": true, "sortable": true, "aggregatable": false},
+    {"name": "host", "vendor_name": "host", "type": "string", "projectable": true, "filterable": true, "sortable": true, "aggregatable": true},
+    {"name": "source", "vendor_name": "source", "type": "string", "projectable": true, "filterable": true, "sortable": true, "aggregatable": true},
+    {"name": "tenant", "vendor_name": "tenant_id", "type": "string", "projectable": false, "filterable": true, "sortable": false, "aggregatable": false}
+  ],
+  "default_projection": ["action", "event_time", "host", "source"],
+  "stable_sort": [
+    {"name": "event_time", "direction": "desc"},
+    {"name": "host", "direction": "asc"}
+  ],
+  "timestamp_field": "event_time",
+  "tenant_field": "tenant",
+  "source_field": "source",
+  "hard_maximum_rows": 10000
+}
