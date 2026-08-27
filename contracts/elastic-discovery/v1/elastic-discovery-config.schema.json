@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/elastic-discovery/v1/elastic-discovery-config.schema.json",
+  "title": "COH Elastic discovery configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_version",
+    "source_id",
+    "adapter_version",
+    "deployment",
+    "endpoint",
+    "expected_cluster_uuid",
+    "expected_build_flavor",
+    "minimum_major_version",
+    "maximum_major_version",
+    "qualified_minor_versions",
+    "transport_identity_digest",
+    "resources",
+    "fields",
+    "maximum_response_bytes",
+    "maximum_duration_millis",
+    "maximum_schema_entries_per_page",
+    "capability_lifetime_seconds"
+  ],
+  "properties": {
+    "schema_version": {"const": "coh.elastic-discovery-config/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "source_id": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "adapter_version": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "deployment": {"enum": ["self_managed", "serverless"]},
+    "endpoint": {"type": "string", "pattern": "^https://[^/?#]+/?$", "maxLength": 512},
+    "expected_cluster_uuid": {"type": "string", "pattern": "^[A-Za-z0-9_-]{8,64}$"},
+    "expected_build_flavor": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "minimum_major_version": {"type": "integer", "minimum": 1, "maximum": 99},
+    "maximum_major_version": {"type": "integer", "minimum": 1, "maximum": 99},
+    "qualified_minor_versions": {
+      "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"}
+    },
+    "transport_identity_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "resources": {
+      "type": "array", "minItems": 1, "maxItems": 256,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "expression"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+          "expression": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.-]{0,253}\\*?$"}
+        }
+      }
+    },
+    "fields": {
+      "type": "array", "minItems": 1, "maxItems": 4096,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["vendor_name", "schema_name"],
+        "properties": {
+          "vendor_name": {"type": "string", "pattern": "^@?[A-Za-z0-9_][A-Za-z0-9_.-]{0,253}$"},
+          "schema_name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"}
+        }
+      }
+    },
+    "maximum_response_bytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
+    "maximum_duration_millis": {"type": "integer", "minimum": 1, "maximum": 120000},
+    "maximum_schema_entries_per_page": {"type": "integer", "minimum": 1, "maximum": 4096},
+    "capability_lifetime_seconds": {"type": "integer", "minimum": 1, "maximum": 3600}
+  }
+}

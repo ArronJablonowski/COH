@@ -1,0 +1,12 @@
+{
+  "contract_version": "1.0.0",
+  "credential_exposed": false,
+  "event": "elastic_discovery_denied",
+  "reason_code": "elastic_authentication_or_privilege_denied",
+  "request_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "response_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "schema_version": "coh.elastic-redacted-error/v1",
+  "source_id": "elastic-prod",
+  "transport_identity_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "vendor_body_exposed": false
+}

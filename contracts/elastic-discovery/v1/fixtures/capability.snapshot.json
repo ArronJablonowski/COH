@@ -1,0 +1,29 @@
+{
+  "adapter_version": "elastic-1.0.0",
+  "contract_version": "1.0.0",
+  "features": {
+    "cancellation": true,
+    "paging": true,
+    "polling": false,
+    "read_only": true,
+    "schema_discovery": true,
+    "statistics": true,
+    "validation": true
+  },
+  "hard_limits": {
+    "maximum_bytes": 1048576,
+    "maximum_cost_millionths": 1000000,
+    "maximum_duration_millis": 60000,
+    "maximum_pages": 10,
+    "maximum_rows": 1000,
+    "maximum_slices": 4,
+    "requests_per_minute": 12
+  },
+  "observed_at": "2026-08-27T18:00:00.000000000Z",
+  "query_languages": ["esql", "kql", "lucene"],
+  "schema_version": "coh.query-capability/v1",
+  "snapshot_id": "018f1f2e-7a6b-7c8d-8e9f-000000000008",
+  "source_id": "elastic-prod",
+  "source_identity_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "valid_until": "2026-08-27T18:10:00.000000000Z"
+}

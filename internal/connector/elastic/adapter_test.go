@@ -2,6 +2,7 @@ package elastic
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -169,6 +170,22 @@ func TestSchemaPaginationIsOpaqueBoundedAndReplayIdempotent(t *testing.T) {
 	request.Authority.PolicyDecisionDigest = testDigest("9")
 	if _, err := adapter.LoadSchema(context.Background(), request); queryconnector.Reason(err) != "elastic_schema_cursor_mismatch" {
 		t.Fatalf("substituted cursor err=%v", err)
+	}
+}
+
+func TestPublishedCapabilityFixtureUsesStrictQueryContract(t *testing.T) {
+	input, err := os.ReadFile("../../../contracts/elastic-discovery/v1/fixtures/capability.snapshot.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	capability, err := queryconnector.DecodeCapability(context.Background(), input)
+	if err != nil || capability.Value().SourceID != "elastic-prod" || !capability.Value().Features.ReadOnly {
+		t.Fatalf("capability=%+v err=%v", capability.Value(), err)
+	}
+	for _, forbidden := range []string{"credential", "api_key", "authorization", "vendor_body", "secret"} {
+		if strings.Contains(strings.ToLower(string(input)), forbidden) {
+			t.Fatalf("published capability contains %q", forbidden)
+		}
 	}
 }
 
