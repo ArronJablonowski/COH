@@ -38,6 +38,7 @@ type parser struct {
 	steps          uint32
 	subsearches    uint32
 	predicateNodes uint32
+	parentheses    uint32
 }
 
 func (p *parser) parseQuery(depth uint32, rootResource string) (*syntaxQuery, error) {
@@ -174,6 +175,10 @@ func (p *parser) parseUnary(depth uint32, resource string) (*syntaxPredicate, er
 		return p.newPredicate(&syntaxPredicate{kind: predicateNot, left: child})
 	}
 	if p.take(tokenLeftParen) {
+		p.parentheses++
+		if p.parentheses > MaximumPredicateDepth {
+			return nil, syntaxDenied("predicate_depth_exceeded")
+		}
 		child, err := p.parseOr(depth, resource)
 		if err != nil {
 			return nil, err
@@ -181,6 +186,7 @@ func (p *parser) parseUnary(depth uint32, resource string) (*syntaxPredicate, er
 		if !p.take(tokenRightParen) {
 			return nil, syntaxDenied("parenthesis_unmatched")
 		}
+		p.parentheses--
 		return child, nil
 	}
 	return p.parseComparison(depth, resource)
