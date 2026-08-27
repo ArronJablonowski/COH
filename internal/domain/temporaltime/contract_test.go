@@ -5,11 +5,47 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestEVAL017ExecutableFixtureMatrix(t *testing.T) {
+	input, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "time", "v1", "fixtures", "eval-017.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		SchemaVersion   string   `json:"schema_version"`
+		ContractVersion string   `json:"contract_version"`
+		Requirements    []string `json:"requirements"`
+		Cases           []struct {
+			Name            string `json:"name"`
+			ExpectedOutcome string `json:"expected_outcome"`
+			ExpectedReason  string `json:"expected_reason"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(input, &fixture); err != nil || fixture.SchemaVersion != "coh.eval-017-time-fixtures/v1" ||
+		fixture.ContractVersion != ContractVersion || !reflect.DeepEqual(fixture.Requirements, []string{"FR-024", "EVAL-017"}) || len(fixture.Cases) != 15 {
+		t.Fatalf("fixture=%+v err=%v", fixture, err)
+	}
+	seen := make(map[string]struct{}, len(fixture.Cases))
+	for _, test := range fixture.Cases {
+		t.Run(test.Name, func(t *testing.T) {
+			outcome, reason := executeEVAL017(t, test.Name)
+			if outcome != test.ExpectedOutcome || reason != test.ExpectedReason {
+				t.Fatalf("outcome=%s reason=%s want=%s/%s", outcome, reason, test.ExpectedOutcome, test.ExpectedReason)
+			}
+		})
+		if _, exists := seen[test.Name]; exists {
+			t.Fatalf("duplicate fixture %s", test.Name)
+		}
+		seen[test.Name] = struct{}{}
+	}
+}
 
 func TestCanonicalCommandRetainsExactBindingsAndSourceText(t *testing.T) {
 	command := testCommand()
@@ -262,6 +298,159 @@ func TestContextCancellationAndBoundarySurface(t *testing.T) {
 			}
 		}
 	}
+}
+
+func FuzzDecodeCommandRoundTrip(f *testing.F) {
+	canonical, _, err := CanonicalCommand(context.Background(), testCommand())
+	if err != nil {
+		f.Fatal(err)
+	}
+	f.Add(canonical)
+	f.Fuzz(func(t *testing.T, input []byte) {
+		command, recovered, digest, err := DecodeCommand(context.Background(), input)
+		if err != nil {
+			return
+		}
+		again, againDigest, err := CanonicalCommand(context.Background(), command)
+		if err != nil || !bytes.Equal(again, recovered) || againDigest != digest {
+			t.Fatalf("accepted command did not recover: %v", err)
+		}
+	})
+}
+
+func executeEVAL017(t *testing.T, name string) (string, string) {
+	t.Helper()
+	switch name {
+	case "explicit-utc-nanoseconds":
+		record := evalOffsetRecord(t, Nanosecond, 0, 0, 0, Observed, Complete)
+		return string(record.Outcome), string(record.ReasonCode)
+	case "numeric-offset":
+		record := evalOffsetRecord(t, Second, -420, 0, 0, Observed, Complete)
+		return string(record.Outcome), string(record.ReasonCode)
+	case "dst-spring-gap", "dst-fall-fold", "low-precision-day":
+		return executeDSTFixture(t, name)
+	case "missing-timezone":
+		command := testCommand()
+		command.Timezone = TimezoneAssertion{Kind: MissingTimezone}
+		record, err := BuildRecord(context.Background(), command, testCivil(), TimezoneResolution{DSTState: DSTUnresolved}, command.Calibration, testNow())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(record.Outcome), string(record.ReasonCode)
+	case "positive-clock-skew":
+		record := evalOffsetRecord(t, Second, 0, int64(5*time.Second), int64(time.Second), Observed, Complete)
+		return string(record.Outcome), string(record.ReasonCode)
+	case "negative-clock-skew":
+		record := evalOffsetRecord(t, Second, 0, -int64(5*time.Second), int64(time.Second), Observed, Complete)
+		return string(record.Outcome), string(record.ReasonCode)
+	case "arithmetic-overflow":
+		command := testCommand()
+		command.Timezone = offsetAssertion(0)
+		maximum, one := int64(math.MaxInt64), int64(1)
+		command.Calibration.EstimateNanoseconds, command.Calibration.RadiusNanoseconds = &maximum, &one
+		instant := mustTime("2026-08-27T19:00:00.000000000Z")
+		_, err := BuildRecord(context.Background(), command, testCivil(), TimezoneResolution{DSTState: DSTNotApplicable, Intervals: []ResolvedInterval{{EarliestUTC: instant, LatestUTC: instant, OffsetMinutes: 0}}}, command.Calibration, testNow())
+		return string(Denied), string(ErrorReason(err))
+	case "duplicate-record":
+		left := exactRecordFixture(t, "0199a401-1000-7000-8000-000000000091", digestOf('c'), "2026-08-27T19:00:00.000000000Z")
+		comparison, err := CompareRecords(context.Background(), "0199a401-1000-7000-8000-000000000092", left, left, testNow())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(comparison.Outcome), string(comparison.Rationale)
+	case "uncertain-order":
+		left := evalOffsetRecord(t, Second, 0, 0, int64(time.Second), Observed, Complete)
+		right := left
+		right.RecordID, right.OperationID = "0199a401-1000-7000-8000-000000000093", "0199a401-1000-7000-8000-000000000093"
+		right.SourceBinding.DeduplicationDigest = digestOf('d')
+		comparison, err := CompareRecords(context.Background(), "0199a401-1000-7000-8000-000000000094", left, right, testNow())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(comparison.Outcome), string(comparison.Rationale)
+	case "source-conflict":
+		left := exactRecordFixture(t, "0199a401-1000-7000-8000-000000000095", digestOf('e'), "2026-08-27T19:00:00.000000000Z")
+		right := left
+		right.RecordID, right.OperationID, right.CreatedAt = "0199a401-1000-7000-8000-000000000096", "0199a401-1000-7000-8000-000000000096", "2026-08-27T20:00:00.000000001Z"
+		comparison, err := CompareRecords(context.Background(), "0199a401-1000-7000-8000-000000000097", left, right, testNow())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(comparison.Outcome), string(comparison.Rationale)
+	case "partial-data":
+		record := evalOffsetRecord(t, Second, 0, 0, 0, Partial, PartialCompleteness)
+		if record.EvidenceState != Partial || record.Completeness != PartialCompleteness {
+			t.Fatal("partial state lost")
+		}
+		return string(record.Outcome), string(record.ReasonCode)
+	case "negative-evidence":
+		record := evalOffsetRecord(t, Second, 0, 0, 0, Negative, Complete)
+		if record.EvidenceState != Negative {
+			t.Fatal("negative evidence lost")
+		}
+		return string(record.Outcome), string(record.ReasonCode)
+	case "explicit-gap-evidence":
+		record := evalOffsetRecord(t, Second, 0, 0, 0, Gap, Complete)
+		if record.EvidenceState != Gap {
+			t.Fatal("gap evidence lost")
+		}
+		return string(record.Outcome), string(record.ReasonCode)
+	default:
+		t.Fatalf("unimplemented EVAL-017 fixture %s", name)
+		return "", ""
+	}
+}
+
+func evalOffsetRecord(t *testing.T, precision Precision, offset int16, estimate, radius int64, evidence EvidenceState, completeness Completeness) Record {
+	t.Helper()
+	command := testCommand()
+	command.Timezone = offsetAssertion(offset)
+	command.OriginalTime.Precision = precision
+	command.EvidenceState, command.Completeness = evidence, completeness
+	command.Calibration.EstimateNanoseconds, command.Calibration.RadiusNanoseconds = &estimate, &radius
+	start := mustTime("2026-08-27T19:00:00.000000000Z")
+	end := start
+	if precision == Second {
+		end = start.Add(time.Second - time.Nanosecond)
+	}
+	civil := CivilTime{Year: 2026, Month: time.August, Day: 27, Hour: 12, Precision: precision}
+	record, err := BuildRecord(context.Background(), command, civil, TimezoneResolution{DSTState: DSTNotApplicable, Intervals: []ResolvedInterval{{EarliestUTC: start, LatestUTC: end, OffsetMinutes: offset}}}, command.Calibration, testNow())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return record
+}
+
+func executeDSTFixture(t *testing.T, name string) (string, string) {
+	t.Helper()
+	location, err := time.LoadLocation("America/Denver")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertion := ianaAssertion()
+	resolver, err := NewPinnedTimezoneResolver(assertion.TZDataVersion, assertion.TZDataDigest, map[string]*time.Location{assertion.Name: location})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := testCommand()
+	command.Timezone = assertion
+	civil := testCivil()
+	if name == "dst-spring-gap" {
+		civil = CivilTime{Year: 2026, Month: time.March, Day: 8, Hour: 2, Minute: 30, Precision: Minute}
+		command.OriginalTime.Precision = Minute
+	} else if name == "low-precision-day" {
+		civil = CivilTime{Year: 2026, Month: time.March, Day: 8, Precision: Day}
+		command.OriginalTime.Precision = Day
+	}
+	resolution, err := resolver.ResolveCivil(context.Background(), civil, assertion)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := BuildRecord(context.Background(), command, civil, resolution, command.Calibration, testNow())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(record.Outcome), string(record.ReasonCode)
 }
 
 func testCommand() Command {

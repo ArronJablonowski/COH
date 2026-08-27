@@ -1,5 +1,6 @@
 # package target
 ./internal/domain/normalizedevent FuzzDecodeNeverAcceptsChangedCanonicalFixture
+./internal/domain/temporaltime FuzzDecodeCommandRoundTrip
 ./internal/helper/architecture FuzzDecodeContract
 ./internal/helper/filesize FuzzDecodePolicy
 ./internal/helper/filesize FuzzGeneratedHeader

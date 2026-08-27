@@ -1,0 +1,22 @@
+{
+  "schema_version": "coh.eval-017-time-fixtures/v1",
+  "contract_version": "1.0.0",
+  "requirements": ["FR-024", "EVAL-017"],
+  "cases": [
+    {"name": "explicit-utc-nanoseconds", "category": "success", "mode": "normalize", "expected_outcome": "normalized", "expected_reason": "normalized"},
+    {"name": "numeric-offset", "category": "timezone", "mode": "normalize", "expected_outcome": "normalized", "expected_reason": "normalized"},
+    {"name": "dst-spring-gap", "category": "dst", "mode": "normalize", "expected_outcome": "unresolved", "expected_reason": "dst_gap"},
+    {"name": "dst-fall-fold", "category": "dst", "mode": "normalize", "expected_outcome": "unresolved", "expected_reason": "timezone_unresolved"},
+    {"name": "missing-timezone", "category": "timezone", "mode": "normalize", "expected_outcome": "unresolved", "expected_reason": "timezone_unresolved"},
+    {"name": "low-precision-day", "category": "precision", "mode": "normalize", "expected_outcome": "normalized", "expected_reason": "normalized"},
+    {"name": "positive-clock-skew", "category": "skew", "mode": "normalize", "expected_outcome": "normalized", "expected_reason": "normalized"},
+    {"name": "negative-clock-skew", "category": "skew", "mode": "normalize", "expected_outcome": "normalized", "expected_reason": "normalized"},
+    {"name": "arithmetic-overflow", "category": "denial", "mode": "normalize", "expected_outcome": "denied", "expected_reason": "arithmetic_overflow"},
+    {"name": "duplicate-record", "category": "duplicate", "mode": "compare", "expected_outcome": "duplicate", "expected_reason": "same_binding_same_record"},
+    {"name": "uncertain-order", "category": "ordering", "mode": "compare", "expected_outcome": "overlap", "expected_reason": "intersecting_intervals"},
+    {"name": "source-conflict", "category": "conflict", "mode": "compare", "expected_outcome": "conflicting", "expected_reason": "same_binding_incompatible_facts"},
+    {"name": "partial-data", "category": "completeness", "mode": "normalize", "expected_outcome": "normalized", "expected_reason": "normalized"},
+    {"name": "negative-evidence", "category": "negative_evidence", "mode": "normalize", "expected_outcome": "normalized", "expected_reason": "normalized"},
+    {"name": "explicit-gap-evidence", "category": "gap", "mode": "normalize", "expected_outcome": "normalized", "expected_reason": "normalized"}
+  ]
+}
