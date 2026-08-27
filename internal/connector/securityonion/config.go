@@ -13,6 +13,7 @@ import (
 var (
 	tokenPattern  = regexp.MustCompile(`^[a-z][a-z0-9_.-]{0,127}$`)
 	digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	uuidPattern   = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 	fieldPattern  = regexp.MustCompile(`^@?[A-Za-z_][A-Za-z0-9_.-]{0,127}$`)
 )
 

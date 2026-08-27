@@ -26,6 +26,7 @@ type OQLPlan struct {
 	Zone                  string
 	Format                string
 	Columns               []OQLColumn
+	TimestampColumn       string
 	GroupBy               []OQLColumn
 	EventLimit            uint64
 	MetricLimit           uint64
