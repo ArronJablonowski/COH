@@ -26,11 +26,13 @@ different facts and cross-bind each other:
 - the artifact-lineage graph proves ancestry from immutable source manifests to
   every derived artifact.
 
-Every committed custody record has a deterministic redacted audit event whose
-evidence digests include the custody record digest, chain hash, artifact and
-manifest digests, authority decision, and immutable receipt. A custody result
-is not released until that event is durably appended. Independent verification
-must validate both chains and their exact cross-reference.
+Every committed custody record has a deterministic redacted audit event. Its
+evidence digests bind the record's domain-separated precommit digest, prior
+head, artifact and manifest, and authority decision. The final record stores
+the resulting audit-event digest; its record and chain hashes therefore bind
+that exact event without a circular hash dependency. A custody result is not
+released until the event is durably appended. Independent verification must
+validate both chains and their exact cross-reference.
 
 The model, provider, connector, and executor cannot append custody directly.
 They submit typed inputs to a trusted workflow. The workflow receives no raw

@@ -33,8 +33,10 @@ be committed under an earlier decision.
 
 Every record embeds its complete safe command, exact prior chain hash, authority
 and evidence-verification digests, provenance, deterministic audit-event digest,
-record digest, and new chain hash. The chain head, record, and receipt commit in
-one storage transaction. The receipt permits lost-response recovery without a
+record digest, and new chain hash. The audit event binds a domain-separated
+precommit digest; the final record then binds the event digest, avoiding a
+circular hash dependency. The chain head, record, and receipt commit in one
+storage transaction. The receipt permits lost-response recovery without a
 second append.
 
 Custody records do not duplicate signatures. Their deterministic audit event is
