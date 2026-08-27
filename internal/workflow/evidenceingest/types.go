@@ -265,6 +265,16 @@ type StageRequest struct {
 	Deadline                time.Time
 }
 
+// CaseSnapshot is the minimum current lifecycle state ingestion may authorize
+// against. It intentionally excludes lifecycle mutation methods and records.
+type CaseSnapshot struct {
+	Case             domain.CaseRef
+	Revision         uint64
+	State            string
+	Classification   string
+	ProvenanceDigest string
+}
+
 type Authority interface {
 	AuthorizeIngestion(context.Context, AuthorizationRequest) (Decision, error)
 }
@@ -277,6 +287,10 @@ type Source interface {
 
 type TransportVerifier interface {
 	VerifyTransport(context.Context, TransportContext) error
+}
+
+type CaseStore interface {
+	LoadCase(context.Context, domain.CaseRef) (CaseSnapshot, bool, error)
 }
 
 type EncryptedCAS interface {

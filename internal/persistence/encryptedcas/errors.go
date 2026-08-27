@@ -25,7 +25,8 @@ type Error struct {
 func (value *Error) Error() string {
 	return "encrypted CAS " + string(value.code) + ": " + value.reason
 }
-func (value *Error) Unwrap() error { return value.cause }
+func (value *Error) Unwrap() error     { return value.cause }
+func (value *Error) ErrorCode() string { return string(value.code) }
 
 func newError(code Code, reason string, cause error) error {
 	return &Error{code: code, reason: reason, cause: cause}

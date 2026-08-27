@@ -87,6 +87,7 @@ func TestIngestionPortsAndRecordsExposeNoExecutionOrSecretSurface(t *testing.T) 
 		{reflect.TypeOf((*Source)(nil)).Elem(), []string{"ReadContext"}},
 		{reflect.TypeOf((*Authority)(nil)).Elem(), []string{"AuthorizeIngestion"}},
 		{reflect.TypeOf((*TransportVerifier)(nil)).Elem(), []string{"VerifyTransport"}},
+		{reflect.TypeOf((*CaseStore)(nil)).Elem(), []string{"LoadCase"}},
 		{reflect.TypeOf((*EncryptedCAS)(nil)).Elem(), []string{"Abandon", "Publish", "Resolve", "Stage", "Verify"}},
 		{reflect.TypeOf((*ManifestStore)(nil)).Elem(), []string{"Commit", "Recover"}},
 		{reflect.TypeOf((*Auditor)(nil)).Elem(), []string{"AppendAuditEvent"}},
