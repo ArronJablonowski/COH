@@ -83,10 +83,10 @@ func validOperationFields(value Command) bool {
 		return value.Phase == Completed && parents == 0 && reason != nil && lifecycle != nil && artifactSet != nil &&
 			allNil(source, purpose, destination, recipient, transformation, rule, mapping, approval, external, prior)
 	case Delete:
-		base := parents == 0 && reason != nil && lifecycle != nil && artifactSet != nil &&
+		base := parents == 0 && reason != nil && artifactSet != nil &&
 			allNil(source, purpose, destination, recipient, transformation, rule, mapping, approval)
-		return base && (value.Phase == Authorized && allNil(external, prior) ||
-			value.Phase == Completed && external != nil && prior != nil)
+		return base && (value.Phase == Authorized && allNil(external, prior, lifecycle) ||
+			value.Phase == Completed && external != nil && prior != nil && lifecycle != nil)
 	default:
 		return false
 	}
@@ -111,7 +111,8 @@ func validateAuthorizationShape(value AuthorizationRequest, bound bool) error {
 		value.CaseRevision == 0 || value.CaseRevision > math.MaxInt64 ||
 		!allDigests(value.RetentionPolicyDigest, value.CaseProvenanceDigest, value.EvidenceVerifiedDigest) ||
 		!validTime(value.RetainUntil) || !validHead(value.CurrentHead) ||
-		value.CaseRevision != value.Command.ExpectedCaseRevision || !sameHead(value.CurrentHead, value.Command.ExpectedHead) {
+		value.CurrentHead.Case != value.Command.Case || value.CaseRevision < value.Command.ExpectedCaseRevision ||
+		value.CurrentHead.Sequence < value.Command.ExpectedHead.Sequence {
 		return newError(InvalidInput, "authorization_invalid", false, nil)
 	}
 	want, err := CommandBindingDigest(value.Command)

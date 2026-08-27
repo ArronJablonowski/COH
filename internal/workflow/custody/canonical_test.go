@@ -210,9 +210,10 @@ func custodyCommandFixture(operation Operation, phase Phase) Command {
 		value.ReasonDigest, value.LifecycleReceiptDigest = digestPointer("reason"), digestPointer("lifecycle")
 		value.ArtifactSetDigest = digestPointer("artifact.set")
 	case Delete:
-		value.ReasonDigest, value.LifecycleReceiptDigest = digestPointer("reason"), digestPointer("lifecycle")
+		value.ReasonDigest = digestPointer("reason")
 		value.ArtifactSetDigest = digestPointer("artifact.set")
 		if phase == Completed {
+			value.LifecycleReceiptDigest = digestPointer("lifecycle")
 			value.ExternalReceiptDigest = digestPointer("external")
 			value.PriorAuthorizationDigest = digestPointer("prior.authorization")
 		}
