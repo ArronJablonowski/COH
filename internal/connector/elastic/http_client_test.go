@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -47,13 +48,13 @@ func TestHTTPClientUsesOnlyPinnedTypedReadOperations(t *testing.T) {
 		writer.Header().Set("Content-Type", "application/json")
 		switch {
 		case request.Method == http.MethodGet && request.URL.Path == "/":
-			_, _ = io.WriteString(writer, `{"cluster_uuid":"cluster-uuid-1234","version":{"number":"8.19.2","build_flavor":"default","build_hash":"abc123","build_snapshot":false}}`)
+			_, _ = writer.Write(readElasticFixture(t, "cluster-info.json"))
 		case request.Method == http.MethodGet && request.URL.Path == "/_resolve/index/logs-security-*":
 			if request.URL.Query().Get("expand_wildcards") != "open" {
 				http.Error(writer, "bad expansion", http.StatusBadRequest)
 				return
 			}
-			_, _ = io.WriteString(writer, `{"indices":[{"name":"logs-security-000001","attributes":["open"]}],"aliases":[],"data_streams":[]}`)
+			_, _ = writer.Write(readElasticFixture(t, "resolve-index.json"))
 		case request.Method == http.MethodPost && request.URL.Path == "/logs-security-000001/_field_caps":
 			body, _ := io.ReadAll(request.Body)
 			var payload struct {
@@ -67,7 +68,7 @@ func TestHTTPClientUsesOnlyPinnedTypedReadOperations(t *testing.T) {
 				http.Error(writer, "bad field caps", http.StatusBadRequest)
 				return
 			}
-			_, _ = io.WriteString(writer, `{"indices":["logs-security-000001"],"fields":{"@timestamp":{"date":{"searchable":true,"aggregatable":true}},"source.ip":{"ip":{"searchable":true,"aggregatable":true}}}}`)
+			_, _ = writer.Write(readElasticFixture(t, "field-caps.json"))
 		default:
 			http.Error(writer, "unexpected", http.StatusMethodNotAllowed)
 		}
@@ -164,6 +165,39 @@ func TestHTTPClientRejectsTLSIdentitySubstitutionAndOversize(t *testing.T) {
 	})
 }
 
+func TestHTTPClientCancellationAndOutageRecovery(t *testing.T) {
+	var attempts int
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		attempts++
+		if attempts == 1 {
+			http.Error(writer, "temporary outage", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = writer.Write(readElasticFixture(t, "cluster-info.json"))
+	}))
+	defer server.Close()
+	config, roots := httpTestConfig(t, server)
+	credentials := &credentialStub{secret: []byte("key"), decision: testDigest("8")}
+	client, err := NewHTTPClient(config, credentials, roots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := client.Inspect(context.Background(), httpTestBinding()); queryconnector.Reason(err) != "elastic_vendor_unavailable" {
+		t.Fatalf("outage err=%v", err)
+	}
+	if identity, _, err := client.Inspect(context.Background(), httpTestBinding()); err != nil ||
+		identity.ClusterUUID != config.ExpectedClusterUUID {
+		t.Fatalf("recovery identity=%+v err=%v", identity, err)
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	uses := credentials.uses
+	if _, _, err := client.Inspect(canceled, httpTestBinding()); queryconnector.Code(err) != queryconnector.Canceled ||
+		credentials.uses != uses {
+		t.Fatalf("cancel err=%v uses=%d", err, credentials.uses)
+	}
+}
+
 func httpTestConfig(t testing.TB, server *httptest.Server) (Config, *x509.CertPool) {
 	t.Helper()
 	certificate := server.Certificate()
@@ -179,4 +213,13 @@ func httpTestConfig(t testing.TB, server *httptest.Server) (Config, *x509.CertPo
 func httpTestBinding() CallBinding {
 	return CallBinding{Scope: testScope(), Authority: testAuthority(), Operation: "elastic.inspect",
 		Targets: []string{"securityevent"}}
+}
+
+func readElasticFixture(t testing.TB, name string) []byte {
+	t.Helper()
+	value, err := os.ReadFile("testdata/elastic-8.19/" + name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
 }

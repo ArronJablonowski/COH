@@ -55,7 +55,7 @@ func NewHTTPClient(config Config, credentials CredentialSource, roots *x509.Cert
 		Timeout:       time.Duration(config.HardLimits.MaximumDurationMillis) * time.Millisecond,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("elastic redirects denied") },
 	}
-	return &HTTPClient{config: config, endpoint: endpoint, credentials: credentials, client: client}, nil
+	return &HTTPClient{config: cloneConfig(config), endpoint: endpoint, credentials: credentials, client: client}, nil
 }
 
 func (client *HTTPClient) Inspect(ctx context.Context, binding CallBinding) (ClusterIdentity, CallReceipt, error) {
@@ -225,6 +225,9 @@ func (client *HTTPClient) doEscaped(ctx context.Context, binding CallBinding, me
 		defer request.Header.Del("Authorization")
 		response, err := client.client.Do(request)
 		if err != nil {
+			if contextErr := contextError(ctx); contextErr != nil {
+				return contextErr
+			}
 			return queryconnector.NewError(queryconnector.Unavailable, "elastic_transport_failed", nil)
 		}
 		defer response.Body.Close()

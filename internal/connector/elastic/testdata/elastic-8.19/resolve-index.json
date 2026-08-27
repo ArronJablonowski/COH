@@ -1,0 +1,12 @@
+{
+  "aliases": [],
+  "data_streams": [],
+  "indices": [
+    {
+      "aliases": [],
+      "attributes": ["open"],
+      "data_stream": null,
+      "name": "logs-security-000001"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "fields": {
+    "@timestamp": {
+      "date": {
+        "aggregatable": true,
+        "metadata_field": false,
+        "searchable": true
+      }
+    },
+    "source.ip": {
+      "ip": {
+        "aggregatable": true,
+        "metadata_field": false,
+        "searchable": true
+      }
+    }
+  },
+  "indices": ["logs-security-000001"]
+}

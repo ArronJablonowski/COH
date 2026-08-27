@@ -1,0 +1,7 @@
+{
+  "error": {
+    "reason": "redacted fixture: missing required read-only privilege",
+    "type": "security_exception"
+  },
+  "status": 403
+}

@@ -1,0 +1,14 @@
+{
+  "contract_version": "1.0.0",
+  "origin": "sanitized replay fixture derived from Elastic 8.19 API response contracts",
+  "records": [
+    "cluster-info.json",
+    "field-caps.json",
+    "privilege-denied.json",
+    "resolve-index.json"
+  ],
+  "schema_version": "coh.elastic-vendor-fixture/v1",
+  "sensitive_values": "none",
+  "vendor": "elastic",
+  "vendor_version": "8.19.2"
+}

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -50,8 +51,15 @@ func New(config Config, client Client, clock Clock) (*Adapter, error) {
 		}
 		return nil, invalid("elastic_port_required")
 	}
-	return &Adapter{config: config, client: client, clock: clock, capabilities: make(map[string]capabilityRecord),
+	return &Adapter{config: cloneConfig(config), client: client, clock: clock, capabilities: make(map[string]capabilityRecord),
 		cursors: make(map[string]cursorRecord)}, nil
+}
+
+func cloneConfig(config Config) Config {
+	config.QualifiedMinorVersions = append([]string(nil), config.QualifiedMinorVersions...)
+	config.Resources = append([]Resource(nil), config.Resources...)
+	config.Fields = append([]Field(nil), config.Fields...)
+	return config
 }
 
 func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope, authority queryconnector.AuthorityBinding) (queryconnector.ValidatedCapability, error) {
@@ -350,7 +358,8 @@ func deterministicUUID(now time.Time, seed string) string {
 }
 
 func mapClientError(err error) error {
-	if code := queryconnector.Code(err); code != queryconnector.Unavailable {
+	var connectorError *queryconnector.Error
+	if errors.As(err, &connectorError) {
 		return err
 	}
 	return queryconnector.NewError(queryconnector.Unavailable, "elastic_transport_unavailable", nil)
