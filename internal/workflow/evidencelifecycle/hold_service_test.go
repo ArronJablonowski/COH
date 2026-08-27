@@ -174,6 +174,7 @@ type holdAuthority struct {
 	now     time.Time
 	err     error
 	request AuthorizationRequest
+	mutate  func(*Decision)
 }
 
 func (stub *holdAuthority) AuthorizeEvidenceLifecycle(_ context.Context,
@@ -192,6 +193,9 @@ func (stub *holdAuthority) AuthorizeEvidenceLifecycle(_ context.Context,
 		ExpectedCaseRevision: request.CaseRevision, ExpectedCustodyHead: request.CurrentCustodyHead,
 		Outcome: Allow, ReasonCode: ReasonAuthorized, IssuedAt: stub.now,
 		ExpiresAt: stub.now.Add(30 * time.Minute), Revision: 1}
+	if stub.mutate != nil {
+		stub.mutate(&value)
+	}
 	value.DecisionDigest, _ = DecisionBindingDigest(value)
 	return value, nil
 }
