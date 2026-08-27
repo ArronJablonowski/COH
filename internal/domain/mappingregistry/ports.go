@@ -25,7 +25,7 @@ type RegistryStore interface {
 	LoadReceipt(context.Context, string) (Receipt, bool, error)
 	LoadCommandDigest(context.Context, string) (string, bool, error)
 	Begin(context.Context, Command, string) (bool, error)
-	LoadSnapshot(context.Context, Case, SourceMatcher) (RegistrySnapshot, bool, error)
+	LoadSnapshots(context.Context, Case, SourceMatcher) ([]RegistrySnapshot, error)
 	LoadSignedMapping(context.Context, string) (SignedMapping, bool, error)
 	Commit(context.Context, Commit) error
 }

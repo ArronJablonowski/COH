@@ -307,6 +307,10 @@ type SignatureRequest struct {
 	Algorithm      string
 	Signature      string
 	Domain         string
+	Purpose        string
+	NotBefore      string
+	NotAfter       string
+	Revocation     RevocationBinding
 }
 
 type SignatureDecision struct {
