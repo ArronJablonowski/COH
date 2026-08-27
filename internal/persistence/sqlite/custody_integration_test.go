@@ -62,9 +62,11 @@ func (resolver custodySQLiteEvidence) ResolveEvidence(_ context.Context, _ domai
 }
 
 type custodySQLiteAuditor struct {
-	mu       sync.Mutex
-	proofs   map[string]custody.AuditProof
-	sequence uint64
+	mu               sync.Mutex
+	proofs           map[string]custody.AuditProof
+	sequence         uint64
+	checkpointID     *string
+	checkpointDigest *string
 }
 
 type custodyLostResponseStore struct{ workflow.MetadataStore }
@@ -91,7 +93,8 @@ func (auditor *custodySQLiteAuditor) AppendCustodyEvent(_ context.Context,
 	}
 	auditor.sequence++
 	proof := custody.AuditProof{EventDigest: eventDigest, Sequence: auditor.sequence,
-		ChainHash: caseDigest("custody-audit-chain-" + eventDigest)}
+		ChainHash: caseDigest("custody-audit-chain-" + eventDigest), CheckpointID: auditor.checkpointID,
+		CheckpointDigest: auditor.checkpointDigest}
 	auditor.proofs[eventDigest] = proof
 	return proof, nil
 }

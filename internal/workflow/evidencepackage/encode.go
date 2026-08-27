@@ -11,13 +11,14 @@ import (
 	"io"
 	"math"
 
+	"github.com/ArronJablonowski/COH/internal/domain"
 	"github.com/ArronJablonowski/COH/internal/workflow/evidencelifecycle"
 )
 
 const fixedHeaderLength = 63
 
 type SourceOpener interface {
-	OpenArtifact(context.Context, evidencelifecycle.EvidenceReference) (io.ReadCloser, error)
+	OpenArtifact(context.Context, domain.CaseRef, evidencelifecycle.EvidenceReference) (io.ReadCloser, error)
 }
 
 type EncodingReport struct {
@@ -65,7 +66,7 @@ func Encode(ctx context.Context, destination io.Writer, manifest evidencelifecyc
 		return EncodingReport{}, err
 	}
 	for _, artifact := range manifest.Artifacts {
-		if err = writeArtifact(ctx, writer, opener, artifact.Reference); err != nil {
+		if err = writeArtifact(ctx, writer, opener, manifest.Case, artifact.Reference); err != nil {
 			return EncodingReport{}, err
 		}
 	}
@@ -105,7 +106,7 @@ func writeHeader(writer io.Writer, value evidencelifecycle.PackageHeader) error 
 }
 
 func writeArtifact(ctx context.Context, writer io.Writer, opener SourceOpener,
-	reference evidencelifecycle.EvidenceReference) error {
+	scope domain.CaseRef, reference evidencelifecycle.EvidenceReference) error {
 	digestBytes, err := hex.DecodeString(reference.Artifact.Digest[len("sha256:"):])
 	if err != nil || len(digestBytes) != sha256.Size {
 		return errors.New("evidence package artifact digest is invalid")
@@ -119,7 +120,7 @@ func writeArtifact(ctx context.Context, writer io.Writer, opener SourceOpener,
 	if err = writeAll(writer, header); err != nil {
 		return err
 	}
-	source, err := opener.OpenArtifact(ctx, reference)
+	source, err := opener.OpenArtifact(ctx, scope, reference)
 	if err != nil {
 		return errors.New("evidence package artifact is unavailable")
 	}

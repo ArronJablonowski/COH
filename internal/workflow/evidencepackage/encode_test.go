@@ -63,7 +63,7 @@ func TestEncodeRejectsArtifactDriftAndCancellation(t *testing.T) {
 
 type packageSources map[string][]byte
 
-func (sources packageSources) OpenArtifact(_ context.Context,
+func (sources packageSources) OpenArtifact(_ context.Context, _ domain.CaseRef,
 	reference evidencelifecycle.EvidenceReference) (io.ReadCloser, error) {
 	return io.NopCloser(bytes.NewReader(sources[reference.Artifact.Digest])), nil
 }
