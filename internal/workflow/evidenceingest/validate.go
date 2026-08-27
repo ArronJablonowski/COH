@@ -47,7 +47,7 @@ func validateCommandShape(value Command) error {
 	}
 	if len(value.ParentArtifacts) > 128 || len(value.ParentArtifacts) != len(value.ParentManifestDigests) ||
 		len(value.Components) > 64 || !artifactsSortedUnique(value.ParentArtifacts) ||
-		!digestsSortedUnique(value.ParentManifestDigests) || !componentsSortedUnique(value.Components) {
+		!digestsUniqueValid(value.ParentManifestDigests) || !componentsSortedUnique(value.Components) {
 		return newError(InvalidInput, "lineage_invalid", false, nil)
 	}
 	for _, artifact := range value.ParentArtifacts {
@@ -139,7 +139,7 @@ func validateManifestShape(value ArtifactManifest, bound bool) error {
 		!uuidPattern.MatchString(value.ManifestID) || !validCase(value.Case) || !validArtifact(value.Artifact) ||
 		validateSource(value.Source) != nil || len(value.ParentArtifacts) > 128 ||
 		len(value.ParentArtifacts) != len(value.ParentManifestDigests) ||
-		!artifactsSortedUnique(value.ParentArtifacts) || !digestsSortedUnique(value.ParentManifestDigests) ||
+		!artifactsSortedUnique(value.ParentArtifacts) || !digestsUniqueValid(value.ParentManifestDigests) ||
 		len(value.Components) > 64 || !componentsSortedUnique(value.Components) ||
 		!uuidPattern.MatchString(value.ActorID) || value.ActorRevision == 0 || value.ActorRevision > math.MaxInt64 ||
 		!allDigests(value.PolicyDigest, value.AuthorizationDigest, value.DecisionDigest, value.RevocationDigest,
@@ -321,8 +321,16 @@ func componentsSortedUnique(values []ComponentVersion) bool {
 	}) && !hasDuplicateComponents(values)
 }
 
-func digestsSortedUnique(values []string) bool {
-	return slices.IsSorted(values) && !hasDuplicateStrings(values)
+func digestsUniqueValid(values []string) bool {
+	if hasDuplicateStrings(values) {
+		return false
+	}
+	for _, value := range values {
+		if !digestPattern.MatchString(value) {
+			return false
+		}
+	}
+	return true
 }
 
 func artifactIdentity(value domain.ArtifactRef) string {

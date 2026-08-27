@@ -24,8 +24,6 @@ import (
 	"github.com/ArronJablonowski/COH/internal/workflow/evidencesigning"
 	"github.com/ArronJablonowski/COH/internal/workflow/evidencesource"
 	"github.com/ArronJablonowski/COH/internal/workflow/lifecyclecustody"
-	"github.com/ArronJablonowski/COH/internal/workflow/lifecycleredaction"
-	"github.com/ArronJablonowski/COH/internal/workflow/redaction"
 )
 
 func TestCOHE10ComposedExportUsesImmutableEncryptedEvidenceAndDurableStores(t *testing.T) {
@@ -128,9 +126,15 @@ func TestCOHE10ComposedExportUsesImmutableEncryptedEvidenceAndDurableStores(t *t
 		t.Fatal(err)
 	}
 
-	redactions, err := newSourceOnlyRedactionAdapter(guarded, receipts, nativeCAS, ledger)
-	if err != nil {
-		t.Fatal(err)
+	derivedPayload := append([]byte(nil), payload...)
+	copy(derivedPayload[:6], []byte("******"))
+	derivedEntry, redactions, redactionHead := composeE10DerivedRedaction(t, now, ingestCommand, ingestion,
+		receipts, nativeCAS, guarded, custodyController, ledger, custodyEvidence, entry, initialCustody.Head,
+		payload, derivedPayload)
+	evidenceSet, replayed, err = catalog.Register(t.Context(), evidencecatalog.Registration{
+		Case: create.Case, Artifacts: []evidencelifecycle.ManifestArtifact{entry, derivedEntry}})
+	if err != nil || replayed {
+		t.Fatalf("lineage catalog registration replayed=%v err=%v", replayed, err)
 	}
 	keys := newE10SigningKeys(now)
 	signing, err := evidencesigning.New(keys)
@@ -166,7 +170,7 @@ func TestCOHE10ComposedExportUsesImmutableEncryptedEvidenceAndDurableStores(t *t
 		ActorID: create.ActorID, ActorRevision: create.ActorRevision, ArtifactSetDigest: &evidenceSet.ArtifactSetDigest,
 		PurposeDigest: &purpose, DestinationDigest: &destination, ApprovalDigest: &approval,
 		PolicyDigest: caseDigest("e10-export-policy"), ExpectedCaseRevision: caseSnapshot.Revision,
-		ExpectedCustodyHead: initialCustody.Head, Limits: evidencelifecycle.PackageLimits{
+		ExpectedCustodyHead: redactionHead, Limits: evidencelifecycle.PackageLimits{
 			MaximumManifestBytes: 1 << 20, MaximumSignatureBytes: 1 << 12, MaximumArtifacts: 8,
 			MaximumArtifactBytes: 1 << 20, MaximumPackageBytes: 2 << 20}, Deadline: now.Add(time.Hour)}
 	result, err := service.Execute(t.Context(), command)
@@ -174,13 +178,24 @@ func TestCOHE10ComposedExportUsesImmutableEncryptedEvidenceAndDurableStores(t *t
 		t.Fatalf("export=%+v err=%v", result, err)
 	}
 	packageBytes := quarantine.objects[*result.ReleaseReference]
-	if len(packageBytes) == 0 || !bytes.Contains(packageBytes, payload) {
-		t.Fatalf("released package did not contain exact plaintext artifact: bytes=%d", len(packageBytes))
+	if len(packageBytes) == 0 || !bytes.Contains(packageBytes, payload) || !bytes.Contains(packageBytes, derivedPayload) {
+		t.Fatalf("released package did not contain original and derived artifacts: bytes=%d", len(packageBytes))
 	}
 	if result.Receipt.PackageDigest == nil || result.Receipt.ManifestDigest == nil ||
 		result.Receipt.AuthorizationCustodyReceiptDigest == nil || result.Receipt.CompletionCustodyReceiptDigest == nil ||
 		result.Receipt.LifecycleReceiptDigest == nil {
 		t.Fatalf("export receipt omitted required proofs: %+v", result.Receipt)
+	}
+	quarantined, found := quarantine.packages[*result.Receipt.PackageDigest]
+	manifest, signature, err := packages.RecoverPackageProof(t.Context(), quarantined, command.Limits)
+	if err != nil || len(manifest.Artifacts) != 2 || manifest.Artifacts[0].Role != evidencelifecycle.SourceArtifact ||
+		manifest.Artifacts[1].Role != evidencelifecycle.DerivedArtifact ||
+		manifest.Artifacts[1].RedactionReceiptDigest == nil || manifest.Artifacts[1].MappingDigest == nil ||
+		len(manifest.Artifacts[1].ParentArtifactDigests) != 1 ||
+		manifest.Artifacts[1].ParentArtifactDigests[0] != manifest.Artifacts[0].Reference.Artifact.Digest ||
+		manifest.CustodyToSequence != redactionHead.Sequence || manifest.AuditCheckpointID != checkpointID ||
+		manifest.AuditCheckpointDigest != checkpointDigest || signature.ManifestDigest != manifest.ManifestDigest {
+		t.Fatalf("recovered export proof manifest=%+v signature=%+v found=%v err=%v", manifest, signature, found, err)
 	}
 	idempotencyDigest, err := evidencelifecycle.IdempotencyBindingDigest(command.IdempotencyKey)
 	if err != nil {
@@ -194,7 +209,7 @@ func TestCOHE10ComposedExportUsesImmutableEncryptedEvidenceAndDurableStores(t *t
 	if err != nil || !replayedResult.Replayed || replayedResult.Receipt.ReceiptDigest != result.Receipt.ReceiptDigest {
 		t.Fatalf("replay=%+v err=%v", replayedResult, err)
 	}
-	assertSensitiveBytesAbsent(t, filepath.Join(root, "coh.sqlite3"), casRoot, payload)
+	assertSensitiveBytesAbsent(t, filepath.Join(root, "coh.sqlite3"), casRoot, payload, derivedPayload)
 }
 
 func toCustodyReference(reference evidencelifecycle.EvidenceReference) custody.EvidenceReference {
@@ -310,40 +325,6 @@ func (object *e10QuarantineObject) Commit(_ context.Context, report evidencepack
 	return reference, nil
 }
 func (*e10QuarantineObject) Abandon(context.Context) error { return nil }
-
-type sourceOnlyRedactionDependencies struct{}
-
-func (sourceOnlyRedactionDependencies) ResolveReceipt(context.Context, domain.CaseRef,
-	string) (redaction.Receipt, bool, error) {
-	return redaction.Receipt{}, false, errors.New("unused")
-}
-func (sourceOnlyRedactionDependencies) ResolveRecord(context.Context, domain.CaseRef,
-	string) (redaction.Record, bool, error) {
-	return redaction.Record{}, false, errors.New("unused")
-}
-func (sourceOnlyRedactionDependencies) ResolveRedactionMapping(context.Context,
-	evidenceingest.Receipt) (redaction.Mapping, error) {
-	return redaction.Mapping{}, errors.New("unused")
-}
-func (sourceOnlyRedactionDependencies) VerifyRedaction(context.Context, redaction.CustodyRequest,
-	redaction.CustodyProof) error {
-	return errors.New("unused")
-}
-func (sourceOnlyRedactionDependencies) VerifyRedactionEvent(context.Context, domain.CaseRef,
-	string, string) (redaction.AuditProof, error) {
-	return redaction.AuditProof{}, errors.New("unused")
-}
-
-func newSourceOnlyRedactionAdapter(repository workflow.MetadataStore,
-	ingestion lifecycleredaction.IngestionResolver, mappings lifecycleredaction.MappingResolver,
-	custodyResolver lifecycleredaction.CustodyResolver) (*lifecycleredaction.Adapter, error) {
-	redactionRepository, err := redaction.NewRepositoryStore(repository)
-	if err != nil {
-		return nil, err
-	}
-	dependencies := sourceOnlyRedactionDependencies{}
-	return lifecycleredaction.New(redactionRepository, ingestion, mappings, custodyResolver, dependencies, dependencies)
-}
 
 func fmtHex(value []byte) string {
 	const digits = "0123456789abcdef"
