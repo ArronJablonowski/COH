@@ -1,0 +1,312 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.local/contracts/redaction/v1/governed-redaction.schema.json",
+  "title": "COH governed evidence redaction v1",
+  "oneOf": [
+    {"$ref": "#/$defs/command"},
+    {"$ref": "#/$defs/rule_set"},
+    {"$ref": "#/$defs/approved_plan"},
+    {"$ref": "#/$defs/mapping"},
+    {"$ref": "#/$defs/authorization_request"},
+    {"$ref": "#/$defs/decision"},
+    {"$ref": "#/$defs/record"},
+    {"$ref": "#/$defs/receipt"}
+  ],
+  "$defs": {
+    "uuid": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{9}Z$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "media_type": {"type": "string", "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$"},
+    "classification": {"enum": ["public", "internal", "confidential", "restricted"]},
+    "replacement_mode": {"enum": ["remove", "mask", "token"]},
+    "approval_state": {"const": "approved"},
+    "decision_outcome": {"enum": ["allow", "deny"]},
+    "decision_reason": {"enum": ["authorized", "invalid_input", "case_not_found", "case_state_denied", "source_not_found", "source_invalid", "rule_invalid", "plan_invalid", "approval_required", "approval_invalid", "revoked", "stale_actor", "stale_case", "stale_custody", "source_drift", "mapping_invalid", "transform_invalid", "publish_failed", "custody_failed", "changed_replay"]},
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid"},
+        "tenant_id": {"$ref": "#/$defs/uuid"},
+        "case_id": {"$ref": "#/$defs/uuid"}
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": {"$ref": "#/$defs/digest"},
+        "media_type": {"$ref": "#/$defs/media_type"},
+        "classification": {"$ref": "#/$defs/classification"},
+        "length": {"type": "integer", "minimum": 1, "maximum": 1073741824}
+      },
+      "additionalProperties": false
+    },
+    "evidence_reference": {
+      "type": "object",
+      "required": ["artifact", "manifest", "manifest_provenance_digest", "ingestion_receipt_digest"],
+      "properties": {
+        "artifact": {"$ref": "#/$defs/artifact"},
+        "manifest": {"$ref": "#/$defs/artifact"},
+        "manifest_provenance_digest": {"$ref": "#/$defs/digest"},
+        "ingestion_receipt_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "custody_head": {
+      "type": "object",
+      "required": ["sequence", "chain_hash", "last_record_at"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+        "chain_hash": {"$ref": "#/$defs/digest"},
+        "last_record_at": {"oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "plan_span": {
+      "type": "object",
+      "required": ["ordinal", "source_start", "source_end", "source_segment_digest", "replacement_mode", "expected_output_start", "expected_output_end"],
+      "properties": {
+        "ordinal": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "source_start": {"type": "integer", "minimum": 0, "maximum": 1073741823},
+        "source_end": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "source_segment_digest": {"$ref": "#/$defs/digest"},
+        "replacement_mode": {"$ref": "#/$defs/replacement_mode"},
+        "expected_output_start": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+        "expected_output_end": {"type": "integer", "minimum": 0, "maximum": 1073741824}
+      },
+      "additionalProperties": false
+    },
+    "mapping_entry": {
+      "type": "object",
+      "required": ["ordinal", "source_start", "source_end", "source_segment_digest", "output_start", "output_end", "replacement_mode", "replacement_digest"],
+      "properties": {
+        "ordinal": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "source_start": {"type": "integer", "minimum": 0, "maximum": 1073741823},
+        "source_end": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "source_segment_digest": {"$ref": "#/$defs/digest"},
+        "output_start": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+        "output_end": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+        "replacement_mode": {"$ref": "#/$defs/replacement_mode"},
+        "replacement_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "case", "actor_id", "actor_revision", "source", "rule_digest", "reason_digest", "output_media_type", "output_classification", "key_profile_digest", "policy_digest", "expected_case_revision", "expected_custody_head", "deadline"],
+      "properties": {
+        "schema_version": {"const": "coh.redaction-command/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "request_id": {"$ref": "#/$defs/uuid"},
+        "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 256},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid"},
+        "actor_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "source": {"$ref": "#/$defs/evidence_reference"},
+        "rule_digest": {"$ref": "#/$defs/digest"},
+        "reason_digest": {"$ref": "#/$defs/digest"},
+        "output_media_type": {"$ref": "#/$defs/media_type"},
+        "output_classification": {"$ref": "#/$defs/classification"},
+        "key_profile_digest": {"$ref": "#/$defs/digest"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "expected_case_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "expected_custody_head": {"$ref": "#/$defs/custody_head"},
+        "deadline": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "rule_set": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "rule_id", "revision", "rule_digest", "allowed_media_types", "permitted_modes", "token_digest", "maximum_spans", "maximum_selected_bytes", "maximum_output_bytes", "signer_key_id", "signer_key_revision", "signature"],
+      "properties": {
+        "schema_version": {"const": "coh.redaction-rule-set/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "rule_id": {"$ref": "#/$defs/uuid"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "rule_digest": {"$ref": "#/$defs/digest"},
+        "allowed_media_types": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/media_type"}},
+        "permitted_modes": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"$ref": "#/$defs/replacement_mode"}},
+        "token_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "maximum_spans": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "maximum_selected_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "maximum_output_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "signer_key_id": {"$ref": "#/$defs/token"},
+        "signer_key_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+      },
+      "additionalProperties": false
+    },
+    "approved_plan": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "plan_id", "case", "source", "rule_id", "rule_revision", "rule_digest", "reason_digest", "spans", "mapping_plan_digest", "output_media_type", "output_classification", "maximum_output_bytes", "approval_id", "approval_fingerprint_digest", "approval_manifest_digest", "policy_decision_digest", "policy_digest", "valid_from", "valid_until", "plan_digest"],
+      "properties": {
+        "schema_version": {"const": "coh.redaction-approved-plan/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "plan_id": {"$ref": "#/$defs/uuid"},
+        "case": {"$ref": "#/$defs/case"},
+        "source": {"$ref": "#/$defs/evidence_reference"},
+        "rule_id": {"$ref": "#/$defs/uuid"},
+        "rule_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "rule_digest": {"$ref": "#/$defs/digest"},
+        "reason_digest": {"$ref": "#/$defs/digest"},
+        "spans": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/plan_span"}},
+        "mapping_plan_digest": {"$ref": "#/$defs/digest"},
+        "output_media_type": {"$ref": "#/$defs/media_type"},
+        "output_classification": {"$ref": "#/$defs/classification"},
+        "maximum_output_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "approval_id": {"$ref": "#/$defs/uuid"},
+        "approval_fingerprint_digest": {"$ref": "#/$defs/digest"},
+        "approval_manifest_digest": {"$ref": "#/$defs/digest"},
+        "policy_decision_digest": {"$ref": "#/$defs/digest"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "valid_from": {"$ref": "#/$defs/timestamp"},
+        "valid_until": {"$ref": "#/$defs/timestamp"},
+        "plan_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "mapping": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "mapping_id", "case", "source", "derived_artifact", "plan_digest", "rule_digest", "reason_digest", "approval_fingerprint_digest", "entries", "created_at", "previous_provenance_digest", "provenance_digest", "mapping_digest"],
+      "properties": {
+        "schema_version": {"const": "coh.redaction-mapping/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "mapping_id": {"$ref": "#/$defs/uuid"},
+        "case": {"$ref": "#/$defs/case"},
+        "source": {"$ref": "#/$defs/evidence_reference"},
+        "derived_artifact": {"$ref": "#/$defs/artifact"},
+        "plan_digest": {"$ref": "#/$defs/digest"},
+        "rule_digest": {"$ref": "#/$defs/digest"},
+        "reason_digest": {"$ref": "#/$defs/digest"},
+        "approval_fingerprint_digest": {"$ref": "#/$defs/digest"},
+        "entries": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/mapping_entry"}},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "previous_provenance_digest": {"$ref": "#/$defs/digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "mapping_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "approval_snapshot": {
+      "type": "object",
+      "required": ["approval_id", "fingerprint_digest", "manifest_digest", "policy_decision_digest", "state", "revision", "use_count", "maximum_use_count", "valid_from", "valid_until", "snapshot_digest"],
+      "properties": {
+        "approval_id": {"$ref": "#/$defs/uuid"},
+        "fingerprint_digest": {"$ref": "#/$defs/digest"},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "policy_decision_digest": {"$ref": "#/$defs/digest"},
+        "state": {"$ref": "#/$defs/approval_state"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "use_count": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+        "maximum_use_count": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "valid_from": {"$ref": "#/$defs/timestamp"},
+        "valid_until": {"$ref": "#/$defs/timestamp"},
+        "snapshot_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "authorization_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "authorization_digest", "intent_digest", "command", "plan", "case_state", "case_classification", "case_revision", "case_provenance_digest", "source_verification_digest", "approval", "current_custody_head"],
+      "properties": {
+        "schema_version": {"const": "coh.redaction-authorization/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "command": {"$ref": "#/$defs/command"},
+        "plan": {"$ref": "#/$defs/approved_plan"},
+        "case_state": {"enum": ["open", "closed"]},
+        "case_classification": {"$ref": "#/$defs/classification"},
+        "case_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "case_provenance_digest": {"$ref": "#/$defs/digest"},
+        "source_verification_digest": {"$ref": "#/$defs/digest"},
+        "approval": {"$ref": "#/$defs/approval_snapshot"},
+        "current_custody_head": {"$ref": "#/$defs/custody_head"}
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "decision_id", "decision_digest", "authorization_digest", "intent_digest", "case", "actor_id", "actor_revision", "source_artifact_digest", "plan_digest", "approval_fingerprint_digest", "policy_digest", "revocation_digest", "expected_case_revision", "expected_custody_head", "outcome", "reason_code", "issued_at", "expires_at", "revision"],
+      "properties": {
+        "schema_version": {"const": "coh.redaction-decision/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "decision_id": {"$ref": "#/$defs/uuid"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid"},
+        "actor_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "source_artifact_digest": {"$ref": "#/$defs/digest"},
+        "plan_digest": {"$ref": "#/$defs/digest"},
+        "approval_fingerprint_digest": {"$ref": "#/$defs/digest"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "revocation_digest": {"$ref": "#/$defs/digest"},
+        "expected_case_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "expected_custody_head": {"$ref": "#/$defs/custody_head"},
+        "outcome": {"$ref": "#/$defs/decision_outcome"},
+        "reason_code": {"$ref": "#/$defs/decision_reason"},
+        "issued_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "redaction_id", "case", "command", "intent_digest", "plan_digest", "decision_digest", "revocation_digest", "approval_snapshot_digest", "source_verification_digest", "derived", "derived_ingestion_receipt_digest", "mapping_reference", "mapping_digest", "mapping_ingestion_receipt_digest", "custody_receipt_digest", "audit_event_digest", "created_at", "previous_provenance_digest", "provenance_digest", "record_digest"],
+      "properties": {
+        "schema_version": {"const": "coh.redaction-record/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "redaction_id": {"$ref": "#/$defs/uuid"},
+        "case": {"$ref": "#/$defs/case"},
+        "command": {"$ref": "#/$defs/command"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "plan_digest": {"$ref": "#/$defs/digest"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "revocation_digest": {"$ref": "#/$defs/digest"},
+        "approval_snapshot_digest": {"$ref": "#/$defs/digest"},
+        "source_verification_digest": {"$ref": "#/$defs/digest"},
+        "derived": {"$ref": "#/$defs/evidence_reference"},
+        "derived_ingestion_receipt_digest": {"$ref": "#/$defs/digest"},
+        "mapping_reference": {"$ref": "#/$defs/evidence_reference"},
+        "mapping_digest": {"$ref": "#/$defs/digest"},
+        "mapping_ingestion_receipt_digest": {"$ref": "#/$defs/digest"},
+        "custody_receipt_digest": {"$ref": "#/$defs/digest"},
+        "audit_event_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "previous_provenance_digest": {"$ref": "#/$defs/digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "record_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "receipt": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "case", "idempotency_digest", "intent_digest", "redaction_id", "record_digest", "derived", "mapping_reference", "mapping_digest", "custody_receipt_digest", "audit_event_digest", "provenance_digest", "created_at", "receipt_digest"],
+      "properties": {
+        "schema_version": {"const": "coh.redaction-receipt/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "request_id": {"$ref": "#/$defs/uuid"},
+        "case": {"$ref": "#/$defs/case"},
+        "idempotency_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "redaction_id": {"$ref": "#/$defs/uuid"},
+        "record_digest": {"$ref": "#/$defs/digest"},
+        "derived": {"$ref": "#/$defs/evidence_reference"},
+        "mapping_reference": {"$ref": "#/$defs/evidence_reference"},
+        "mapping_digest": {"$ref": "#/$defs/digest"},
+        "custody_receipt_digest": {"$ref": "#/$defs/digest"},
+        "audit_event_digest": {"$ref": "#/$defs/digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "receipt_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
