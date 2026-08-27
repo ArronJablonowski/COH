@@ -103,8 +103,9 @@ func validEntityRevision(t *testing.T, suffix int) (Entity, EntityRef) {
 		Classification:     evidence.Observation.Evidence.Classification,
 		MemberObservations: []ObservationRef{{ObservationID: evidence.Observation.ObservationID, ObservationDigest: evidence.ObservationDigest}},
 		AliasProofs:        []AliasProof{}, Confidence: confidence, CreationDecisionDigest: testDigest("creation-decision"),
-		HistoryHeadDigest: testDigest("history-head"), AuditDigest: testDigest("audit"), ProvenanceDigest: testDigest("provenance"),
-		CreatedAt: "2026-08-27T00:00:00.000000000Z", UpdatedAt: "2026-08-27T00:00:00.000000000Z"}
+		HistoryHeadDigest: testDigest("history-head"), AuditDigest: testDigest("audit"), PreviousProvenanceDigests: []string{},
+		ProvenanceDigest: testDigest("provenance"),
+		CreatedAt:        "2026-08-27T00:00:00.000000000Z", UpdatedAt: "2026-08-27T00:00:00.000000000Z"}
 	_, digest, err := EntityRecordDigest(context.Background(), entity)
 	if err != nil {
 		t.Fatal(err)

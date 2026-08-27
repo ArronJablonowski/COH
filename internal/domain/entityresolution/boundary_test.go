@@ -13,7 +13,7 @@ import (
 
 func TestNarrowPortsExposeNoUnsafeSurface(t *testing.T) {
 	ports := []any{(*EvidenceVerifier)(nil), (*MatchVerifier)(nil), (*AuthorizationVerifier)(nil),
-		(*ObservationStore)(nil), (*EntityStore)(nil), (*DurableStore)(nil), (*AuditBuilder)(nil),
+		(*ObservationStore)(nil), (*EntityStore)(nil), (*CandidateStore)(nil), (*DurableStore)(nil), (*AuditBuilder)(nil),
 		(*ProvenanceBuilder)(nil), (*Clock)(nil)}
 	seen := make(map[reflect.Type]struct{})
 	for _, port := range ports {

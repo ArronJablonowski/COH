@@ -44,8 +44,8 @@ func ValidateEntityRevision(ctx context.Context, entity Entity, reference Entity
 	if !validEntityRef(reference) || entity.EntityID != reference.EntityID || entity.Revision != reference.Revision ||
 		digest != reference.RecordDigest || !digestPattern.MatchString(entity.CreationDecisionDigest) ||
 		!digestPattern.MatchString(entity.HistoryHeadDigest) || !digestPattern.MatchString(entity.AuditDigest) ||
-		!digestPattern.MatchString(entity.ProvenanceDigest) || entity.PreviousProvenanceDigest != nil &&
-		!digestPattern.MatchString(*entity.PreviousProvenanceDigest) {
+		!digestPattern.MatchString(entity.ProvenanceDigest) || entity.PreviousProvenanceDigests == nil ||
+		!validDigestSet(entity.PreviousProvenanceDigests) {
 		return newError(InvalidInputError, TransitionInvalid, nil)
 	}
 	return nil
@@ -55,8 +55,8 @@ func entityCore(value Entity) EntityRevisionCore {
 	return EntityRevisionCore{SchemaVersion: value.SchemaVersion, ContractVersion: value.ContractVersion,
 		MethodVersion: value.MethodVersion, EntityID: value.EntityID, Revision: value.Revision, Scope: value.Scope,
 		Status: value.Status, Classification: value.Classification,
-		MemberObservations: append([]ObservationRef(nil), value.MemberObservations...),
-		AliasProofs:        append([]AliasProof(nil), value.AliasProofs...), Confidence: value.Confidence,
+		MemberObservations: cloneSlice(value.MemberObservations),
+		AliasProofs:        cloneSlice(value.AliasProofs), Confidence: value.Confidence,
 		CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}
 }
 
@@ -67,8 +67,9 @@ func validateEntityCore(ctx context.Context, value EntityRevisionCore) error {
 	if value.SchemaVersion != EntitySchemaVersion || value.ContractVersion != ContractVersion || value.MethodVersion != MethodVersion ||
 		!uuidPattern.MatchString(value.EntityID) || value.Revision == 0 || value.Revision > math.MaxInt64 || !validScope(value.Scope) ||
 		!slices.Contains([]string{"active", "superseded"}, value.Status) || !validClassification(value.Classification) ||
-		len(value.MemberObservations) == 0 || len(value.MemberObservations) > MaximumLookupObservations ||
-		len(value.AliasProofs) > MaximumLookupEntities || !validTimestamp(value.CreatedAt) || !validTimestamp(value.UpdatedAt) ||
+		len(value.MemberObservations) == 0 || len(value.MemberObservations) > MaximumLookupObservations || value.AliasProofs == nil ||
+		len(value.AliasProofs) > MaximumLookupEntities ||
+		!validTimestamp(value.CreatedAt) || !validTimestamp(value.UpdatedAt) ||
 		value.CreatedAt > value.UpdatedAt || !validConfidenceRecord(value.Confidence) ||
 		!confidenceBoundToMembers(value.Confidence, value.MemberObservations) {
 		return newError(InvalidInputError, TransitionInvalid, nil)
@@ -88,7 +89,7 @@ func validConfidenceRecord(value Confidence) bool {
 	if value.Method != ConfidenceMethod || value.MethodVersion != MethodVersion || len(value.Components) != 6 ||
 		value.PreCeilingMillionths > 1_000_000 || value.CeilingMillionths > 1_000_000 || value.FinalMillionths > 1_000_000 ||
 		value.FinalMillionths != min(value.PreCeilingMillionths, value.CeilingMillionths) ||
-		value.Label != confidenceLabel(value.FinalMillionths) || len(value.SupportingEvidence) == 0 ||
+		value.Label != confidenceLabel(value.FinalMillionths) || len(value.SupportingEvidence) == 0 || value.Counterevidence == nil ||
 		len(value.SupportingEvidence) > MaximumLookupObservations || len(value.Counterevidence) > MaximumLookupEntities {
 		return false
 	}

@@ -172,7 +172,9 @@ core and then bound onto the full entity record. This staged definition avoids
 a cryptographic cycle (decisions and histories themselves contain entity
 references) while still making every referenced state field immutable and
 verifiable. The full stored entity remains bound by its audit and provenance
-records.
+records. Entity provenance uses a canonical set of parent digests: merge
+outputs bind every input provenance head, while split outputs and superseding
+revisions bind their single input head.
 
 Merge requires exact current revisions for at least two active entities, an
 explicit ordered supporting set, the complete known counterevidence set, a

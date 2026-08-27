@@ -111,9 +111,9 @@ func validSplitRequest(t *testing.T, metadata TransitionMetadata, input EntityRe
 	return SplitRequest{Metadata: metadata, InputEntity: input, Partitions: []SplitPartitionRequest{
 		{PartitionID: "partition-a", OutputEntityID: transitionUUID(22),
 			MemberObservations: []ObservationRef{{ObservationID: first.Observation.ObservationID, ObservationDigest: first.ObservationDigest}},
-			AliasProofDigests:  []string{}, Confidence: firstConfidence},
+			AliasProofDigests:  []string{}, Confidence: firstConfidence, ConfidenceAssessments: []ConfidenceAssessment{}},
 		{PartitionID: "partition-b", OutputEntityID: transitionUUID(23),
 			MemberObservations: []ObservationRef{{ObservationID: second.Observation.ObservationID, ObservationDigest: second.ObservationDigest}},
-			AliasProofDigests:  []string{}, Confidence: secondConfidence},
+			AliasProofDigests:  []string{}, Confidence: secondConfidence, ConfidenceAssessments: []ConfidenceAssessment{}},
 	}}
 }

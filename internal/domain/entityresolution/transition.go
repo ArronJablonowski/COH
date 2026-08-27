@@ -63,7 +63,7 @@ func loadCurrentInputs(ctx context.Context, store EntityStore, scope Scope, refe
 	if len(references) < minimum || len(references) > MaximumLookupEntities {
 		return nil, nil, newError(InvalidInputError, TransitionInvalid, nil)
 	}
-	ordered := append([]EntityRef(nil), references...)
+	ordered := cloneSlice(references)
 	slices.SortFunc(ordered, compareEntityRef)
 	entities := make([]Entity, 0, len(ordered))
 	for index, reference := range ordered {
@@ -98,7 +98,7 @@ func verifyTransitionAuthorization(ctx context.Context, verifier AuthorizationVe
 	}
 	decision, err := verifier.VerifyAuthorization(ctx, AuthorizationRequest{Operation: operation, OperationID: metadata.OperationID,
 		Scope: metadata.Scope, ActorID: metadata.ActorID, ActorRevision: metadata.ActorRevision,
-		CommandDigest: metadata.CommandDigest, InputEntities: append([]EntityRef(nil), inputs...), Deadline: metadata.Deadline})
+		CommandDigest: metadata.CommandDigest, InputEntities: cloneSlice(inputs), Deadline: metadata.Deadline})
 	if err = dependencyError(ctx, err); err != nil {
 		return "", err
 	}
@@ -118,27 +118,31 @@ func finalizeTransition(metadata TransitionMetadata, operation Operation, inputs
 		outputReferences = append(outputReferences, output.Reference)
 	}
 	slices.SortFunc(outputReferences, compareEntityRef)
-	authorization := authorizationDigest
+	var authorization *string
+	if authorizationDigest != "" {
+		value := authorizationDigest
+		authorization = &value
+	}
 	decision := Decision{SchemaVersion: DecisionSchemaVersion, ContractVersion: ContractVersion, MethodVersion: MethodVersion,
 		DecisionID: metadata.DecisionID, OperationID: metadata.OperationID, Operation: operation, Scope: metadata.Scope,
-		ActorID: metadata.ActorID, ActorRevision: metadata.ActorRevision, AuthorizationDecisionDigest: &authorization,
-		ReversesHistoryDigest: metadata.ReversesHistoryDigest, InputEntities: append([]EntityRef(nil), inputs...),
-		OutputEntities: outputReferences, Partitions: append([]Partition(nil), partitions...),
-		SupportingEvidence: append([]EvidenceLink(nil), metadata.SupportingEvidence...),
-		Counterevidence:    append([]Counterevidence(nil), metadata.Counterevidence...), Confidence: metadata.Confidence,
+		ActorID: metadata.ActorID, ActorRevision: metadata.ActorRevision, AuthorizationDecisionDigest: authorization,
+		ReversesHistoryDigest: metadata.ReversesHistoryDigest, InputEntities: cloneSlice(inputs),
+		OutputEntities: outputReferences, Partitions: cloneSlice(partitions),
+		SupportingEvidence: cloneSlice(metadata.SupportingEvidence),
+		Counterevidence:    cloneSlice(metadata.Counterevidence), Confidence: metadata.Confidence,
 		Reason: metadata.Reason, CreatedAt: metadata.CreatedAt}
 	decisionCanonical, decisionDigest, err := canonicalValue(decision)
 	if err != nil {
 		return TransitionPlan{}, err
 	}
-	parentDigests := append([]string(nil), parents...)
+	parentDigests := cloneSlice(parents)
 	slices.Sort(parentDigests)
 	if !validDigestSet(parentDigests) {
 		return TransitionPlan{}, newError(InvalidInputError, TransitionInvalid, nil)
 	}
 	history := History{SchemaVersion: HistorySchemaVersion, ContractVersion: ContractVersion, MethodVersion: MethodVersion,
 		HistoryID: metadata.HistoryID, Sequence: metadata.HistorySequence, Scope: metadata.Scope, Operation: operation,
-		DecisionDigest: decisionDigest, InputEntities: append([]EntityRef(nil), inputs...), OutputEntities: outputReferences,
+		DecisionDigest: decisionDigest, InputEntities: cloneSlice(inputs), OutputEntities: outputReferences,
 		PreviousHistoryDigests: parentDigests, ReversesHistoryDigest: metadata.ReversesHistoryDigest, CreatedAt: metadata.CreatedAt}
 	historyCanonical, historyDigest, err := canonicalValue(history)
 	if err != nil {
@@ -164,8 +168,7 @@ func supersededDraft(ctx context.Context, input Entity, updatedAt string) (Entit
 	value.Status = "superseded"
 	value.UpdatedAt = updatedAt
 	value.CreationDecisionDigest, value.HistoryHeadDigest, value.AuditDigest, value.ProvenanceDigest = "", "", "", ""
-	previous := input.ProvenanceDigest
-	value.PreviousProvenanceDigest = &previous
+	value.PreviousProvenanceDigests = []string{input.ProvenanceDigest}
 	_, digest, err := EntityRecordDigest(ctx, value)
 	if err != nil {
 		return EntityRevisionDraft{}, err
@@ -174,11 +177,12 @@ func supersededDraft(ctx context.Context, input Entity, updatedAt string) (Entit
 }
 
 func newActiveDraft(ctx context.Context, entityID string, scope Scope, classification string, members []ObservationRef,
-	aliases []AliasProof, confidence Confidence, createdAt string) (EntityRevisionDraft, error) {
+	aliases []AliasProof, confidence Confidence, previousProvenanceDigests []string, createdAt string) (EntityRevisionDraft, error) {
 	value := Entity{SchemaVersion: EntitySchemaVersion, ContractVersion: ContractVersion, MethodVersion: MethodVersion,
 		EntityID: entityID, Revision: 1, Scope: scope, Status: "active", Classification: classification,
-		MemberObservations: append([]ObservationRef(nil), members...), AliasProofs: append([]AliasProof(nil), aliases...),
-		Confidence: confidence, CreatedAt: createdAt, UpdatedAt: createdAt}
+		MemberObservations: cloneSlice(members), AliasProofs: cloneSlice(aliases),
+		Confidence: confidence, PreviousProvenanceDigests: cloneSlice(previousProvenanceDigests),
+		CreatedAt: createdAt, UpdatedAt: createdAt}
 	_, digest, err := EntityRecordDigest(ctx, value)
 	if err != nil {
 		return EntityRevisionDraft{}, err

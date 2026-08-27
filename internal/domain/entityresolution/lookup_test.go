@@ -199,6 +199,9 @@ func (value *lookupEvidence) VerifyCase(context.Context, Scope, string) (CaseDec
 func (value *lookupEvidence) VerifyObservation(context.Context, Scope, IdentifierBinding, EvidenceBinding) (EvidenceDecision, error) {
 	return value.observationDecision, value.err
 }
+func (value *lookupEvidence) VerifyEvidenceLink(context.Context, Scope, EvidenceLink) (EvidenceDecision, error) {
+	return value.observationDecision, value.err
+}
 
 type lookupMatches struct {
 	decision MatchDecision
@@ -248,6 +251,9 @@ func (value *lookupEntityStore) LoadCurrentEntity(_ context.Context, _ Scope, en
 }
 func (value *lookupEntityStore) LoadEntitiesByMatch(context.Context, Scope, IdentifierBinding) ([]EntityRef, error) {
 	return append([]EntityRef(nil), value.references...), value.listErr
+}
+func (*lookupEntityStore) LoadCandidate(context.Context, Scope, string) (Candidate, bool, error) {
+	return Candidate{}, false, nil
 }
 func (*lookupEntityStore) LoadHistory(context.Context, Scope, string) (History, bool, error) {
 	return History{}, false, nil

@@ -26,7 +26,7 @@ func TestComposeConfidenceIsDeterministicBoundedAndCeilingLimited(t *testing.T) 
 		confidence.Components[3].ValueMillionths != 100_000 {
 		t.Fatalf("confidence=%+v", confidence)
 	}
-	if digest != "sha256:47b2669c8d7307a17bc732eb72c8644efb706319938750a2bb75fdbc8a1849fa" {
+	if digest != "sha256:dc252007a9e5d966686654e010f8faba08c1ffa04dae0c8e984a114a916364b1" {
 		t.Fatalf("digest=%s", digest)
 	}
 	input.Evidence = []ConfidenceEvidenceInput{second, third, first}

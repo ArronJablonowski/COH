@@ -45,7 +45,7 @@ func ComposeConfidence(ctx context.Context, input ConfidenceInput) (Confidence, 
 		len(input.Counterevidence) > MaximumLookupEntities || input.MatchingEntityCount > MaximumLookupEntities {
 		return Confidence{}, nil, "", newError(InvalidInputError, ConfidenceInvalid, nil)
 	}
-	evidence := append([]ConfidenceEvidenceInput(nil), input.Evidence...)
+	evidence := cloneSlice(input.Evidence)
 	slices.SortFunc(evidence, compareConfidenceEvidence)
 	links := make([]EvidenceLink, 0, len(evidence))
 	observationDigests := make([]string, 0, len(evidence))
@@ -136,9 +136,9 @@ func validateConfidenceEvidence(ctx context.Context, item ConfidenceEvidenceInpu
 }
 
 func normalizeCounterevidence(values []Counterevidence) ([]Counterevidence, int32, []string, error) {
-	result := append([]Counterevidence(nil), values...)
+	result := cloneSlice(values)
 	for index := range result {
-		result[index].EvidenceLinks = append([]EvidenceLink(nil), result[index].EvidenceLinks...)
+		result[index].EvidenceLinks = cloneSlice(result[index].EvidenceLinks)
 		slices.SortFunc(result[index].EvidenceLinks, compareEvidenceLink)
 	}
 	slices.SortFunc(result, func(left, right Counterevidence) int {
@@ -187,7 +187,7 @@ func normalizeCounterevidence(values []Counterevidence) ([]Counterevidence, int3
 }
 
 func CounterevidenceRecordDigest(value Counterevidence) (string, error) {
-	links := append([]EvidenceLink(nil), value.EvidenceLinks...)
+	links := cloneSlice(value.EvidenceLinks)
 	slices.SortFunc(links, compareEvidenceLink)
 	_, digest, err := canonicalValue(struct {
 		CounterevidenceID string         `json:"counterevidence_id"`
@@ -202,7 +202,7 @@ func CounterevidenceRecordDigest(value Counterevidence) (string, error) {
 func confidenceComponent(id, kind string, value int32, observations []string, basis any) ConfidenceComponent {
 	_, basisDigest, _ := canonicalValue(basis)
 	return ConfidenceComponent{ComponentID: id, Kind: kind, ValueMillionths: value,
-		ObservationDigests: append([]string(nil), observations...), BasisDigest: basisDigest}
+		ObservationDigests: cloneSlice(observations), BasisDigest: basisDigest}
 }
 
 type assessmentRecord struct {

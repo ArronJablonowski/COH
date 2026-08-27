@@ -7,6 +7,7 @@ import "context"
 type EvidenceVerifier interface {
 	VerifyCase(context.Context, Scope, string) (CaseDecision, error)
 	VerifyObservation(context.Context, Scope, IdentifierBinding, EvidenceBinding) (EvidenceDecision, error)
+	VerifyEvidenceLink(context.Context, Scope, EvidenceLink) (EvidenceDecision, error)
 }
 
 // MatchVerifier owns the non-exportable case match key and verifies opaque
@@ -36,10 +37,13 @@ type EntityStore interface {
 	LoadHistory(context.Context, Scope, string) (History, bool, error)
 }
 
+type CandidateStore interface {
+	LoadCandidate(context.Context, Scope, string) (Candidate, bool, error)
+}
+
 // DurableStore owns idempotency and atomically commits all terminal state.
 type DurableStore interface {
-	LoadReceipt(context.Context, string) (Receipt, bool, error)
-	LoadOutcome(context.Context, string) (Outcome, bool, error)
+	LoadCommit(context.Context, string) (Commit, bool, error)
 	LoadCommandDigest(context.Context, string) (string, bool, error)
 	Begin(context.Context, Command, string) (bool, error)
 	Commit(context.Context, Commit) error
@@ -59,6 +63,7 @@ type Dependencies struct {
 	Authorization AuthorizationVerifier
 	Observations  ObservationStore
 	Entities      EntityStore
+	Candidates    CandidateStore
 	Durable       DurableStore
 	Audit         AuditBuilder
 	Provenance    ProvenanceBuilder

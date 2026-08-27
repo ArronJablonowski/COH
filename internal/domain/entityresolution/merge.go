@@ -47,6 +47,7 @@ func PlanMerge(ctx context.Context, dependencies Dependencies, request MergeRequ
 	aliases := make([]AliasProof, 0)
 	aliasDigests := make(map[string]struct{})
 	parents := make([]string, 0, len(entities))
+	provenanceParents := make([]string, 0, len(entities))
 	classification := "public"
 	superseded := make([]EntityRevisionDraft, 0, len(entities))
 	for _, entity := range entities {
@@ -75,6 +76,7 @@ func PlanMerge(ctx context.Context, dependencies Dependencies, request MergeRequ
 			aliases = append(aliases, alias)
 		}
 		parents = append(parents, entity.HistoryHeadDigest)
+		provenanceParents = append(provenanceParents, entity.ProvenanceDigest)
 		draft, draftErr := supersededDraft(ctx, entity, request.Metadata.CreatedAt)
 		if draftErr != nil {
 			return TransitionPlan{}, draftErr
@@ -90,7 +92,7 @@ func PlanMerge(ctx context.Context, dependencies Dependencies, request MergeRequ
 		return TransitionPlan{}, err
 	}
 	output, err := newActiveDraft(ctx, request.OutputEntityID, request.Metadata.Scope, classification, members, aliases,
-		request.Metadata.Confidence, request.Metadata.CreatedAt)
+		request.Metadata.Confidence, uniqueSortedDigests(provenanceParents), request.Metadata.CreatedAt)
 	if err != nil {
 		return TransitionPlan{}, err
 	}
@@ -107,7 +109,7 @@ func AliasProofDigest(value AliasProof) (string, error) {
 }
 
 func uniqueSortedDigests(values []string) []string {
-	result := append([]string(nil), values...)
+	result := cloneSlice(values)
 	slices.Sort(result)
 	return slices.Compact(result)
 }

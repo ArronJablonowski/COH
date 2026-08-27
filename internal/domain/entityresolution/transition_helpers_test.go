@@ -29,6 +29,9 @@ func (store *transitionStore) LoadEntity(_ context.Context, _ Scope, reference E
 func (*transitionStore) LoadEntitiesByMatch(context.Context, Scope, IdentifierBinding) ([]EntityRef, error) {
 	return nil, nil
 }
+func (*transitionStore) LoadCandidate(context.Context, Scope, string) (Candidate, bool, error) {
+	return Candidate{}, false, nil
+}
 func (store *transitionStore) LoadHistory(_ context.Context, _ Scope, digest string) (History, bool, error) {
 	value, found := store.histories[digest]
 	return value, found, store.err
@@ -80,9 +83,9 @@ func transitionEntity(t *testing.T, entityNumber, historyNumber int, evidence []
 	slices.SortFunc(members, compareObservationRef)
 	entity := Entity{SchemaVersion: EntitySchemaVersion, ContractVersion: ContractVersion, MethodVersion: MethodVersion,
 		EntityID: transitionUUID(entityNumber), Revision: 1, Scope: evidence[0].Observation.Scope, Status: "active",
-		Classification: classification, MemberObservations: members, AliasProofs: append([]AliasProof(nil), aliases...), Confidence: confidence,
+		Classification: classification, MemberObservations: members, AliasProofs: cloneSlice(aliases), Confidence: confidence,
 		CreationDecisionDigest: testDigest("transition-creation"), HistoryHeadDigest: testDigest("temporary-history"),
-		AuditDigest: testDigest("transition-audit"), ProvenanceDigest: testDigest("transition-provenance"),
+		AuditDigest: testDigest("transition-audit"), PreviousProvenanceDigests: []string{}, ProvenanceDigest: testDigest("transition-provenance"),
 		CreatedAt: "2026-08-27T00:00:00.000000000Z", UpdatedAt: "2026-08-27T00:00:00.000000000Z"}
 	slices.SortFunc(entity.AliasProofs, compareAliasProof)
 	_, recordDigest, err := EntityRecordDigest(context.Background(), entity)
@@ -108,11 +111,13 @@ func transitionMetadata(t *testing.T, evidence []ConfidenceEvidenceInput, counte
 	if err != nil {
 		t.Fatal(err)
 	}
+	normalizedCounter := make([]Counterevidence, len(confidence.Counterevidence))
+	copy(normalizedCounter, confidence.Counterevidence)
 	return TransitionMetadata{DecisionID: transitionUUID(40), HistoryID: transitionUUID(41), HistorySequence: 2,
 		OperationID: transitionUUID(42), Scope: evidence[0].Observation.Scope, ActorID: transitionUUID(43), ActorRevision: 3,
 		CommandDigest: testDigest("transition-command"), Reason: reason,
 		SupportingEvidence: append([]EvidenceLink(nil), confidence.SupportingEvidence...),
-		Counterevidence:    append([]Counterevidence(nil), confidence.Counterevidence...), Confidence: confidence,
+		Counterevidence:    normalizedCounter, Confidence: confidence,
 		CreatedAt: "2026-08-27T01:00:00.000000000Z", Deadline: "2026-08-27T01:30:00.000000000Z"}
 }
 

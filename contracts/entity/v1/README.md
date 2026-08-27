@@ -19,10 +19,17 @@ integer millionths with ordered components and an explicit ceiling. Merge and
 split never rewrite observations or historical entities.
 An `entity_ref.record_digest` identifies the canonical immutable entity-revision
 core; decision, history, audit, and provenance digests are layered onto the
-full record afterward to avoid cyclic self-reference.
+full record afterward to avoid cyclic self-reference. Each entity revision
+persists a canonical array of provenance parents so merges bind every input
+head without collapsing the provenance DAG.
 History records carry a canonical set of parent heads, and split commands,
 decisions, and histories persist the exact reversed history digest. Split
-partitions bind an output entity ID, members, and assigned alias-proof digests.
+partitions bind an output entity ID, members, assigned alias-proof digests,
+recomputable confidence assessments, and the resulting confidence record.
+Commands also persist every generated candidate, decision, history, sequence,
+and output identity. A restarted worker can therefore recompute the exact
+candidate or transition and deny changed replay instead of generating new
+identities or trusting an unverifiable score.
 The frozen v1 weights, counterevidence effects, source-independence rule,
 arithmetic, and label thresholds are executable in
 `fixtures/confidence-method-v1.json`; changing them requires a new method

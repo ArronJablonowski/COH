@@ -6,11 +6,12 @@ import (
 )
 
 type SplitPartitionRequest struct {
-	PartitionID        string
-	OutputEntityID     string
-	MemberObservations []ObservationRef
-	AliasProofDigests  []string
-	Confidence         Confidence
+	PartitionID           string
+	OutputEntityID        string
+	MemberObservations    []ObservationRef
+	AliasProofDigests     []string
+	Confidence            Confidence
+	ConfidenceAssessments []ConfidenceAssessment
 }
 
 type SplitRequest struct {
@@ -49,7 +50,7 @@ func PlanSplit(ctx context.Context, dependencies Dependencies, request SplitRequ
 		return TransitionPlan{}, err
 	}
 
-	partitions := append([]SplitPartitionRequest(nil), request.Partitions...)
+	partitions := cloneSlice(request.Partitions)
 	slices.SortFunc(partitions, func(left, right SplitPartitionRequest) int { return compareString(left.PartitionID, right.PartitionID) })
 	memberSet := make(map[ObservationRef]struct{}, len(input.MemberObservations))
 	for _, member := range input.MemberObservations {
@@ -89,7 +90,7 @@ func PlanSplit(ctx context.Context, dependencies Dependencies, request SplitRequ
 			return TransitionPlan{}, newError(InvalidInputError, TransitionInvalid, nil)
 		}
 		seenOutputIDs[partition.OutputEntityID] = struct{}{}
-		members := append([]ObservationRef(nil), partition.MemberObservations...)
+		members := cloneSlice(partition.MemberObservations)
 		for memberIndex, member := range members {
 			if !validObservationRef(member) || memberIndex > 0 && compareObservationRef(members[memberIndex-1], member) >= 0 {
 				return TransitionPlan{}, newError(InvalidInputError, TransitionInvalid, nil)
@@ -119,13 +120,14 @@ func PlanSplit(ctx context.Context, dependencies Dependencies, request SplitRequ
 		}
 		slices.SortFunc(aliases, compareAliasProof)
 		output, outputErr := newActiveDraft(ctx, partition.OutputEntityID, request.Metadata.Scope, input.Classification,
-			members, aliases, partition.Confidence, request.Metadata.CreatedAt)
+			members, aliases, partition.Confidence, []string{input.ProvenanceDigest}, request.Metadata.CreatedAt)
 		if outputErr != nil {
 			return TransitionPlan{}, outputErr
 		}
 		outputs = append(outputs, output)
 		decisionPartitions = append(decisionPartitions, Partition{PartitionID: partition.PartitionID, OutputEntityID: partition.OutputEntityID,
-			MemberObservations: members, AliasProofDigests: append([]string(nil), partition.AliasProofDigests...)})
+			MemberObservations: members, AliasProofDigests: cloneSlice(partition.AliasProofDigests), Confidence: partition.Confidence,
+			ConfidenceAssessments: cloneSlice(partition.ConfidenceAssessments)})
 	}
 	if len(assignedMembers) != len(memberSet) || len(assignedAliases) != len(aliasSet) {
 		return TransitionPlan{}, newError(InvalidInputError, TransitionInvalid, nil)
