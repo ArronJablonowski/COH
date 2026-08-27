@@ -1,0 +1,18 @@
+{
+  "schema_version": "coh.normalized-event-denials/v1",
+  "contract_version": "1.0.0",
+  "base_fixture": "valid/event.canonical.json",
+  "cases": [
+    {"name": "duplicate-key", "reason": "canonical_json", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "unknown-envelope-field", "reason": "envelope_shape", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "unsupported-ocsf-target", "reason": "compatibility_target", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "missing-raw-manifest", "reason": "lineage_binding", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "original-field-mutation", "reason": "original_fields", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "ocsf-type-mismatch", "reason": "ocsf_base_fields", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "classification-downgrade", "reason": "classification_downgrade", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "changed-transformation", "reason": "transformation_digest", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "unsorted-lineage", "reason": "lineage_binding", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "direct-dataset-path", "reason": "envelope_shape", "covered_by": "TestStrictDenialCorpus"},
+    {"name": "noncanonical-decimal", "reason": "canonical_json", "covered_by": "TestStrictDenialCorpus"}
+  ]
+}

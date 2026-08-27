@@ -1,0 +1,39 @@
+{
+  "schema_version": "coh.normalization-compatibility-targets/v1",
+  "contract_version": "1.0.0",
+  "canonical_encoding": "COH-CJ-1",
+  "status": "design_frozen",
+  "observed_at": "2026-08-27T00:00:00.000000000Z",
+  "requirements": [
+    "FR-021",
+    "FR-022"
+  ],
+  "targets": {
+    "ocsf": {
+      "version": "1.9.0",
+      "tag": "1.9.0",
+      "commit": "856d462bd20dc46cc1ffed2dfffe3b91ef0fbeba",
+      "source_archive_sha256": "0ed367ea97dd283d69401099974cec256c862621b6ef53243f76999ace2abfc7",
+      "release_url": "https://github.com/ocsf/ocsf-schema/releases/tag/1.9.0",
+      "source_url": "https://github.com/ocsf/ocsf-schema/tree/856d462bd20dc46cc1ffed2dfffe3b91ef0fbeba"
+    },
+    "ecs": {
+      "version": "9.5.0",
+      "tag": "v9.5.0",
+      "commit": "401807e0547301525acd28c4fb667203fec66d59",
+      "source_archive_sha256": "93a07475f78fc07736128e731cb66d07ce5a1a0a14b72fa9733d6ba5f830df8f",
+      "release_url": "https://github.com/elastic/ecs/releases/tag/v9.5.0",
+      "source_url": "https://github.com/elastic/ecs/tree/401807e0547301525acd28c4fb667203fec66d59"
+    }
+  },
+  "upgrade_policy": {
+    "floating_versions_allowed": false,
+    "development_branches_allowed": false,
+    "version_change_requires": [
+      "new compatibility decision",
+      "fixture corpus replay",
+      "migration impact assessment",
+      "new target manifest digest"
+    ]
+  }
+}

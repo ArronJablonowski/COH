@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/normalization/v1/normalized-event-envelope.schema.json",
+  "title": "COH OCSF-first normalized event envelope v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contract_version",
+    "envelope_id",
+    "case",
+    "source",
+    "classification",
+    "collected_at",
+    "compatibility",
+    "original",
+    "ocsf",
+    "ecs",
+    "normalization",
+    "lineage",
+    "dataset"
+  ],
+  "properties": {
+    "schema_version": {"const": "coh.normalized-event-envelope/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "envelope_id": {"$ref": "#/$defs/uuid_v7"},
+    "case": {"$ref": "#/$defs/case"},
+    "source": {"$ref": "#/$defs/source"},
+    "classification": {"$ref": "#/$defs/classification"},
+    "collected_at": {"$ref": "#/$defs/timestamp"},
+    "compatibility": {"$ref": "#/$defs/compatibility"},
+    "original": {"$ref": "#/$defs/original"},
+    "ocsf": {"$ref": "#/$defs/ocsf"},
+    "ecs": {
+      "oneOf": [
+        {"$ref": "#/$defs/ecs"},
+        {"type": "null"}
+      ]
+    },
+    "normalization": {"$ref": "#/$defs/normalization"},
+    "lineage": {"$ref": "#/$defs/lineage"},
+    "dataset": {
+      "oneOf": [
+        {"$ref": "#/$defs/dataset"},
+        {"type": "null"}
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "uuid_v7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{9}Z$"
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,127}$"
+    },
+    "opaque": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "classification": {
+      "enum": ["public", "internal", "confidential", "restricted"]
+    },
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"}
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["kind", "identity", "identity_digest", "collection_method", "collection_method_version"],
+      "properties": {
+        "kind": {"enum": ["upload", "connector", "query", "tool", "model", "derived", "import"]},
+        "identity": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "identity_digest": {"$ref": "#/$defs/digest"},
+        "collection_method": {"$ref": "#/$defs/token"},
+        "collection_method_version": {"$ref": "#/$defs/opaque"}
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": {"$ref": "#/$defs/digest"},
+        "media_type": {"type": "string", "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$"},
+        "classification": {"$ref": "#/$defs/classification"},
+        "length": {"type": "integer", "minimum": 1, "maximum": 1073741824}
+      },
+      "additionalProperties": false
+    },
+    "compatibility": {
+      "type": "object",
+      "required": ["target_manifest_digest", "ocsf_version", "ocsf_commit", "ecs_version", "ecs_commit"],
+      "properties": {
+        "target_manifest_digest": {"const": "sha256:82b23c1229c4bb1dbdc047859614d8da924d5bd3e5bdf9efba62b31a397408c1"},
+        "ocsf_version": {"const": "1.9.0"},
+        "ocsf_commit": {"const": "856d462bd20dc46cc1ffed2dfffe3b91ef0fbeba"},
+        "ecs_version": {"const": "9.5.0"},
+        "ecs_commit": {"const": "401807e0547301525acd28c4fb667203fec66d59"}
+      },
+      "additionalProperties": false
+    },
+    "original": {
+      "type": "object",
+      "required": ["format", "fields", "fields_digest"],
+      "properties": {
+        "format": {"enum": ["json", "ndjson", "cef", "leef", "syslog", "xml", "csv", "text", "binary"]},
+        "fields": {"type": "object", "minProperties": 1, "maxProperties": 1024},
+        "fields_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "ocsf": {
+      "type": "object",
+      "required": ["version", "schema_commit", "event", "event_digest"],
+      "properties": {
+        "version": {"const": "1.9.0"},
+        "schema_commit": {"const": "856d462bd20dc46cc1ffed2dfffe3b91ef0fbeba"},
+        "event": {
+          "type": "object",
+          "required": ["activity_id", "category_uid", "class_uid", "metadata", "severity_id", "time", "type_uid"],
+          "properties": {
+            "activity_id": {"type": "integer", "minimum": 0, "maximum": 99},
+            "category_uid": {"type": "integer", "minimum": 0, "maximum": 99},
+            "class_uid": {"type": "integer", "minimum": 0, "maximum": 999999},
+            "metadata": {
+              "type": "object",
+              "required": ["product", "version"],
+              "properties": {
+                "product": {"type": "object", "minProperties": 1, "maxProperties": 64},
+                "version": {"const": "1.9.0"}
+              },
+              "maxProperties": 64
+            },
+            "severity_id": {"type": "integer", "minimum": 0, "maximum": 99},
+            "time": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+            "type_uid": {"type": "integer", "minimum": 0, "maximum": 99999999}
+          },
+          "minProperties": 7,
+          "maxProperties": 1024
+        },
+        "event_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "ecs": {
+      "type": "object",
+      "required": ["version", "schema_commit", "fields", "fields_digest"],
+      "properties": {
+        "version": {"const": "9.5.0"},
+        "schema_commit": {"const": "401807e0547301525acd28c4fb667203fec66d59"},
+        "fields": {"type": "object", "minProperties": 1, "maxProperties": 1024},
+        "fields_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "component": {
+      "type": "object",
+      "required": ["name", "version", "digest"],
+      "properties": {
+        "name": {"$ref": "#/$defs/token"},
+        "version": {"$ref": "#/$defs/opaque"},
+        "digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "normalization": {
+      "type": "object",
+      "required": ["mapping_set_digest", "normalizer", "coverage", "unmapped_vendor_paths", "transformation_digest"],
+      "properties": {
+        "mapping_set_digest": {"$ref": "#/$defs/digest"},
+        "normalizer": {"$ref": "#/$defs/component"},
+        "coverage": {"enum": ["complete", "partial", "unmapped"]},
+        "unmapped_vendor_paths": {
+          "type": "array",
+          "maxItems": 1024,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 1024}
+        },
+        "transformation_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "lineage": {
+      "type": "object",
+      "required": ["raw_artifact", "raw_manifest_digest", "ingest_receipt_digest", "source_provenance_digest", "parent_envelope_digests"],
+      "properties": {
+        "raw_artifact": {"$ref": "#/$defs/artifact"},
+        "raw_manifest_digest": {"$ref": "#/$defs/digest"},
+        "ingest_receipt_digest": {"$ref": "#/$defs/digest"},
+        "source_provenance_digest": {"$ref": "#/$defs/digest"},
+        "parent_envelope_digests": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/digest"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "access_profile": {
+      "type": "object",
+      "required": ["max_rows", "max_bytes", "max_pages", "max_duration_ms"],
+      "properties": {
+        "max_rows": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "max_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "max_pages": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "max_duration_ms": {"type": "integer", "minimum": 1, "maximum": 3600000}
+      },
+      "additionalProperties": false
+    },
+    "dataset": {
+      "type": "object",
+      "required": ["format", "artifact", "manifest_digest", "schema_digest", "partition_keys", "partition_values", "row_group", "row_index", "access_profile"],
+      "properties": {
+        "format": {"const": "parquet"},
+        "artifact": {
+          "allOf": [
+            {"$ref": "#/$defs/artifact"},
+            {"properties": {"media_type": {"const": "application/vnd.apache.parquet"}}}
+          ]
+        },
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "schema_digest": {"$ref": "#/$defs/digest"},
+        "partition_keys": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/token"}
+        },
+        "partition_values": {
+          "type": "object",
+          "maxProperties": 16,
+          "additionalProperties": {"type": "string", "maxLength": 256}
+        },
+        "row_group": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+        "row_index": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+        "access_profile": {"$ref": "#/$defs/access_profile"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
