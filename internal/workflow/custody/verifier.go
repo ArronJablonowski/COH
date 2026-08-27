@@ -111,6 +111,9 @@ func (verifier *Verifier) VerifyFromGenesis(ctx context.Context,
 		!previous.OccurredAt.Equal(*head.LastRecordAt) {
 		return verifier.report(scope, head, VerifyTruncatedInterval, nil, now), nil
 	}
+	if report.AuditCheckpointID == nil || report.AuditCheckpointDigest == nil {
+		return verifier.report(scope, head, VerifyInvalidCheckpoint, nil, now), nil
+	}
 	report.ReportDigest, err = VerificationReportBindingDigest(report)
 	if err != nil {
 		return VerificationReport{}, err
@@ -135,7 +138,7 @@ func (verifier *Verifier) report(scope domain.CaseRef, head Head, reason Verific
 	outcome := VerificationInvalid
 	if reason == VerifySuccess {
 		outcome = VerificationValid
-	} else if reason == VerifyTruncatedInterval {
+	} else if reason == VerifyTruncatedInterval || reason == VerifyInvalidCheckpoint {
 		outcome = VerificationIncomplete
 	}
 	toSequence, headHash := head.Sequence, head.ChainHash

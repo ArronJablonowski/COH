@@ -7,7 +7,7 @@
 | Chain scope | One append-only sequence per organization, tenant, and case |
 | Lineage scope | Directed acyclic graph of immutable artifact and manifest digests |
 | Audit anchor | Deterministic event in the tenant tamper-evident audit chain |
-| Status | Design frozen for implementation |
+| Status | Implemented; closure verification in progress |
 
 ## Purpose and boundary
 
@@ -179,7 +179,7 @@ cannot use a decision bound to an earlier head.
 | Invalid transform parent, cycle, missing child, or mismatched manifest | No lineage node or custody link |
 | Transfer/export destination substitution | Decision binding mismatch; no authorized release |
 | Hold/retention bypass or deletion without prior authorization | Denied; no deletion-completed record |
-| SQLite/PostgreSQL restart during each commit boundary | Ordered chain and receipt recover without fork, gap, or duplicate |
+| SQLite restart and guarded-store recovery after commit boundaries | Ordered chain and receipt recover without fork, gap, or duplicate; PostgreSQL rollout repeats the same store conformance suite |
 | Verifier input insertion, deletion, reorder, mutation, truncation, or checkpoint change | Independent verification fails at the exact affected boundary |
 
 ## Independent verification
@@ -203,6 +203,70 @@ The verifier rejects mutation, insertion, deletion, reordering, truncation,
 forks, broken lineage, orphan children, invalid manifests, unknown keys,
 checkpoint tampering, and custody/audit coverage disagreement. It reports an
 error and never invents a missing link or treats a partial interval as complete.
+
+The implemented `custody.Verifier` is read-only. It starts at the all-zero case
+genesis, consumes the complete ordered interval, reconstructs every immutable
+receipt, checks idempotency recovery and prior-authorization ancestry, resolves
+artifact and manifest facts, regenerates the deterministic audit binding, and
+compares the terminal record with the durable head. It has no authority, append,
+repair, key, evidence-byte, or release capability.
+
+## Checkpoint and signing-key custody
+
+The `Auditor` boundary owns tenant audit-chain and checkpoint verification. A
+production implementation must validate the checkpoint signature with the
+configured public-key revision, prove that the key was trusted and not revoked
+at the checkpoint interval, and reject unknown algorithms, revisions, gaps, or
+revocation ambiguity before returning an `AuditProof`. The custody verifier
+accepts only the resulting bounded proof and records the final checkpoint ID
+and digest in its verification report.
+
+Checkpoint private keys never enter the custody workflow or verifier. They stay
+in the audit signer boundary and follow that component's rotation, backup,
+dual-control, and destruction procedure. Public verification keys, revisions,
+revocation statements, and old verify-only material remain available for the
+full custody-retention period. A complete genesis-based walk without a covering
+checkpoint may prove structural consistency, but its report is `incomplete`;
+it is not a substitute for the required external trust anchor.
+
+## Export verification boundary
+
+Custody export authorization and completion bind the artifact, encrypted
+manifest, purpose, destination or recipient digest, policy, prior authorization
+receipt, and external receipt digest. They do not claim that an export package
+signature or package bytes were independently verified. CYB-77 owns that
+package format, detached signature, verification key, and offline verifier.
+Before release, that workflow must require both its valid package proof and the
+matching valid custody report and authorization receipt. Neither proof may be
+used to infer or repair the other.
+
+## Recovery and operational response
+
+- A lost metadata response is recovered by reading the exact immutable
+  idempotency receipt; recovery never advances the head again.
+- An audit failure after metadata commit withholds success. Exact replay obtains
+  fresh authority, verifies the stored interval, and repairs the deterministic
+  audit event without adding a custody record.
+- A stale competing append reloads the head and reauthorizes; it never retries
+  with the old decision.
+- Corrupt, forked, truncated, or unverifiable state is quarantined. Operators
+  restore a complete storage and audit backup to a separate recovery target,
+  verify from genesis or a trusted checkpoint, and only then resume writes.
+- Recovery never edits a record, synthesizes a receipt, skips a sequence,
+  replaces an audit event, or releases evidence while verification is partial.
+
+## Privacy assumptions
+
+Custody metadata contains identifiers, classifications, timestamps, lengths,
+and stable digests. Although it excludes evidence bytes, manifest plaintext,
+credentials, raw destinations, and free-form operator text, these values remain
+sensitive because digests and timing can be linkable. Storage, logs, verifier
+reports, backups, and exported proofs therefore inherit the case's access and
+retention controls. Destination, recipient, source, reason, mapping, approval,
+and external receipt values are normalized and hashed before entering the
+boundary; callers must use domain-specific nonces where low-entropy values
+would otherwise permit dictionary recovery. Error and audit surfaces expose
+only bounded reason codes and digests.
 
 ## Migration and rollback
 

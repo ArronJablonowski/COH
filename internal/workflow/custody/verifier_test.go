@@ -19,7 +19,13 @@ func (ledger custodyVerifierLedger) Read(ctx context.Context, scope domain.CaseR
 
 func TestVerifierAcceptsCompleteChainFromGenesis(t *testing.T) {
 	_, command, _, _, evidence, ledger, auditor := custodyControllerFixture(t)
-	buildTwoRecordChain(t, command, evidence, ledger, auditor)
+	records := buildTwoRecordChain(t, command, evidence, ledger, auditor)
+	checkpointID, checkpointDigest := custodyUUID(9), fixtureDigest("verifier-checkpoint")
+	auditor.mu.Lock()
+	proof := auditor.proofs[records[1].AuditEventDigest]
+	proof.CheckpointID, proof.CheckpointDigest = &checkpointID, &checkpointDigest
+	auditor.proofs[records[1].AuditEventDigest] = proof
+	auditor.mu.Unlock()
 	verifier, err := NewVerifier(ledger, evidence, auditor, &custodyTestClock{now: custodyFixtureTime})
 	if err != nil {
 		t.Fatal(err)
@@ -33,6 +39,19 @@ func TestVerifierAcceptsCompleteChainFromGenesis(t *testing.T) {
 	want, err := VerificationReportBindingDigest(report)
 	if err != nil || want != report.ReportDigest {
 		t.Fatalf("report digest want=%s got=%s err=%v", want, report.ReportDigest, err)
+	}
+}
+
+func TestVerifierMarksUncheckpointedCompleteIntervalIncomplete(t *testing.T) {
+	_, command, _, _, evidence, ledger, auditor := custodyControllerFixture(t)
+	buildTwoRecordChain(t, command, evidence, ledger, auditor)
+	verifier, err := NewVerifier(ledger, evidence, auditor, &custodyTestClock{now: custodyFixtureTime})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := verifier.VerifyFromGenesis(context.Background(), command.Case)
+	if err != nil || report.Outcome != VerificationIncomplete || report.ReasonCode != VerifyInvalidCheckpoint {
+		t.Fatalf("report=%+v err=%v", report, err)
 	}
 }
 
