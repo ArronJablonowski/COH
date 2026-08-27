@@ -7,8 +7,10 @@
 | Requirements | FR-046, FR-049 |
 | Implementation baseline | `fb602898172b050f0c551257874210c3567a6744` |
 | Focused verification | `scripts/verify_elastic_esql.sh` passed |
-| Full CI evidence | Pending final clean baseline |
-| CI outcome | Pending final clean baseline |
+| Full CI evidence | `/Users/aj_lobster/Developer/COH-toolchains/ci-artifacts/baseline/run.2W4f8j` |
+| CI outcome | 18/18 stages passed; promotable; VCS clean |
+| CI report digest | `316b6af7a650be39719f82e04e60a2afa93f8fe38c1b0f0502d6133c79a1a026` |
+| CI report SHA-256 | `5f996f9b1421567649d0afa5dd6894ae7cda73dc84a9bba83ade8a1a299f0b98` |
 
 ## Delivered boundary
 

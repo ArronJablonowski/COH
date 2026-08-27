@@ -6,4 +6,4 @@ f3e8e2d77f0af755e549c3f4ec22dd173338316fb910757a0825bdd79e1b20f2  contracts/elas
 e59c3ded17ebba2e5d51ac17690bb76e196740c1603e9f8cb38f06e689d33eba  contracts/elastic-esql/v1/fixtures/redacted-error.trace.json
 074d7aa19a8e6924c16099f1570924248da77aba08009303ade101b3b3008610  internal/connector/elastic/testdata/elastic-8.19/esql-fixture-manifest.json
 2a7b6792516ab2136a99c6925d4bfa2c94c08a721f5b9482b49b9004306a26ed  internal/connector/elastic/testdata/elastic-8.19/esql-response.json
-63ebc638d3a0fc608d3806ad8446dc63b38a53872bf16af6f758809225820a93  docs/evidence/CYB-91-elastic-esql-report.md
+538e2b3d52bcb048c6a8081262a3432971a720aed832d6568f3a18341869f6c0  docs/evidence/CYB-91-elastic-esql-report.md
