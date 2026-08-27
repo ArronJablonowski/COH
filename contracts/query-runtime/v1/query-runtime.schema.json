@@ -29,7 +29,7 @@
     },
     "session": {
       "type":"object","additionalProperties":false,
-      "required":["schema_version","contract_version","session_digest","session_id","revision","query_id","query_digest","bounds_decision_digest","execution_digest","attempt_id","organization_id","tenant_id","actor_id","source_id","mode","effective_limits","usage","status","reason_code","next_page_number","poll_delay_millis","next_poll_at","job_handle_digest","vendor_provenance_digest","started_at","updated_at","deadline"],
+      "required":["schema_version","contract_version","session_digest","session_id","revision","query_id","query_digest","bounds_decision_digest","execution_digest","attempt_id","organization_id","tenant_id","case_id","actor_id","source_id","mode","effective_limits","usage","status","reason_code","next_page_number","poll_delay_millis","next_poll_at","job_handle_digest","vendor_provenance_digest","started_at","updated_at","deadline"],
       "properties":{
         "schema_version":{"const":"coh.query-runtime-session/v1"},"contract_version":{"const":"1.0.0"},
         "session_digest":{"$ref":"#/$defs/digest"},"previous_session_digest":{"$ref":"#/$defs/digest"},
@@ -37,7 +37,7 @@
         "query_id":{"$ref":"#/$defs/uuid_v7"},"query_digest":{"$ref":"#/$defs/digest"},
         "bounds_decision_digest":{"$ref":"#/$defs/digest"},"execution_digest":{"$ref":"#/$defs/digest"},
         "attempt_id":{"$ref":"#/$defs/uuid_v7"},"organization_id":{"$ref":"#/$defs/uuid_v7"},
-        "tenant_id":{"$ref":"#/$defs/uuid_v7"},"actor_id":{"$ref":"#/$defs/uuid_v7"},
+        "tenant_id":{"$ref":"#/$defs/uuid_v7"},"case_id":{"$ref":"#/$defs/uuid_v7"},"actor_id":{"$ref":"#/$defs/uuid_v7"},
         "source_id":{"$ref":"#/$defs/token"},"mode":{"enum":["interactive","export"]},
         "effective_limits":{"$ref":"#/$defs/limits"},"usage":{"$ref":"#/$defs/usage"},
         "status":{"enum":["running","complete","partial","truncated","canceled","uncertain","failed"]},

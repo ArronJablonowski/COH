@@ -59,6 +59,7 @@ type Session struct {
 	AttemptID                 string                `json:"attempt_id"`
 	OrganizationID            string                `json:"organization_id"`
 	TenantID                  string                `json:"tenant_id"`
+	CaseID                    string                `json:"case_id"`
 	ActorID                   string                `json:"actor_id"`
 	SourceID                  string                `json:"source_id"`
 	Mode                      string                `json:"mode"`

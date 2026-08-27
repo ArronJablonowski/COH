@@ -176,7 +176,7 @@ func operationContext(ctx context.Context, deadline, now time.Time) (context.Con
 }
 
 func streamFromSession(value queryruntime.Session) StreamRef {
-	return StreamRef{OrganizationID: value.OrganizationID, TenantID: value.TenantID, QueryID: value.QueryID, AttemptID: value.AttemptID}
+	return StreamRef{OrganizationID: value.OrganizationID, TenantID: value.TenantID, CaseID: value.CaseID, QueryID: value.QueryID, AttemptID: value.AttemptID}
 }
 
 func artifactRequest(command StartCommand, now time.Time) ArtifactRequest {
@@ -340,7 +340,7 @@ func validateStart(command StartCommand, now time.Time) error {
 	session := command.RuntimeSession
 	if session.Revision != 1 || session.QueryDigest != command.QueryDigest || session.BoundsDecisionDigest != command.BoundsDecisionDigest ||
 		session.ExecutionDigest != command.ExecutionDigest || session.OrganizationID != command.Case.OrganizationID ||
-		session.TenantID != command.Case.TenantID || session.ActorID != command.ActorID || session.SourceID != command.SourceID ||
+		session.TenantID != command.Case.TenantID || session.CaseID != command.Case.CaseID || session.ActorID != command.ActorID || session.SourceID != command.SourceID ||
 		session.Status != "running" {
 		return newError(Conflict, "start_lineage_invalid", nil)
 	}

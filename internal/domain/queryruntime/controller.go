@@ -93,7 +93,7 @@ func (controller *Controller) Start(ctx context.Context, request StartRequest) (
 	session := Session{SchemaVersion: SessionSchemaVersion, ContractVersion: ContractVersion,
 		SessionID: executionValue.AttemptID, Revision: 1, QueryID: queryValue.QueryID, QueryDigest: query.Digest(),
 		BoundsDecisionDigest: decision.DecisionDigest, ExecutionDigest: execution.Digest(), AttemptID: executionValue.AttemptID,
-		OrganizationID: queryValue.Scope.OrganizationID, TenantID: queryValue.Scope.TenantID,
+		OrganizationID: queryValue.Scope.OrganizationID, TenantID: queryValue.Scope.TenantID, CaseID: queryValue.Scope.CaseID,
 		ActorID: queryValue.Authority.ActorID, SourceID: queryValue.Scope.SourceID, Mode: profile.Mode,
 		EffectiveLimits: effective, Status: "running", ReasonCode: "execution_" + executionValue.Outcome,
 		NextPageNumber: 1, PollDelayMillis: uint64(profile.MinimumPollInterval / time.Millisecond),

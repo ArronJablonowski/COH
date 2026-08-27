@@ -39,6 +39,7 @@ type CaseBinding struct {
 type StreamRef struct {
 	OrganizationID string `json:"organization_id"`
 	TenantID       string `json:"tenant_id"`
+	CaseID         string `json:"case_id"`
 	QueryID        string `json:"query_id"`
 	AttemptID      string `json:"attempt_id"`
 }

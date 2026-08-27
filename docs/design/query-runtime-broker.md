@@ -22,7 +22,7 @@ and a verified allowed CYB-84 decision bound to the exact query digest.
 | Vendor over-return | Cumulative rows, bytes, duration, pages, slices, and cost are checked before a page is released. An offending page is withheld, cancellation is attempted, and the outcome is explicit `partial/truncated`. |
 | Hidden partial result | Broker completeness combines vendor status with broker cap/cancellation state. `complete` is possible only when the vendor confirms completion and every broker invariant holds. |
 | Rate race or process fan-out | A narrow authoritative rate-reservation port performs atomic tenant/source/actor/mode reservation. An in-process counter is not production authority. |
-| Page replay or substitution | Session identity binds query, decision, execution, profile, limits, and prior transition digest. Exact page replay is idempotent; changed reuse of a page number or handle is conflict. |
+| Page replay or substitution | Session identity binds organization, tenant, case, query, decision, execution, profile, limits, and prior transition digest. Exact page replay is idempotent; changed reuse of a page number or handle is conflict. |
 | Cancellation race | One canonical cancellation intent is idempotent. Completion and cancellation reconcile from validated vendor records; uncertainty is retained and never relabeled complete. |
 | Timeout or caller cancellation | The caller stops promptly. A short detached cancellation attempt may limit vendor work, but no late page is published to the canceled call. |
 | Invalid cumulative statistics | Statistics must be monotonic, internally consistent, and bound to the exact query/attempt. Regression, overflow, or impossible completeness denies the transition. |

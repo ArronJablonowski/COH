@@ -33,7 +33,7 @@ func validateSession(value Session, digestEmpty bool) error {
 		!uuidPattern.MatchString(value.SessionID) || value.Revision == 0 || !uuidPattern.MatchString(value.QueryID) ||
 		!digestPattern.MatchString(value.QueryDigest) || !digestPattern.MatchString(value.BoundsDecisionDigest) ||
 		!digestPattern.MatchString(value.ExecutionDigest) || !uuidPattern.MatchString(value.AttemptID) ||
-		!uuidPattern.MatchString(value.OrganizationID) || !uuidPattern.MatchString(value.TenantID) ||
+		!uuidPattern.MatchString(value.OrganizationID) || !uuidPattern.MatchString(value.TenantID) || !uuidPattern.MatchString(value.CaseID) ||
 		!uuidPattern.MatchString(value.ActorID) || !tokenPattern.MatchString(value.SourceID) ||
 		!oneOf(value.Mode, "interactive", "export") || !validLimits(value.EffectiveLimits) ||
 		!oneOf(value.Status, "running", "complete", "partial", "truncated", "canceled", "uncertain", "failed") ||

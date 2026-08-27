@@ -29,7 +29,7 @@ func validCaseBinding(value CaseBinding) bool {
 	return uuidPattern.MatchString(value.OrganizationID) && uuidPattern.MatchString(value.TenantID) && uuidPattern.MatchString(value.CaseID)
 }
 func validStream(value StreamRef) bool {
-	return uuidPattern.MatchString(value.OrganizationID) && uuidPattern.MatchString(value.TenantID) && uuidPattern.MatchString(value.QueryID) && uuidPattern.MatchString(value.AttemptID)
+	return uuidPattern.MatchString(value.OrganizationID) && uuidPattern.MatchString(value.TenantID) && uuidPattern.MatchString(value.CaseID) && uuidPattern.MatchString(value.QueryID) && uuidPattern.MatchString(value.AttemptID)
 }
 
 func validArtifact(value ArtifactBinding) bool {
@@ -46,7 +46,7 @@ func validateRecord(value Record, digestsEmpty bool) error {
 		(digestsEmpty && (value.RecordDigest != "" || value.ProvenanceDigest != "" || value.TransitionID != "")) ||
 		(!digestsEmpty && (!validDigest(value.RecordDigest) || !validDigest(value.ProvenanceDigest) || !validDigest(value.TransitionID))) ||
 		value.Revision == 0 || !validStream(value.Stream) || !validCaseBinding(value.Case) ||
-		value.Stream.OrganizationID != value.Case.OrganizationID || value.Stream.TenantID != value.Case.TenantID ||
+		value.Stream.OrganizationID != value.Case.OrganizationID || value.Stream.TenantID != value.Case.TenantID || value.Stream.CaseID != value.Case.CaseID ||
 		!uuidPattern.MatchString(value.ActorID) || !tokenPattern.MatchString(value.SourceID) || !validDigest(value.QueryDigest) ||
 		!validDigest(value.BoundsDecisionDigest) || !validDigest(value.ExecutionDigest) || !versionPattern.MatchString(value.ValidatorVersion) ||
 		!validDigest(value.ValidatorProvenanceDigest) || !validTimestamp(value.IntervalStart) || !validTimestamp(value.IntervalEnd) ||

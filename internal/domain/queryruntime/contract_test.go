@@ -18,7 +18,7 @@ func TestCanonicalSessionFixtureAndStrictDecoder(t *testing.T) {
 		t.Fatal(err)
 	}
 	session, canonical, err := DecodeSession(context.Background(), input)
-	if err != nil || session.SessionDigest != "sha256:be5ee732472726d9b0796fed5c5a35d0485fe90d6b6241b59e6f266f472778fd" ||
+	if err != nil || session.SessionDigest != "sha256:a8fb6d8f09d38d1e6da1684c410e1dbc806b86b4941fd31c692fef808c94bbcd" ||
 		!bytes.Equal(bytes.TrimSpace(input), canonical) {
 		t.Fatalf("digest=%s canonical=%t err=%v", session.SessionDigest, bytes.Equal(bytes.TrimSpace(input), canonical), err)
 	}
@@ -39,6 +39,7 @@ func TestStartBindsAdmissionExecutionAndNarrowProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	if session.Status != "running" || session.Revision != 1 || session.QueryDigest != request.Admission.Query.Digest() ||
+		session.CaseID != request.Admission.Decision.CaseID ||
 		session.BoundsDecisionDigest != request.Admission.Decision.DecisionDigest ||
 		session.ExecutionDigest != request.Execution.Digest() || session.EffectiveLimits != testConfig().Interactive.Limits ||
 		len(recorder.sessions) != 1 || VerifySession(session) != nil {

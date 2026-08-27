@@ -140,7 +140,7 @@ func signedSession(revision uint64, previous string, status, reason string, usag
 	value := queryruntime.Session{SchemaVersion: queryruntime.SessionSchemaVersion, ContractVersion: queryruntime.ContractVersion,
 		SessionID: id("6"), Revision: revision, PreviousSessionDigest: previous, QueryID: id("1"), QueryDigest: digest("query"),
 		BoundsDecisionDigest: digest("bounds"), ExecutionDigest: digest("execution"), AttemptID: id("7"), OrganizationID: id("2"),
-		TenantID: id("3"), ActorID: id("5"), SourceID: "sentinel-prod", Mode: "interactive",
+		TenantID: id("3"), CaseID: id("4"), ActorID: id("5"), SourceID: "sentinel-prod", Mode: "interactive",
 		EffectiveLimits: queryconnector.Limits{MaximumRows: 100, MaximumBytes: 1000, MaximumDurationMillis: 60000, MaximumPages: 3, MaximumSlices: 2, MaximumCostMillionths: 100, RequestsPerMinute: 5},
 		Usage:           usage, Status: status, ReasonCode: reason, NextPageNumber: 1, PollDelayMillis: 100,
 		NextPollAt: evidenceNow.Add(time.Duration(revision-1) * time.Second).Format(timestampLayout), JobHandleDigest: digest("handle"),
