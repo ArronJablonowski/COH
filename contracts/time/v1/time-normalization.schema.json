@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/time/v1/time-normalization.schema.json",
+  "title": "COH time normalization records v1",
+  "oneOf": [
+    {"$ref": "#/$defs/command"},
+    {"$ref": "#/$defs/record"},
+    {"$ref": "#/$defs/comparison"},
+    {"$ref": "#/$defs/receipt"}
+  ],
+  "$defs": {
+    "command": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "operation_id", "idempotency_key", "case", "source_binding", "original_time", "parser", "timezone", "calibration", "evidence_state", "completeness", "requested_at", "deadline"],
+      "properties": {
+        "schema_version": {"const": "coh.time-normalization-command/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "operation_id": {"$ref": "#/$defs/uuid_v7"},
+        "idempotency_key": {"$ref": "#/$defs/digest"},
+        "case": {"$ref": "#/$defs/case"},
+        "source_binding": {"$ref": "#/$defs/source_binding"},
+        "original_time": {"$ref": "#/$defs/original_time"},
+        "parser": {"$ref": "#/$defs/parser_identity"},
+        "timezone": {"$ref": "#/$defs/timezone_assertion"},
+        "calibration": {"$ref": "#/$defs/calibration"},
+        "evidence_state": {"$ref": "#/$defs/evidence_state"},
+        "completeness": {"$ref": "#/$defs/completeness"},
+        "requested_at": {"$ref": "#/$defs/timestamp"},
+        "deadline": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "record_id", "operation_id", "command_digest", "case", "source_binding", "original_time", "parser", "timezone_result", "calibration", "candidate_utc", "normalized_utc", "interval", "evidence_state", "completeness", "outcome", "reason_code", "created_at"],
+      "properties": {
+        "schema_version": {"const": "coh.time-normalization-record/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "record_id": {"$ref": "#/$defs/uuid_v7"},
+        "operation_id": {"$ref": "#/$defs/uuid_v7"},
+        "command_digest": {"$ref": "#/$defs/digest"},
+        "case": {"$ref": "#/$defs/case"},
+        "source_binding": {"$ref": "#/$defs/source_binding"},
+        "original_time": {"$ref": "#/$defs/original_time"},
+        "parser": {"$ref": "#/$defs/parser_identity"},
+        "timezone_result": {"$ref": "#/$defs/timezone_result"},
+        "calibration": {"$ref": "#/$defs/calibration"},
+        "candidate_utc": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/timestamp"}
+        },
+        "normalized_utc": {"oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]},
+        "interval": {"$ref": "#/$defs/interval"},
+        "evidence_state": {"$ref": "#/$defs/evidence_state"},
+        "completeness": {"$ref": "#/$defs/completeness"},
+        "outcome": {"$ref": "#/$defs/normalization_outcome"},
+        "reason_code": {"$ref": "#/$defs/normalization_reason"},
+        "created_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"outcome": {"const": "normalized"}}, "required": ["outcome"]},
+          "then": {
+            "properties": {
+              "reason_code": {"const": "normalized"},
+              "interval": {"$ref": "#/$defs/bounded_interval"},
+              "candidate_utc": {"minItems": 1},
+              "normalized_utc": {"$ref": "#/$defs/timestamp"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"enum": ["unresolved", "denied", "canceled", "timeout", "dependency_unavailable"]}}, "required": ["outcome"]},
+          "then": {
+            "properties": {
+              "interval": {"$ref": "#/$defs/unbounded_interval"},
+              "normalized_utc": {"type": "null"}
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "comparison": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "comparison_id", "case", "left", "right", "outcome", "confidence", "rationale", "gap_nanoseconds", "created_at"],
+      "properties": {
+        "schema_version": {"const": "coh.time-comparison/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "comparison_id": {"$ref": "#/$defs/uuid_v7"},
+        "case": {"$ref": "#/$defs/case"},
+        "left": {"$ref": "#/$defs/record_ref"},
+        "right": {"$ref": "#/$defs/record_ref"},
+        "outcome": {"enum": ["before", "after", "equal", "overlap", "duplicate", "conflicting", "unknown"]},
+        "confidence": {"enum": ["exact", "bounded", "ambiguous", "unknown"]},
+        "rationale": {"enum": ["disjoint_intervals", "equal_singleton", "intersecting_intervals", "same_binding_same_record", "same_binding_incompatible_facts", "unbounded_interval", "unresolved_input"]},
+        "gap_nanoseconds": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 9223372036854775807}, {"type": "null"}]},
+        "created_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"outcome": {"enum": ["before", "after"]}}, "required": ["outcome"]},
+          "then": {"properties": {"gap_nanoseconds": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807}, "rationale": {"const": "disjoint_intervals"}}}
+        },
+        {
+          "if": {"properties": {"outcome": {"enum": ["equal", "overlap", "duplicate", "conflicting", "unknown"]}}, "required": ["outcome"]},
+          "then": {"properties": {"gap_nanoseconds": {"type": "null"}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "receipt": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "operation_id", "idempotency_key", "command_digest", "record", "outcome", "reason_code", "audit_digest", "previous_provenance_digest", "provenance_digest", "created_at", "updated_at"],
+      "properties": {
+        "schema_version": {"const": "coh.time-normalization-receipt/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "operation_id": {"$ref": "#/$defs/uuid_v7"},
+        "idempotency_key": {"$ref": "#/$defs/digest"},
+        "command_digest": {"$ref": "#/$defs/digest"},
+        "record": {"oneOf": [{"$ref": "#/$defs/record_ref"}, {"type": "null"}]},
+        "outcome": {"$ref": "#/$defs/normalization_outcome"},
+        "reason_code": {"$ref": "#/$defs/normalization_reason"},
+        "audit_digest": {"$ref": "#/$defs/digest"},
+        "previous_provenance_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "updated_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"}
+      },
+      "additionalProperties": false
+    },
+    "source_binding": {
+      "type": "object",
+      "required": ["envelope_id", "envelope_digest", "artifact_digest", "manifest_digest", "ingest_receipt_digest", "source_provenance_digest", "source_identity_digest", "field_selector", "deduplication_digest"],
+      "properties": {
+        "envelope_id": {"$ref": "#/$defs/uuid_v7"},
+        "envelope_digest": {"$ref": "#/$defs/digest"},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "manifest_digest": {"$ref": "#/$defs/digest"},
+        "ingest_receipt_digest": {"$ref": "#/$defs/digest"},
+        "source_provenance_digest": {"$ref": "#/$defs/digest"},
+        "source_identity_digest": {"$ref": "#/$defs/digest"},
+        "field_selector": {"$ref": "#/$defs/field_selector"},
+        "deduplication_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "original_time": {
+      "type": "object",
+      "required": ["text", "format", "precision"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "format": {"$ref": "#/$defs/token"},
+        "precision": {"$ref": "#/$defs/precision"}
+      },
+      "additionalProperties": false
+    },
+    "parser_identity": {
+      "type": "object",
+      "required": ["name", "version", "digest"],
+      "properties": {
+        "name": {"$ref": "#/$defs/token"},
+        "version": {"$ref": "#/$defs/opaque"},
+        "digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "timezone_assertion": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "name", "offset_minutes", "tzdata_version", "tzdata_digest"],
+          "properties": {
+            "kind": {"const": "explicit_offset"},
+            "name": {"const": ""},
+            "offset_minutes": {"type": "integer", "minimum": -840, "maximum": 840},
+            "tzdata_version": {"const": ""},
+            "tzdata_digest": {"const": ""}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "name", "offset_minutes", "tzdata_version", "tzdata_digest"],
+          "properties": {
+            "kind": {"const": "iana"},
+            "name": {"$ref": "#/$defs/timezone_name"},
+            "offset_minutes": {"oneOf": [{"type": "integer", "minimum": -840, "maximum": 840}, {"type": "null"}]},
+            "tzdata_version": {"$ref": "#/$defs/opaque"},
+            "tzdata_digest": {"$ref": "#/$defs/digest"}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "name", "offset_minutes", "tzdata_version", "tzdata_digest"],
+          "properties": {
+            "kind": {"const": "missing"},
+            "name": {"const": ""},
+            "offset_minutes": {"type": "null"},
+            "tzdata_version": {"const": ""},
+            "tzdata_digest": {"const": ""}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "timezone_result": {
+      "type": "object",
+      "required": ["assertion", "dst_state", "resolved_offsets_minutes"],
+      "properties": {
+        "assertion": {"$ref": "#/$defs/timezone_assertion"},
+        "dst_state": {"enum": ["exact", "fold", "gap", "not_applicable", "unresolved"]},
+        "resolved_offsets_minutes": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": -840, "maximum": 840}
+        }
+      },
+      "additionalProperties": false
+    },
+    "calibration": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["state", "clock_kind", "identity", "identity_digest", "estimate_nanoseconds", "radius_nanoseconds"],
+          "properties": {
+            "state": {"const": "known"},
+            "clock_kind": {"enum": ["source", "collector", "server", "device"]},
+            "identity": {"$ref": "#/$defs/opaque"},
+            "identity_digest": {"$ref": "#/$defs/digest"},
+            "estimate_nanoseconds": {"type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807},
+            "radius_nanoseconds": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["state", "clock_kind", "identity", "identity_digest", "estimate_nanoseconds", "radius_nanoseconds"],
+          "properties": {
+            "state": {"const": "unknown"},
+            "clock_kind": {"const": "unknown"},
+            "identity": {"const": ""},
+            "identity_digest": {"const": ""},
+            "estimate_nanoseconds": {"type": "null"},
+            "radius_nanoseconds": {"type": "null"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "interval": {"oneOf": [{"$ref": "#/$defs/bounded_interval"}, {"$ref": "#/$defs/unbounded_interval"}]},
+    "bounded_interval": {
+      "type": "object",
+      "required": ["kind", "earliest_utc", "latest_utc"],
+      "properties": {
+        "kind": {"const": "bounded"},
+        "earliest_utc": {"$ref": "#/$defs/timestamp"},
+        "latest_utc": {"$ref": "#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "unbounded_interval": {
+      "type": "object",
+      "required": ["kind", "earliest_utc", "latest_utc"],
+      "properties": {
+        "kind": {"const": "unbounded"},
+        "earliest_utc": {"type": "null"},
+        "latest_utc": {"type": "null"}
+      },
+      "additionalProperties": false
+    },
+    "record_ref": {
+      "type": "object",
+      "required": ["record_id", "record_digest", "deduplication_digest"],
+      "properties": {
+        "record_id": {"$ref": "#/$defs/uuid_v7"},
+        "record_digest": {"$ref": "#/$defs/digest"},
+        "deduplication_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "normalization_outcome": {"enum": ["normalized", "unresolved", "denied", "canceled", "timeout", "dependency_unavailable"]},
+    "normalization_reason": {"enum": ["normalized", "timezone_unresolved", "timezone_mismatch", "dst_gap", "precision_unknown", "calibration_unresolved", "invalid_source_text", "parser_not_registered", "format_not_supported", "evidence_binding_mismatch", "evidence_state_invalid", "arithmetic_overflow", "interval_invalid", "idempotency_conflict", "context_canceled", "context_deadline", "dependency_unavailable"]},
+    "precision": {"enum": ["nanosecond", "microsecond", "millisecond", "second", "minute", "hour", "day", "unknown"]},
+    "evidence_state": {"enum": ["observed", "negative", "gap", "partial", "conflicting"]},
+    "completeness": {"enum": ["complete", "partial", "truncated", "unavailable", "unknown"]},
+    "field_selector": {"type": "string", "pattern": "^(original|ocsf|ecs)(\\.[A-Za-z0-9_-]{1,128}){1,16}$", "maxLength": 1024},
+    "timezone_name": {"type": "string", "pattern": "^[A-Za-z0-9_+.-]{1,64}(/[A-Za-z0-9_+.-]{1,64}){1,3}$", "maxLength": 256},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "opaque": {"type": "string", "minLength": 1, "maxLength": 256},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{9}Z$"}
+  }
+}
