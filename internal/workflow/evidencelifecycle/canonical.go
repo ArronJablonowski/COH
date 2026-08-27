@@ -24,6 +24,13 @@ func CanonicalManifest(value ExportManifest) ([]byte, error) {
 	return canonicalValue(value)
 }
 
+func CanonicalDetachedSignature(value DetachedSignature) ([]byte, error) {
+	if err := ValidateDetachedSignature(value); err != nil {
+		return nil, err
+	}
+	return canonicalValue(value)
+}
+
 func IntentBindingDigest(value Command) (string, error) {
 	canonical, err := CanonicalCommand(value)
 	if err != nil {
