@@ -23,3 +23,7 @@ Compatibility, signature, selection, mapping-language, reversibility,
 coverage, migration, recovery, rollback, and privacy semantics are frozen in
 `docs/design/normalization-mapping-registry.md`.
 
+`fixtures/vendor-corpus.json` is the executable vendor corpus. It binds each
+case to the canonical Windows Security 4624 envelope and drives complete,
+unmapped-denial, declared-loss, source-substitution, registry-revocation, and
+signature-revocation paths through the registry service.

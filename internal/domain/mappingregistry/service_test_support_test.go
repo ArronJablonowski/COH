@@ -55,19 +55,20 @@ func (fixture *serviceFixture) execute(ctx context.Context) (Receipt, error) {
 }
 
 type memoryMappingStore struct {
-	mu              sync.Mutex
-	digests         map[string]string
-	active          map[string]bool
-	receipts        map[string]Receipt
-	outcomes        map[string]Outcome
-	mappings        map[string]SignedMapping
-	snapshots       []RegistrySnapshot
-	commits         []Commit
-	denials         []Commit
-	failAfterCommit bool
-	evidenceErr     error
-	schemaErr       error
-	signatureErr    error
+	mu               sync.Mutex
+	digests          map[string]string
+	active           map[string]bool
+	receipts         map[string]Receipt
+	outcomes         map[string]Outcome
+	mappings         map[string]SignedMapping
+	snapshots        []RegistrySnapshot
+	commits          []Commit
+	denials          []Commit
+	failAfterCommit  bool
+	evidenceErr      error
+	schemaErr        error
+	signatureErr     error
+	signatureRevoked bool
 }
 
 func (store *memoryMappingStore) VerifyBinding(context.Context, Case, SourceBinding) error {
@@ -88,7 +89,7 @@ func (store *memoryMappingStore) VerifySignature(_ context.Context, request Sign
 	if store.signatureErr != nil {
 		return SignatureDecision{}, store.signatureErr
 	}
-	return SignatureDecision{Verified: true, TrustRevision: request.KeyRevision, Revocation: request.Revocation}, nil
+	return SignatureDecision{Verified: true, Revoked: store.signatureRevoked, TrustRevision: request.KeyRevision, Revocation: request.Revocation}, nil
 }
 
 func (store *memoryMappingStore) LoadReceipt(_ context.Context, key string) (Receipt, bool, error) {

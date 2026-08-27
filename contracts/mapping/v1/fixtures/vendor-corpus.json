@@ -1,0 +1,59 @@
+{
+  "schema_version": "coh.mapping-vendor-corpus/v1",
+  "cases": [
+    {
+      "name": "windows-security-4624-complete",
+      "envelope": "../../../normalization/v1/fixtures/valid/event.canonical.json",
+      "mutation": "none",
+      "expected_code": "",
+      "expected_status": "applied",
+      "expected_reason": "applied",
+      "expected_coverage": "complete"
+    },
+    {
+      "name": "windows-security-4624-unknown-field-denied",
+      "envelope": "../../../normalization/v1/fixtures/valid/event.canonical.json",
+      "mutation": "remove-message-rule",
+      "expected_code": "denied",
+      "expected_status": "denied",
+      "expected_reason": "unmapped_field_denied",
+      "expected_coverage": "none"
+    },
+    {
+      "name": "windows-security-4624-declared-loss",
+      "envelope": "../../../normalization/v1/fixtures/valid/event.canonical.json",
+      "mutation": "lossy-event-code",
+      "expected_code": "",
+      "expected_status": "applied",
+      "expected_reason": "applied",
+      "expected_coverage": "partial"
+    },
+    {
+      "name": "windows-security-4624-source-substitution",
+      "envelope": "../../../normalization/v1/fixtures/valid/event.canonical.json",
+      "mutation": "source-mismatch",
+      "expected_code": "denied",
+      "expected_status": "denied",
+      "expected_reason": "source_mismatch",
+      "expected_coverage": "none"
+    },
+    {
+      "name": "windows-security-4624-registry-revoked",
+      "envelope": "../../../normalization/v1/fixtures/valid/event.canonical.json",
+      "mutation": "registry-revoked",
+      "expected_code": "denied",
+      "expected_status": "denied",
+      "expected_reason": "manifest_revoked",
+      "expected_coverage": "none"
+    },
+    {
+      "name": "windows-security-4624-signature-revoked",
+      "envelope": "../../../normalization/v1/fixtures/valid/event.canonical.json",
+      "mutation": "signature-revoked",
+      "expected_code": "denied",
+      "expected_status": "denied",
+      "expected_reason": "manifest_revoked",
+      "expected_coverage": "none"
+    }
+  ]
+}
