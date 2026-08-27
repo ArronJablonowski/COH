@@ -78,7 +78,7 @@
       "type": "object",
       "required": ["maximum_manifest_bytes", "maximum_signature_bytes", "maximum_artifacts", "maximum_artifact_bytes", "maximum_package_bytes"],
       "properties": {
-        "maximum_manifest_bytes": {"type": "integer", "minimum": 1, "maximum": 16777216},
+        "maximum_manifest_bytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
         "maximum_signature_bytes": {"type": "integer", "minimum": 64, "maximum": 4096},
         "maximum_artifacts": {"type": "integer", "minimum": 1, "maximum": 4096},
         "maximum_artifact_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
@@ -206,7 +206,7 @@
         "magic": {"const": "COHEVPKG1"},
         "package_version": {"const": "coh.evidence-package/v1"},
         "compression": {"const": "none"},
-        "manifest_length": {"type": "integer", "minimum": 1, "maximum": 16777216},
+        "manifest_length": {"type": "integer", "minimum": 1, "maximum": 1048576},
         "signature_length": {"type": "integer", "minimum": 64, "maximum": 4096},
         "artifact_count": {"type": "integer", "minimum": 1, "maximum": 4096},
         "package_length": {"type": "integer", "minimum": 1, "maximum": 4398046511104},
@@ -369,7 +369,7 @@
     },
     "record": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "operation_id", "case", "operation", "command_digest", "intent_digest", "decision_digest", "revocation_digest", "artifact_set_digest", "package_digest", "manifest_digest", "signature_digest", "verification_report_digest", "lifecycle_receipt_digest", "authorization_custody_receipt_digest", "completion_custody_receipt_digest", "disposition_attestation_digest", "audit_event_digest", "completed_at", "previous_provenance_digest", "provenance_digest", "record_digest"],
+      "required": ["schema_version", "contract_version", "operation_id", "case", "operation", "command_digest", "intent_digest", "decision_digest", "revocation_digest", "artifacts", "artifact_set_digest", "package_digest", "manifest_digest", "signature_digest", "verification_report_digest", "lifecycle_receipt_digest", "authorization_custody_receipt_digest", "completion_custody_receipt_digest", "disposition_attestation_digest", "audit_event_digest", "completed_at", "previous_provenance_digest", "provenance_digest", "record_digest"],
       "properties": {
         "schema_version": {"const": "coh.evidence-lifecycle-record/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -380,6 +380,7 @@
         "intent_digest": {"$ref": "#/$defs/digest"},
         "decision_digest": {"$ref": "#/$defs/digest"},
         "revocation_digest": {"$ref": "#/$defs/digest"},
+        "artifacts": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/evidence_reference"}},
         "artifact_set_digest": {"$ref": "#/$defs/nullable_digest"},
         "package_digest": {"$ref": "#/$defs/nullable_digest"},
         "manifest_digest": {"$ref": "#/$defs/nullable_digest"},
@@ -399,7 +400,7 @@
     },
     "receipt": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "request_id", "operation_id", "case", "operation", "idempotency_digest", "intent_digest", "decision_digest", "record_digest", "artifact_set_digest", "package_digest", "manifest_digest", "signature_digest", "verification_report_digest", "lifecycle_receipt_digest", "completion_custody_receipt_digest", "disposition_attestation_digest", "audit_event_digest", "provenance_digest", "created_at", "receipt_digest"],
+      "required": ["schema_version", "contract_version", "request_id", "operation_id", "case", "operation", "idempotency_digest", "intent_digest", "decision_digest", "record_digest", "artifacts", "artifact_set_digest", "package_digest", "manifest_digest", "signature_digest", "verification_report_digest", "lifecycle_receipt_digest", "completion_custody_receipt_digest", "disposition_attestation_digest", "audit_event_digest", "provenance_digest", "created_at", "receipt_digest"],
       "properties": {
         "schema_version": {"const": "coh.evidence-lifecycle-receipt/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -411,6 +412,7 @@
         "intent_digest": {"$ref": "#/$defs/digest"},
         "decision_digest": {"$ref": "#/$defs/digest"},
         "record_digest": {"$ref": "#/$defs/digest"},
+        "artifacts": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/evidence_reference"}},
         "artifact_set_digest": {"$ref": "#/$defs/nullable_digest"},
         "package_digest": {"$ref": "#/$defs/nullable_digest"},
         "manifest_digest": {"$ref": "#/$defs/nullable_digest"},

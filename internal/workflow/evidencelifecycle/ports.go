@@ -63,8 +63,10 @@ type CustodyRequest struct {
 	ActorID                      string
 	ActorRevision                uint64
 	ArtifactSetDigest            string
+	Subjects                     []EvidenceReference
 	ManifestDigest               *string
 	PackageDigest                *string
+	SourceDigest                 *string
 	PurposeDigest                *string
 	DestinationDigest            *string
 	ReasonDigest                 *string
@@ -83,6 +85,12 @@ type CustodyProof struct {
 	RecordDigest  string
 	AuditDigest   string
 	Head          CustodyHead
+}
+
+type CustodyProofSet struct {
+	ReceiptSetDigest string
+	Proofs           []CustodyProof
+	Head             CustodyHead
 }
 
 type CustodyVerification struct {
@@ -132,10 +140,18 @@ type QuarantinedPackage struct {
 }
 
 type ImportRequest struct {
-	Reference    string
-	SourceDigest string
-	Limits       PackageLimits
-	Deadline     time.Time
+	Reference     string
+	SourceDigest  string
+	PackageDigest string
+	Limits        PackageLimits
+	Deadline      time.Time
+}
+
+type StagedImportArtifact struct {
+	Ordinal            uint16
+	ArtifactDigest     string
+	Reference          string
+	VerificationDigest string
 }
 
 type VerifiedImport struct {
@@ -143,15 +159,18 @@ type VerifiedImport struct {
 	Manifest     ExportManifest
 	Signature    DetachedSignature
 	Verification ImportVerification
+	Staged       []StagedImportArtifact
 }
 
 type ImportPublicationRequest struct {
-	Case          domain.CaseRef
-	ActorID       string
-	ActorRevision uint64
-	Verified      VerifiedImport
-	PolicyDigest  string
-	Deadline      time.Time
+	RequestID      string
+	IdempotencyKey string
+	Case           domain.CaseRef
+	ActorID        string
+	ActorRevision  uint64
+	Verified       VerifiedImport
+	PolicyDigest   string
+	Deadline       time.Time
 }
 
 type PublishedImport struct {
@@ -193,7 +212,8 @@ type RedactionResolver interface {
 
 type Custody interface {
 	LoadCustodyHead(context.Context, domain.CaseRef) (CustodyHead, error)
-	RecordLifecycle(context.Context, CustodyRequest) (CustodyProof, error)
+	RecordLifecycle(context.Context, CustodyRequest) (CustodyProofSet, error)
+	RecoverLifecycle(context.Context, domain.CaseRef, string) (CustodyProofSet, bool, error)
 	VerifyLifecycle(context.Context, domain.CaseRef, uint64, uint64) (CustodyVerification, error)
 }
 

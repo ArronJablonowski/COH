@@ -6,7 +6,7 @@ import (
 	"github.com/ArronJablonowski/COH/internal/domain/tamperaudit"
 )
 
-func buildExportResult(state exportState, idempotency string, authorization, completion CustodyProof,
+func buildExportResult(state exportState, idempotency string, authorization, completion CustodyProofSet,
 	lifecycle LifecycleProof, manifest ExportManifest, signature DetachedSignature, packaged QuarantinedPackage,
 	progress Progress) (Record, Receipt, Progress, tamperaudit.Event, string, error) {
 	signatureDigest, err := SignatureBindingDigest(signature)
@@ -22,11 +22,12 @@ func buildExportResult(state exportState, idempotency string, authorization, com
 	}
 	packageDigest, manifestDigest := packaged.PackageDigest, manifest.ManifestDigest
 	lifecycleDigest, authorizationDigest, completionDigest := lifecycle.ReceiptDigest,
-		authorization.ReceiptDigest, completion.ReceiptDigest
+		authorization.ReceiptSetDigest, completion.ReceiptSetDigest
 	record := Record{SchemaVersion: RecordSchemaVersion, ContractVersion: ContractVersion,
 		OperationID: progress.OperationID, Case: state.Command.Case, Operation: Export,
 		CommandDigest: progress.CommandDigest, IntentDigest: state.IntentDigest,
 		DecisionDigest: state.Decision.DecisionDigest, RevocationDigest: state.Decision.RevocationDigest,
+		Artifacts:         evidenceReferences(state.Evidence.Artifacts),
 		ArtifactSetDigest: state.Command.ArtifactSetDigest, PackageDigest: &packageDigest,
 		ManifestDigest: &manifestDigest, SignatureDigest: &signatureDigest,
 		LifecycleReceiptDigest: &lifecycleDigest, AuthorizationCustodyReceiptDigest: &authorizationDigest,
@@ -44,6 +45,7 @@ func buildExportResult(state exportState, idempotency string, authorization, com
 		RequestID: state.Command.RequestID, OperationID: progress.OperationID, Case: state.Command.Case,
 		Operation: Export, IdempotencyDigest: idempotency, IntentDigest: state.IntentDigest,
 		DecisionDigest: state.Decision.DecisionDigest, ArtifactSetDigest: state.Command.ArtifactSetDigest,
+		Artifacts:     evidenceReferences(state.Evidence.Artifacts),
 		PackageDigest: &packageDigest, ManifestDigest: &manifestDigest, SignatureDigest: &signatureDigest,
 		LifecycleReceiptDigest: &lifecycleDigest, CompletionCustodyReceiptDigest: &completionDigest,
 		ProvenanceDigest: record.ProvenanceDigest, CreatedAt: progress.UpdatedAt}
@@ -51,16 +53,18 @@ func buildExportResult(state exportState, idempotency string, authorization, com
 }
 
 func completedExportEvent(record Record, manifest ExportManifest, signatureDigest string,
-	authorization, completion CustodyProof, lifecycle LifecycleProof) (tamperaudit.Event, string, error) {
+	authorization, completion CustodyProofSet, lifecycle LifecycleProof) (tamperaudit.Event, string, error) {
 	precommit, err := RecordPrecommitDigest(record)
 	if err != nil {
 		return tamperaudit.Event{}, "", err
 	}
 	digests := []string{precommit, record.IntentDigest, record.DecisionDigest, record.RevocationDigest,
 		*record.ArtifactSetDigest, manifest.ManifestDigest, signatureDigest, *record.PackageDigest,
-		authorization.ReceiptDigest, authorization.RecordDigest, authorization.AuditDigest,
-		completion.ReceiptDigest, completion.RecordDigest, completion.AuditDigest,
+		authorization.ReceiptSetDigest, completion.ReceiptSetDigest,
 		lifecycle.ReceiptDigest, lifecycle.ProvenanceDigest, record.ProvenanceDigest}
+	for _, proof := range append(append([]CustodyProof(nil), authorization.Proofs...), completion.Proofs...) {
+		digests = append(digests, proof.ReceiptDigest, proof.RecordDigest, proof.AuditDigest, proof.Head.ChainHash)
+	}
 	sort.Strings(digests)
 	event := tamperaudit.Event{SchemaVersion: tamperaudit.EventSchemaVersion, ContractVersion: tamperaudit.ContractVersion,
 		EventID:        deterministicUUID("COH-EVIDENCE-LIFECYCLE-AUDIT-ID-V1\x00", record.OperationID+"\x00completed"),

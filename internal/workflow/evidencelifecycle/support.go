@@ -59,7 +59,7 @@ func sameHead(left, right CustodyHead) bool {
 }
 
 func validLimits(value PackageLimits) bool {
-	return value.MaximumManifestBytes > 0 && value.MaximumManifestBytes <= 16<<20 &&
+	return value.MaximumManifestBytes > 0 && value.MaximumManifestBytes <= 1<<20 &&
 		value.MaximumSignatureBytes >= 64 && value.MaximumSignatureBytes <= 4096 &&
 		value.MaximumArtifacts > 0 && value.MaximumArtifacts <= 4096 &&
 		value.MaximumArtifactBytes > 0 && value.MaximumArtifactBytes <= 1<<30 &&

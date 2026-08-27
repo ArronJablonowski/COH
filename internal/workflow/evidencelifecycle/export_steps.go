@@ -27,37 +27,38 @@ func (service *ExportService) plan(ctx context.Context, state exportState, idemp
 }
 
 func (service *ExportService) authorizeCustody(ctx context.Context, state exportState,
-	progress Progress) (CustodyProof, CustodyVerification, Progress, error) {
+	progress Progress) (CustodyProofSet, CustodyVerification, Progress, error) {
 	request := CustodyRequest{Operation: Export, Phase: Authorized, Case: state.Command.Case,
 		ActorID: state.Command.ActorID, ActorRevision: state.Command.ActorRevision,
 		ArtifactSetDigest: state.Evidence.ArtifactSetDigest, PurposeDigest: state.Command.PurposeDigest,
+		Subjects:          evidenceReferences(state.Evidence.Artifacts),
 		DestinationDigest: state.Command.DestinationDigest, PolicyDigest: state.Command.PolicyDigest,
 		ExpectedCaseRevision: state.Case.Revision, ExpectedHead: state.Command.ExpectedCustodyHead,
 		Deadline: state.Command.Deadline}
 	proof, err := service.custody.RecordLifecycle(ctx, request)
 	if err != nil {
-		return CustodyProof{}, CustodyVerification{}, Progress{}, mapExportDependency(ctx, "export_custody_authorization_unavailable", err)
+		return CustodyProofSet{}, CustodyVerification{}, Progress{}, mapExportDependency(ctx, "export_custody_authorization_unavailable", err)
 	}
-	if !validCustodyProof(proof, state.Command.Case, state.Command.ExpectedCustodyHead) {
-		return CustodyProof{}, CustodyVerification{}, Progress{}, newError(Denied, "export_custody_authorization_invalid", false, nil)
+	if !validCustodyProofSet(proof, state.Command.Case, state.Command.ExpectedCustodyHead, len(state.Evidence.Artifacts)) {
+		return CustodyProofSet{}, CustodyVerification{}, Progress{}, newError(Denied, "export_custody_authorization_invalid", false, nil)
 	}
 	verified, err := service.custody.VerifyLifecycle(ctx, state.Command.Case, 1, proof.Head.Sequence)
 	if err != nil {
-		return CustodyProof{}, CustodyVerification{}, Progress{},
+		return CustodyProofSet{}, CustodyVerification{}, Progress{},
 			mapExportDependency(ctx, "export_custody_authorization_verification_unavailable", err)
 	}
 	if !validCustodyVerification(verified, proof.Head) {
-		return CustodyProof{}, CustodyVerification{}, Progress{},
+		return CustodyProofSet{}, CustodyVerification{}, Progress{},
 			newError(Denied, "export_custody_authorization_verification_invalid", false, nil)
 	}
 	progress.Phase, progress.DecisionDigest, progress.RevocationDigest = Authorized,
 		&state.Decision.DecisionDigest, &state.Decision.RevocationDigest
-	progress.AuthorizationCustodyReceiptDigest = &proof.ReceiptDigest
+	progress.AuthorizationCustodyReceiptDigest = &proof.ReceiptSetDigest
 	stored, err := service.advanceProgress(ctx, state, progress)
 	return proof, verified, stored, err
 }
 
-func (service *ExportService) packageExport(ctx context.Context, state exportState, authorization CustodyProof,
+func (service *ExportService) packageExport(ctx context.Context, state exportState, authorization CustodyProofSet,
 	progress Progress) (ExportManifest, DetachedSignature, QuarantinedPackage, Progress, error) {
 	now := service.clock.Now()
 	if !validTime(now) || !now.Before(state.Command.Deadline) || !now.Before(state.Decision.ExpiresAt) {
@@ -139,32 +140,33 @@ func (service *ExportService) packageExport(ctx context.Context, state exportSta
 	return manifest, signature, packaged, stored, err
 }
 
-func (service *ExportService) completeCustody(ctx context.Context, state exportState, authorization CustodyProof,
+func (service *ExportService) completeCustody(ctx context.Context, state exportState, authorization CustodyProofSet,
 	manifest ExportManifest, signature DetachedSignature, packaged QuarantinedPackage,
-	progress Progress) (CustodyProof, Progress, error) {
+	progress Progress) (CustodyProofSet, Progress, error) {
 	signatureDigest, _ := SignatureBindingDigest(signature)
 	request := CustodyRequest{Operation: Export, Phase: Completed, Case: state.Command.Case,
 		ActorID: state.Command.ActorID, ActorRevision: state.Command.ActorRevision,
 		ArtifactSetDigest: state.Evidence.ArtifactSetDigest, ManifestDigest: &manifest.ManifestDigest,
+		Subjects:      evidenceReferences(state.Evidence.Artifacts),
 		PackageDigest: &packaged.PackageDigest, PurposeDigest: state.Command.PurposeDigest,
 		DestinationDigest: state.Command.DestinationDigest, SignatureDigest: &signatureDigest,
-		PriorAuthorizationDigest: &authorization.ReceiptDigest, PolicyDigest: state.Command.PolicyDigest,
+		PriorAuthorizationDigest: &authorization.ReceiptSetDigest, PolicyDigest: state.Command.PolicyDigest,
 		ExpectedCaseRevision: state.Case.Revision, ExpectedHead: authorization.Head, Deadline: state.Command.Deadline}
 	proof, err := service.custody.RecordLifecycle(ctx, request)
 	if err != nil {
-		return CustodyProof{}, Progress{}, mapExportDependency(ctx, "export_custody_completion_unavailable", err)
+		return CustodyProofSet{}, Progress{}, mapExportDependency(ctx, "export_custody_completion_unavailable", err)
 	}
-	if !validCustodyProof(proof, state.Command.Case, authorization.Head) {
-		return CustodyProof{}, Progress{}, newError(Denied, "export_custody_completion_invalid", false, nil)
+	if !validCustodyProofSet(proof, state.Command.Case, authorization.Head, len(state.Evidence.Artifacts)) {
+		return CustodyProofSet{}, Progress{}, newError(Denied, "export_custody_completion_invalid", false, nil)
 	}
 	verified, err := service.custody.VerifyLifecycle(ctx, state.Command.Case, 1, proof.Head.Sequence)
 	if err != nil {
-		return CustodyProof{}, Progress{}, mapExportDependency(ctx, "export_custody_completion_verification_unavailable", err)
+		return CustodyProofSet{}, Progress{}, mapExportDependency(ctx, "export_custody_completion_verification_unavailable", err)
 	}
 	if !validCustodyVerification(verified, proof.Head) {
-		return CustodyProof{}, Progress{}, newError(Denied, "export_custody_completion_verification_invalid", false, nil)
+		return CustodyProofSet{}, Progress{}, newError(Denied, "export_custody_completion_verification_invalid", false, nil)
 	}
-	progress.Phase, progress.CompletionCustodyReceiptDigest = Custodied, &proof.ReceiptDigest
+	progress.Phase, progress.CompletionCustodyReceiptDigest = Custodied, &proof.ReceiptSetDigest
 	stored, err := service.advanceProgress(ctx, state, progress)
 	return proof, stored, err
 }

@@ -87,7 +87,7 @@ func TestEvidenceLifecyclePortsAreNarrow(t *testing.T) {
 		{reflect.TypeOf((*CaseLifecycle)(nil)).Elem(), []string{"ApplyCaseOperation"}},
 		{reflect.TypeOf((*EvidenceResolver)(nil)).Elem(), []string{"ResolveEvidenceSet"}},
 		{reflect.TypeOf((*RedactionResolver)(nil)).Elem(), []string{"VerifyRedactionReceipts"}},
-		{reflect.TypeOf((*Custody)(nil)).Elem(), []string{"LoadCustodyHead", "RecordLifecycle", "VerifyLifecycle"}},
+		{reflect.TypeOf((*Custody)(nil)).Elem(), []string{"LoadCustodyHead", "RecordLifecycle", "RecoverLifecycle", "VerifyLifecycle"}},
 		{reflect.TypeOf((*Signer)(nil)).Elem(), []string{"SignManifest"}},
 		{reflect.TypeOf((*SignatureVerifier)(nil)).Elem(), []string{"VerifyDetachedSignature"}},
 		{reflect.TypeOf((*PackageWriter)(nil)).Elem(), []string{"BuildPackage", "RecoverPackage", "VerifyPackage"}},
@@ -115,9 +115,9 @@ func TestEvidenceLifecycleRecordsExposeNoAuthorityOrUnsafeSurface(t *testing.T) 
 		ImportVerification{}, AuthorizationRequest{}, Decision{}, Progress{}, DispositionAttestation{},
 		Record{}, Receipt{}, PackageLimits{}, EvidenceReference{}, ManifestArtifact{}, Component{},
 		CaseSnapshot{}, LifecycleRequest{}, LifecycleProof{}, VerifiedEvidenceSet{}, RedactionProof{},
-		CustodyRequest{}, CustodyProof{}, CustodyVerification{}, QuarantinedPackage{}, VerifiedImport{},
+		CustodyRequest{}, CustodyProof{}, CustodyProofSet{}, CustodyVerification{}, QuarantinedPackage{}, VerifiedImport{},
 		PublishedImport{}, DispositionRequest{}, SignRequest{}, VerifySignatureRequest{}, PackageBuildRequest{},
-		ImportRequest{}, ImportPublicationRequest{}, Result{}} {
+		ImportRequest{}, StagedImportArtifact{}, ImportPublicationRequest{}, Result{}} {
 		assertSafeLifecycleType(t, reflect.TypeOf(value), map[reflect.Type]bool{})
 	}
 }

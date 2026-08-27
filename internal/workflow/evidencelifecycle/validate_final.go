@@ -19,6 +19,7 @@ func validateRecordShape(value Record, bound bool) error {
 	if value.SchemaVersion != RecordSchemaVersion || value.ContractVersion != ContractVersion ||
 		!uuidPattern.MatchString(value.OperationID) || !validCase(value.Case) || !validOperation(value.Operation) ||
 		!allDigests(value.CommandDigest, value.IntentDigest, value.DecisionDigest, value.RevocationDigest) ||
+		!validFinalArtifacts(value.Operation, value.Artifacts) ||
 		!allPointerDigests(value.ArtifactSetDigest, value.PackageDigest, value.ManifestDigest, value.SignatureDigest,
 			value.VerificationReportDigest, value.LifecycleReceiptDigest, value.AuthorizationCustodyReceiptDigest,
 			value.CompletionCustodyReceiptDigest, value.DispositionAttestationDigest) ||
@@ -50,6 +51,7 @@ func validateReceiptShape(value Receipt, bound bool) error {
 		!uuidPattern.MatchString(value.RequestID) || !uuidPattern.MatchString(value.OperationID) || !validCase(value.Case) ||
 		!validOperation(value.Operation) || !allDigests(value.IdempotencyDigest, value.IntentDigest, value.DecisionDigest,
 		value.RecordDigest, value.AuditEventDigest, value.ProvenanceDigest) ||
+		!validFinalArtifacts(value.Operation, value.Artifacts) ||
 		!allPointerDigests(value.ArtifactSetDigest, value.PackageDigest, value.ManifestDigest, value.SignatureDigest,
 			value.VerificationReportDigest, value.LifecycleReceiptDigest, value.CompletionCustodyReceiptDigest,
 			value.DispositionAttestationDigest) || !validTime(value.CreatedAt) ||
@@ -58,6 +60,26 @@ func validateReceiptShape(value Receipt, bound bool) error {
 		return newError(InvalidInput, "receipt_invalid", false, nil)
 	}
 	return nil
+}
+
+func validFinalArtifacts(operation Operation, values []EvidenceReference) bool {
+	if operation == PlaceHold || operation == ReleaseHold || operation == Delete {
+		return len(values) == 0
+	}
+	if len(values) == 0 || len(values) > 4096 {
+		return false
+	}
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		if !validEvidence(value) {
+			return false
+		}
+		if _, duplicate := seen[value.Artifact.Digest]; duplicate {
+			return false
+		}
+		seen[value.Artifact.Digest] = struct{}{}
+	}
+	return true
 }
 
 func validReceiptFields(value Receipt) bool {

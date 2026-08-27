@@ -49,7 +49,7 @@ func New(resolver KeyResolver) (*Adapter, error) {
 func (adapter *Adapter) SignManifest(ctx context.Context,
 	request evidencelifecycle.SignRequest) (evidencelifecycle.DetachedSignature, error) {
 	if ctx == nil || request.KeyID == "" || request.KeyRevision == 0 || request.ManifestDigest == "" ||
-		request.DecisionDigest == "" || len(request.CanonicalBytes) == 0 || len(request.CanonicalBytes) > 16<<20 {
+		request.DecisionDigest == "" || len(request.CanonicalBytes) == 0 || len(request.CanonicalBytes) > 1<<20 {
 		return evidencelifecycle.DetachedSignature{}, errors.New("evidence signing request is invalid")
 	}
 	key, err := adapter.resolver.ResolveSigningKey(ctx, request.KeyID, request.KeyRevision, request.DecisionDigest)
@@ -74,7 +74,7 @@ func (adapter *Adapter) SignManifest(ctx context.Context,
 func (adapter *Adapter) VerifyDetachedSignature(ctx context.Context,
 	request evidencelifecycle.VerifySignatureRequest) error {
 	if ctx == nil || request.ManifestDigest == "" || len(request.CanonicalBytes) == 0 ||
-		len(request.CanonicalBytes) > 16<<20 || request.Signature.ManifestDigest != request.ManifestDigest ||
+		len(request.CanonicalBytes) > 1<<20 || request.Signature.ManifestDigest != request.ManifestDigest ||
 		evidencelifecycle.ValidateDetachedSignature(request.Signature) != nil || request.TrustSnapshotDigest == "" ||
 		request.RevocationDigest == "" || request.At.IsZero() {
 		return errors.New("evidence signature verification request is invalid")

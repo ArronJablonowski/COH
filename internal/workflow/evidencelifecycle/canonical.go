@@ -76,6 +76,46 @@ func ComponentSetBindingDigest(values []Component) (string, error) {
 	return digest("COH-EVIDENCE-COMPONENT-SET-V1\x00", canonical), nil
 }
 
+func LineageBindingDigest(values []ManifestArtifact) (string, error) {
+	if !validManifestArtifacts(values, "restricted", 4096) {
+		return "", newError(InvalidInput, "lineage_invalid", false, nil)
+	}
+	type lineageEntry struct {
+		Ordinal               uint16
+		ArtifactDigest        string
+		ManifestDigest        string
+		ParentArtifactDigests []string
+		ParentManifestDigests []string
+	}
+	entries := make([]lineageEntry, len(values))
+	for index, value := range values {
+		entries[index] = lineageEntry{value.Ordinal, value.Reference.Artifact.Digest,
+			value.Reference.Manifest.Digest, value.ParentArtifactDigests, value.ParentManifestDigests}
+	}
+	canonical, err := canonicalValue(entries)
+	if err != nil {
+		return "", err
+	}
+	return digest("COH-EVIDENCE-LINEAGE-V1\x00", canonical), nil
+}
+
+func CustodyReceiptSetBindingDigest(values []CustodyProof) (string, error) {
+	if len(values) == 0 || len(values) > 4096 {
+		return "", newError(InvalidInput, "custody_proof_set_invalid", false, nil)
+	}
+	for index, value := range values {
+		if !allDigests(value.ReceiptDigest, value.RecordDigest, value.AuditDigest) || !validHead(value.Head) ||
+			index > 0 && value.Head.Sequence != values[index-1].Head.Sequence+1 {
+			return "", newError(InvalidInput, "custody_proof_set_invalid", false, nil)
+		}
+	}
+	canonical, err := canonicalValue(values)
+	if err != nil {
+		return "", err
+	}
+	return digest("COH-EVIDENCE-CUSTODY-RECEIPT-SET-V1\x00", canonical), nil
+}
+
 func ManifestBindingDigest(value ExportManifest) (string, error) {
 	copyValue := value
 	copyValue.ManifestDigest = ""

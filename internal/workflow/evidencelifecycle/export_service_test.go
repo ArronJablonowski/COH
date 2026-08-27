@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -135,6 +136,7 @@ type exportCases struct {
 	calls    *[]string
 	snapshot CaseSnapshot
 	proof    LifecycleProof
+	pending  bool
 }
 
 func (stub *exportCases) LoadCase(context.Context, domain.CaseRef) (CaseSnapshot, bool, error) {
@@ -147,7 +149,7 @@ func (stub *exportCases) ResolveLifecycleReceipt(context.Context, domain.CaseRef
 }
 func (stub *exportCases) HasIncompleteHoldRelease(context.Context, domain.CaseRef) (bool, error) {
 	*stub.calls = append(*stub.calls, "case.hold")
-	return false, nil
+	return stub.pending, nil
 }
 
 type exportLifecycle struct {
@@ -189,6 +191,7 @@ type exportCustody struct {
 	head      CustodyHead
 	now       time.Time
 	failPhase Phase
+	recovered map[string]CustodyProofSet
 }
 
 func (stub *exportCustody) LoadCustodyHead(context.Context, domain.CaseRef) (CustodyHead, error) {
@@ -202,18 +205,38 @@ func (stub *exportCustody) VerifyLifecycle(_ context.Context, scope domain.CaseR
 		CheckpointSequence: to, CheckpointSigningKeyRevision: 2,
 		CheckpointProofDigest: lifecycleDigest("checkpoint-proof"), ReportDigest: lifecycleDigest("custody-report")}, nil
 }
-func (stub *exportCustody) RecordLifecycle(_ context.Context, request CustodyRequest) (CustodyProof, error) {
+func (stub *exportCustody) RecordLifecycle(_ context.Context, request CustodyRequest) (CustodyProofSet, error) {
 	label := "custody." + string(request.Phase)
 	*stub.calls = append(*stub.calls, label)
 	if stub.failPhase == request.Phase {
-		return CustodyProof{}, errors.New("custody unavailable")
+		return CustodyProofSet{}, errors.New("custody unavailable")
 	}
-	last := stub.now
-	head := CustodyHead{Case: request.Case, Sequence: request.ExpectedHead.Sequence + 1,
-		ChainHash: lifecycleDigest(label + ".head"), LastRecordAt: &last}
-	stub.head = head
-	return CustodyProof{ReceiptDigest: lifecycleDigest(label + ".receipt"),
-		RecordDigest: lifecycleDigest(label + ".record"), AuditDigest: lifecycleDigest(label + ".audit"), Head: head}, nil
+	proofs := make([]CustodyProof, len(request.Subjects))
+	current := request.ExpectedHead
+	for index := range request.Subjects {
+		last := stub.now
+		suffix := strconv.Itoa(index)
+		head := CustodyHead{Case: request.Case, Sequence: current.Sequence + 1,
+			ChainHash: lifecycleDigest(label + ".head." + suffix), LastRecordAt: &last}
+		proofs[index] = CustodyProof{ReceiptDigest: lifecycleDigest(label + ".receipt." + suffix),
+			RecordDigest: lifecycleDigest(label + ".record." + suffix),
+			AuditDigest:  lifecycleDigest(label + ".audit." + suffix), Head: head}
+		current = head
+	}
+	stub.head = current
+	setDigest, _ := CustodyReceiptSetBindingDigest(proofs)
+	result := CustodyProofSet{ReceiptSetDigest: setDigest, Proofs: proofs, Head: current}
+	if stub.recovered == nil {
+		stub.recovered = make(map[string]CustodyProofSet)
+	}
+	stub.recovered[setDigest] = result
+	return result, nil
+}
+func (stub *exportCustody) RecoverLifecycle(_ context.Context, _ domain.CaseRef,
+	digest string) (CustodyProofSet, bool, error) {
+	*stub.calls = append(*stub.calls, "custody.recover")
+	value, found := stub.recovered[digest]
+	return value, found, nil
 }
 
 type exportSigner struct {

@@ -84,6 +84,30 @@ func validCustodyProof(value CustodyProof, scope domain.CaseRef, prior CustodyHe
 		value.Head.Case == scope && value.Head.Sequence == prior.Sequence+1 && value.Head.ChainHash != prior.ChainHash
 }
 
+func validCustodyProofSet(value CustodyProofSet, scope domain.CaseRef, prior CustodyHead, count int) bool {
+	if len(value.Proofs) != count || count == 0 || value.Head.Case != scope ||
+		value.Head.Sequence != prior.Sequence+uint64(count) || !sameHead(value.Head, value.Proofs[len(value.Proofs)-1].Head) {
+		return false
+	}
+	current := prior
+	for _, proof := range value.Proofs {
+		if !validCustodyProof(proof, scope, current) {
+			return false
+		}
+		current = proof.Head
+	}
+	want, err := CustodyReceiptSetBindingDigest(value.Proofs)
+	return err == nil && want == value.ReceiptSetDigest
+}
+
+func evidenceReferences(values []ManifestArtifact) []EvidenceReference {
+	result := make([]EvidenceReference, len(values))
+	for index := range values {
+		result[index] = values[index].Reference
+	}
+	return result
+}
+
 func validLifecycleProof(value LifecycleProof, scope domain.CaseRef, operation Operation) bool {
 	return value.Operation == operation && value.Case == scope && validRevision(value.Revision) &&
 		allDigests(value.ReceiptDigest, value.ProvenanceDigest)

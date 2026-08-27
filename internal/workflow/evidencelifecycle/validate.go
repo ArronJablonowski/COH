@@ -165,7 +165,7 @@ func ValidatePackageHeader(value PackageHeader) error {
 func validateHeaderShape(value PackageHeader, bound bool) error {
 	if value.SchemaVersion != PackageHeaderSchemaVersion || value.ContractVersion != ContractVersion ||
 		value.Magic != PackageMagic || value.PackageVersion != PackageVersion || value.Compression != NoCompression ||
-		value.ManifestLength <= 0 || value.ManifestLength > 16<<20 || value.SignatureLength < 64 ||
+		value.ManifestLength <= 0 || value.ManifestLength > 1<<20 || value.SignatureLength < 64 ||
 		value.SignatureLength > 4096 || value.ArtifactCount == 0 || value.ArtifactCount > 4096 ||
 		value.PackageLength <= value.ManifestLength+value.SignatureLength || value.PackageLength > 4<<40 ||
 		(bound && !digestPattern.MatchString(value.HeaderDigest)) || (!bound && value.HeaderDigest != "") {

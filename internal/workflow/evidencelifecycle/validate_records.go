@@ -169,15 +169,17 @@ func validArtifactProgress(values []ArtifactProgress) bool {
 	if len(values) > 4096 {
 		return false
 	}
-	previous := ""
+	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
 		if value.Ordinal != uint16(index+1) || !digestPattern.MatchString(value.ArtifactDigest) ||
 			!allPointerDigests(value.IngestionReceiptDigest, value.CustodyReceiptDigest) ||
-			value.CustodyReceiptDigest != nil && value.IngestionReceiptDigest == nil ||
-			previous != "" && value.ArtifactDigest <= previous {
+			value.CustodyReceiptDigest != nil && value.IngestionReceiptDigest == nil {
 			return false
 		}
-		previous = value.ArtifactDigest
+		if _, duplicate := seen[value.ArtifactDigest]; duplicate {
+			return false
+		}
+		seen[value.ArtifactDigest] = struct{}{}
 	}
 	return true
 }

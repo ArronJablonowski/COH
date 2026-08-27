@@ -148,6 +148,7 @@ type Record struct {
 	IntentDigest                      string
 	DecisionDigest                    string
 	RevocationDigest                  string
+	Artifacts                         []EvidenceReference
 	ArtifactSetDigest                 *string
 	PackageDigest                     *string
 	ManifestDigest                    *string
@@ -175,6 +176,7 @@ type Receipt struct {
 	IntentDigest                   string
 	DecisionDigest                 string
 	RecordDigest                   string
+	Artifacts                      []EvidenceReference
 	ArtifactSetDigest              *string
 	PackageDigest                  *string
 	ManifestDigest                 *string
