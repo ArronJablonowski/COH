@@ -264,8 +264,7 @@ func ruleToWire(v RuleSet) ruleWire {
 func spansToWire(values []PlanSpan) []spanWire {
 	result := make([]spanWire, len(values))
 	for i, v := range values {
-		result[i] = spanWire{v.Ordinal, v.SourceStart,
-			v.SourceEnd, v.SourceSegmentDigest, v.ReplacementMode, v.ExpectedOutputStart, v.ExpectedOutputEnd}
+		result[i] = spanWire(v)
 	}
 	return result
 }
@@ -278,8 +277,7 @@ func planToWire(v ApprovedPlan) planWire {
 func entriesToWire(values []MappingEntry) []mappingEntryWire {
 	result := make([]mappingEntryWire, len(values))
 	for i, v := range values {
-		result[i] = mappingEntryWire{v.Ordinal,
-			v.SourceStart, v.SourceEnd, v.SourceSegmentDigest, v.OutputStart, v.OutputEnd, v.ReplacementMode, v.ReplacementDigest}
+		result[i] = mappingEntryWire(v)
 	}
 	return result
 }

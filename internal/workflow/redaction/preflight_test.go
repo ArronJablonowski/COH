@@ -2,7 +2,6 @@ package redaction
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -147,7 +146,8 @@ func preflightDependencies(fixture bindingFixture) (preflightDeps, *[]string) {
 	return preflightDeps{
 		&authorityStub{fixture.decision, log}, &approvalStub{fixture.approval, nil, log},
 		&caseStub{fixture.authorizationCase(), log}, &planStub{fixture.plan, fixture.rule, log},
-		&sourceStub{fixture.authorizationSource(), 0, nil, log}, &custodyStub{fixture.command.ExpectedCustodyHead, log},
+		&sourceStub{fixture.authorizationSource(), 0, nil, log},
+		&custodyStub{head: fixture.command.ExpectedCustodyHead, log: log},
 		clockStub{fixture.decision.IssuedAt},
 	}, &calls
 }
@@ -231,8 +231,11 @@ func (stub *sourceStub) ResolveSource(_ context.Context, _ domain.CaseRef, _ Evi
 }
 
 type custodyStub struct {
-	head CustodyHead
-	log  func(string)
+	head      CustodyHead
+	proof     CustodyProof
+	recordErr error
+	verifyErr error
+	log       func(string)
 }
 
 func (stub *custodyStub) LoadCustodyHead(_ context.Context, _ domain.CaseRef) (CustodyHead, error) {
@@ -240,10 +243,12 @@ func (stub *custodyStub) LoadCustodyHead(_ context.Context, _ domain.CaseRef) (C
 	return cloneHead(stub.head), nil
 }
 func (stub *custodyStub) RecordRedaction(context.Context, CustodyRequest) (CustodyProof, bool, error) {
-	return CustodyProof{}, false, errors.New("unexpected")
+	stub.log("custody_record")
+	return stub.proof, false, stub.recordErr
 }
-func (stub *custodyStub) VerifyRedaction(context.Context, CustodyProof) error {
-	return errors.New("unexpected")
+func (stub *custodyStub) VerifyRedaction(context.Context, CustodyRequest, CustodyProof) error {
+	stub.log("custody_verify")
+	return stub.verifyErr
 }
 
 type clockStub struct{ value time.Time }

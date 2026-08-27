@@ -36,7 +36,7 @@ func validateCommandShape(value Command) error {
 		!validEvidence(value.Subject) || !validParents(value.Parents, value.Subject) ||
 		!allPointerDigests(value.SourceIdentityDigest, value.PurposeDigest, value.DestinationDigest,
 			value.RecipientDigest, value.TransformationDigest, value.RuleDigest, value.ReasonDigest,
-			value.MappingDigest, value.ApprovalDigest, value.ExternalReceiptDigest,
+			value.MappingDigest, value.ApprovalDigest, value.GoverningDecisionDigest, value.ExternalReceiptDigest,
 			value.LifecycleReceiptDigest, value.PriorAuthorizationDigest, value.ArtifactSetDigest) ||
 		!digestPattern.MatchString(value.PolicyDigest) || value.ExpectedCaseRevision == 0 ||
 		value.ExpectedCaseRevision > math.MaxInt64 || !validHead(value.ExpectedHead) ||
@@ -54,37 +54,37 @@ func validOperationFields(value Command) bool {
 	source, purpose := value.SourceIdentityDigest, value.PurposeDigest
 	destination, recipient := value.DestinationDigest, value.RecipientDigest
 	transformation, rule, reason := value.TransformationDigest, value.RuleDigest, value.ReasonDigest
-	mapping, approval := value.MappingDigest, value.ApprovalDigest
+	mapping, approval, governing := value.MappingDigest, value.ApprovalDigest, value.GoverningDecisionDigest
 	external, lifecycle := value.ExternalReceiptDigest, value.LifecycleReceiptDigest
 	prior, artifactSet := value.PriorAuthorizationDigest, value.ArtifactSetDigest
 	switch value.Operation {
 	case Acquire:
 		return value.Phase == Completed && parents == 0 && source != nil &&
-			allNil(purpose, destination, recipient, transformation, rule, reason, mapping, approval,
+			allNil(purpose, destination, recipient, transformation, rule, reason, mapping, approval, governing,
 				external, lifecycle, prior, artifactSet)
 	case Access:
 		return value.Phase == Authorized && parents == 0 && purpose != nil &&
-			allNil(source, destination, recipient, transformation, rule, reason, mapping, approval,
+			allNil(source, destination, recipient, transformation, rule, reason, mapping, approval, governing,
 				external, lifecycle, prior, artifactSet)
 	case Transform:
 		return value.Phase == Completed && parents > 0 && transformation != nil &&
-			allNil(source, purpose, destination, recipient, rule, reason, mapping, approval,
+			allNil(source, purpose, destination, recipient, rule, reason, mapping, approval, governing,
 				external, lifecycle, prior, artifactSet)
 	case Redact:
 		return value.Phase == Completed && parents > 0 && rule != nil && reason != nil &&
-			mapping != nil && approval != nil && allNil(source, purpose, destination, recipient,
+			mapping != nil && approval != nil && governing != nil && allNil(source, purpose, destination, recipient,
 			transformation, external, lifecycle, prior, artifactSet)
 	case Transfer, Export:
 		base := parents == 0 && purpose != nil && (destination != nil || recipient != nil) &&
-			allNil(source, transformation, rule, reason, mapping, approval, lifecycle, artifactSet)
+			allNil(source, transformation, rule, reason, mapping, approval, governing, lifecycle, artifactSet)
 		return base && (value.Phase == Authorized && allNil(external, prior) ||
 			value.Phase == Completed && external != nil && prior != nil)
 	case PlaceHold, ReleaseHold:
 		return value.Phase == Completed && parents == 0 && reason != nil && lifecycle != nil && artifactSet != nil &&
-			allNil(source, purpose, destination, recipient, transformation, rule, mapping, approval, external, prior)
+			allNil(source, purpose, destination, recipient, transformation, rule, mapping, approval, governing, external, prior)
 	case Delete:
 		base := parents == 0 && reason != nil && artifactSet != nil &&
-			allNil(source, purpose, destination, recipient, transformation, rule, mapping, approval)
+			allNil(source, purpose, destination, recipient, transformation, rule, mapping, approval, governing)
 		return base && (value.Phase == Authorized && allNil(external, prior, lifecycle) ||
 			value.Phase == Completed && external != nil && prior != nil && lifecycle != nil)
 	default:

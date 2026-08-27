@@ -65,25 +65,3 @@ func cloneReceipt(value Receipt) Receipt {
 	value.MappingReference = cloneEvidence(value.MappingReference)
 	return value
 }
-
-func clonePublished(value *PublishedEvidence) *PublishedEvidence {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	copy.Reference = cloneEvidence(value.Reference)
-	return &copy
-}
-
-func clonePublication(value PublicationRequest) PublicationRequest {
-	value.Parents = append([]EvidenceReference(nil), value.Parents...)
-	return value
-}
-
-func cloneProgress(value Progress) Progress {
-	value.Derived = clonePublished(value.Derived)
-	value.Mapping = clonePublished(value.Mapping)
-	value.MappingDigest = clonePointer(value.MappingDigest)
-	value.Custody = clonePointer(value.Custody)
-	return value
-}

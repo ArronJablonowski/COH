@@ -61,6 +61,7 @@ func commandFromWire(value commandWire) (Command, error) {
 		RecipientDigest: clonePointer(value.RecipientDigest), TransformationDigest: clonePointer(value.TransformationDigest),
 		RuleDigest: clonePointer(value.RuleDigest), ReasonDigest: clonePointer(value.ReasonDigest),
 		MappingDigest: clonePointer(value.MappingDigest), ApprovalDigest: clonePointer(value.ApprovalDigest),
+		GoverningDecisionDigest:  clonePointer(value.GoverningDecisionDigest),
 		ExternalReceiptDigest:    clonePointer(value.ExternalReceiptDigest),
 		LifecycleReceiptDigest:   clonePointer(value.LifecycleReceiptDigest),
 		PriorAuthorizationDigest: clonePointer(value.PriorAuthorizationDigest),

@@ -47,6 +47,7 @@ func cloneCommand(value Command) Command {
 	value.ReasonDigest = clonePointer(value.ReasonDigest)
 	value.MappingDigest = clonePointer(value.MappingDigest)
 	value.ApprovalDigest = clonePointer(value.ApprovalDigest)
+	value.GoverningDecisionDigest = clonePointer(value.GoverningDecisionDigest)
 	value.ExternalReceiptDigest = clonePointer(value.ExternalReceiptDigest)
 	value.LifecycleReceiptDigest = clonePointer(value.LifecycleReceiptDigest)
 	value.PriorAuthorizationDigest = clonePointer(value.PriorAuthorizationDigest)

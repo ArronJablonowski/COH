@@ -71,7 +71,7 @@
     },
     "command": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "operation", "phase", "case", "actor_id", "actor_revision", "subject", "parents", "source_identity_digest", "purpose_digest", "destination_digest", "recipient_digest", "transformation_digest", "rule_digest", "reason_digest", "mapping_digest", "approval_digest", "external_receipt_digest", "lifecycle_receipt_digest", "prior_authorization_digest", "artifact_set_digest", "policy_digest", "expected_case_revision", "expected_head", "deadline"],
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "operation", "phase", "case", "actor_id", "actor_revision", "subject", "parents", "source_identity_digest", "purpose_digest", "destination_digest", "recipient_digest", "transformation_digest", "rule_digest", "reason_digest", "mapping_digest", "approval_digest", "governing_decision_digest", "external_receipt_digest", "lifecycle_receipt_digest", "prior_authorization_digest", "artifact_set_digest", "policy_digest", "expected_case_revision", "expected_head", "deadline"],
       "properties": {
         "schema_version": {"const": "coh.custody-command/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -93,6 +93,7 @@
         "reason_digest": {"$ref": "#/$defs/nullable_digest"},
         "mapping_digest": {"$ref": "#/$defs/nullable_digest"},
         "approval_digest": {"$ref": "#/$defs/nullable_digest"},
+        "governing_decision_digest": {"$ref": "#/$defs/nullable_digest"},
         "external_receipt_digest": {"$ref": "#/$defs/nullable_digest"},
         "lifecycle_receipt_digest": {"$ref": "#/$defs/nullable_digest"},
         "prior_authorization_digest": {"$ref": "#/$defs/nullable_digest"},
@@ -106,7 +107,7 @@
         {"if": {"properties": {"operation": {"const": "acquire"}}}, "then": {"properties": {"phase": {"const": "completed"}, "parents": {"maxItems": 0}, "source_identity_digest": {"$ref": "#/$defs/digest"}}}},
         {"if": {"properties": {"operation": {"const": "access"}}}, "then": {"properties": {"phase": {"const": "authorized"}, "purpose_digest": {"$ref": "#/$defs/digest"}}}},
         {"if": {"properties": {"operation": {"const": "transform"}}}, "then": {"properties": {"phase": {"const": "completed"}, "parents": {"minItems": 1}, "transformation_digest": {"$ref": "#/$defs/digest"}}}},
-        {"if": {"properties": {"operation": {"const": "redact"}}}, "then": {"properties": {"phase": {"const": "completed"}, "parents": {"minItems": 1}, "rule_digest": {"$ref": "#/$defs/digest"}, "reason_digest": {"$ref": "#/$defs/digest"}, "mapping_digest": {"$ref": "#/$defs/digest"}, "approval_digest": {"$ref": "#/$defs/digest"}}}},
+        {"if": {"properties": {"operation": {"const": "redact"}}}, "then": {"properties": {"phase": {"const": "completed"}, "parents": {"minItems": 1}, "rule_digest": {"$ref": "#/$defs/digest"}, "reason_digest": {"$ref": "#/$defs/digest"}, "mapping_digest": {"$ref": "#/$defs/digest"}, "approval_digest": {"$ref": "#/$defs/digest"}, "governing_decision_digest": {"$ref": "#/$defs/digest"}}}},
         {"if": {"properties": {"operation": {"enum": ["transfer", "export"]}}}, "then": {"properties": {"purpose_digest": {"$ref": "#/$defs/digest"}}, "anyOf": [{"properties": {"destination_digest": {"$ref": "#/$defs/digest"}}}, {"properties": {"recipient_digest": {"$ref": "#/$defs/digest"}}}]}},
         {"if": {"properties": {"operation": {"enum": ["place_hold", "release_hold"]}}}, "then": {"properties": {"phase": {"const": "completed"}, "reason_digest": {"$ref": "#/$defs/digest"}, "lifecycle_receipt_digest": {"$ref": "#/$defs/digest"}, "artifact_set_digest": {"$ref": "#/$defs/digest"}}}},
         {"if": {"properties": {"operation": {"const": "delete"}, "phase": {"const": "authorized"}}}, "then": {"properties": {"reason_digest": {"$ref": "#/$defs/digest"}, "lifecycle_receipt_digest": {"type": "null"}, "artifact_set_digest": {"$ref": "#/$defs/digest"}}}},

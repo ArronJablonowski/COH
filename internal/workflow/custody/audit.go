@@ -54,6 +54,7 @@ func deniedAuditEvent(command Command, intent string, failure error, now time.Ti
 	for _, optional := range []*string{command.SourceIdentityDigest, command.PurposeDigest,
 		command.DestinationDigest, command.RecipientDigest, command.TransformationDigest,
 		command.RuleDigest, command.ReasonDigest, command.MappingDigest, command.ApprovalDigest,
+		command.GoverningDecisionDigest,
 		command.ExternalReceiptDigest, command.LifecycleReceiptDigest,
 		command.PriorAuthorizationDigest, command.ArtifactSetDigest} {
 		if optional != nil {

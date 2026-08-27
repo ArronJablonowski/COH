@@ -50,6 +50,7 @@ type commandWire struct {
 	ReasonDigest             *string        `json:"reason_digest"`
 	MappingDigest            *string        `json:"mapping_digest"`
 	ApprovalDigest           *string        `json:"approval_digest"`
+	GoverningDecisionDigest  *string        `json:"governing_decision_digest"`
 	ExternalReceiptDigest    *string        `json:"external_receipt_digest"`
 	LifecycleReceiptDigest   *string        `json:"lifecycle_receipt_digest"`
 	PriorAuthorizationDigest *string        `json:"prior_authorization_digest"`
@@ -189,7 +190,8 @@ func commandToWire(value Command) commandWire {
 		evidenceToWire(value.Subject), evidenceSliceToWire(value.Parents), clonePointer(value.SourceIdentityDigest),
 		clonePointer(value.PurposeDigest), clonePointer(value.DestinationDigest), clonePointer(value.RecipientDigest),
 		clonePointer(value.TransformationDigest), clonePointer(value.RuleDigest), clonePointer(value.ReasonDigest),
-		clonePointer(value.MappingDigest), clonePointer(value.ApprovalDigest), clonePointer(value.ExternalReceiptDigest),
+		clonePointer(value.MappingDigest), clonePointer(value.ApprovalDigest), clonePointer(value.GoverningDecisionDigest),
+		clonePointer(value.ExternalReceiptDigest),
 		clonePointer(value.LifecycleReceiptDigest), clonePointer(value.PriorAuthorizationDigest),
 		clonePointer(value.ArtifactSetDigest), value.PolicyDigest, value.ExpectedCaseRevision,
 		headToWire(value.ExpectedHead), formatTime(value.Deadline)}

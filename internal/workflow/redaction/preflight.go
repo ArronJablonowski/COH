@@ -55,17 +55,17 @@ func (service *preflight) authorize(ctx context.Context, command Command) (autho
 	if err != nil {
 		return authorizedState{}, err
 	}
-	current, rule, plan, source, head, err := service.resolveCurrent(opCtx, command, now)
+	_, _, initialPlan, _, _, err := service.resolveCurrent(opCtx, command, now)
 	if err != nil {
 		return authorizedState{}, err
 	}
-	approval, err := service.authorizeApproval(opCtx, command, plan, intent, now)
+	approval, err := service.authorizeApproval(opCtx, command, initialPlan, intent, now)
 	if err != nil {
 		return authorizedState{}, err
 	}
 	// Approval use is the only state-changing preflight step. Re-resolve every
 	// other dependency afterward so no earlier snapshot can authorize plaintext.
-	current, rule, plan, source, head, err = service.resolveCurrent(opCtx, command, now)
+	current, rule, plan, source, head, err := service.resolveCurrent(opCtx, command, now)
 	if err != nil {
 		return authorizedState{}, err
 	}

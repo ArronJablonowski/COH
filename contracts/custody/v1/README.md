@@ -13,6 +13,13 @@ operation, phase, outcome, and reason value. Additional properties are rejected
 at every object boundary. Optional operation facts are required as explicit
 JSON values and use `null` when absent; there are no extension maps.
 
+`governing_decision_digest` binds an upstream domain authorization, such as
+the exact governed-redaction decision. It is distinct from
+`prior_authorization_digest`, which always identifies the earlier authorized
+custody receipt required by a two-phase custody operation. Redaction requires
+the former and rejects the latter, preventing an authority decision from being
+misinterpreted as custody ancestry.
+
 The case-scoped chain supports acquisition, access, transformation, redaction,
 transfer, export, hold placement/release, deletion authorization, and completed
 deletion. JSON Schema conditionals require the core operation-specific facts.

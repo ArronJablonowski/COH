@@ -54,6 +54,8 @@ filesystem path, network client, shell, executor, or generic callback.
 5. A transformation or redaction names every parent artifact and parent
    manifest digest and the immutable child artifact and manifest. A parent set
    is non-empty, sorted, unique, same-case, and cannot contain the child.
+   Redaction additionally binds its exact upstream governing decision; that
+   digest is not a prior custody authorization receipt.
 6. Access, transfer, and export bind a purpose digest. Transfer and export also
    bind a destination or recipient digest; raw destinations and identities are
    excluded from custody, audit, logs, and errors.
@@ -77,7 +79,7 @@ filesystem path, network client, shell, executor, or generic callback.
 | `acquire` | `completed` | Ingestion receipt, artifact and encrypted manifest, source identity digest | Establishes the first custody link for an artifact; no duplicate acquisition under another receipt |
 | `access` | `authorized` | Artifact, manifest, purpose, actor, current case and policy | Must commit and audit before plaintext is released to the authorized caller |
 | `transform` | `completed` | Parent set, child artifact and manifest, component/version digests | Adds a child lineage node; never changes any parent |
-| `redact` | `completed` | Parent, derived artifact, rule/reason/mapping/approval digests | Reserved for CYB-78; source remains immutable and resolvable under separate authority |
+| `redact` | `completed` | Parent, derived artifact, rule/reason/mapping/approval and governing-decision digests | Source remains immutable and resolvable under separate authority; no prior custody receipt is inferred |
 | `transfer` | `authorized`, `completed` | Artifact, manifest, destination/recipient and transfer-receipt digests | Authorization precedes release; completion binds the resulting external receipt |
 | `export` | `authorized`, `completed` | Export-manifest/package, destination and detached-signature digests | Authorization precedes release; completion binds the independently verifiable package |
 | `place_hold` | `completed` | Case-lifecycle receipt, reason digest, affected artifact-set digest | Records the exact lifecycle revision that made the hold effective |

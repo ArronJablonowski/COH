@@ -135,6 +135,7 @@ type Command struct {
 	ReasonDigest             *string
 	MappingDigest            *string
 	ApprovalDigest           *string
+	GoverningDecisionDigest  *string
 	ExternalReceiptDigest    *string
 	LifecycleReceiptDigest   *string
 	PriorAuthorizationDigest *string

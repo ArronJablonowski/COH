@@ -76,6 +76,12 @@ func TestCanonicalCommandBindsEveryCustodySecurityDimension(t *testing.T) {
 	if got := mustCommandDigest(t, transform); got == transformDigest {
 		t.Fatal("parent lineage mutation preserved command digest")
 	}
+	redact := custodyCommandFixture(Redact, Completed)
+	redactDigest := mustCommandDigest(t, redact)
+	*redact.GoverningDecisionDigest = fixtureDigest("governing.decision.changed")
+	if got := mustCommandDigest(t, redact); got == redactDigest {
+		t.Fatal("governing decision mutation preserved command digest")
+	}
 }
 
 func TestCustodyValidationRejectsInvalidFieldCombinationsAndStaleBindings(t *testing.T) {
@@ -104,6 +110,16 @@ func TestCustodyValidationRejectsInvalidFieldCombinationsAndStaleBindings(t *tes
 		"delete completion authorization absent": func() Command {
 			value := custodyCommandFixture(Delete, Completed)
 			value.PriorAuthorizationDigest = nil
+			return value
+		},
+		"redaction governing decision absent": func() Command {
+			value := custodyCommandFixture(Redact, Completed)
+			value.GoverningDecisionDigest = nil
+			return value
+		},
+		"redaction prior custody authorization present": func() Command {
+			value := custodyCommandFixture(Redact, Completed)
+			value.PriorAuthorizationDigest = digestPointer("not-a-redaction-decision")
 			return value
 		},
 	}
@@ -199,6 +215,7 @@ func custodyCommandFixture(operation Operation, phase Phase) Command {
 		value.Parents = []EvidenceReference{custodyEvidenceFixture("parent")}
 		value.RuleDigest, value.ReasonDigest = digestPointer("rule"), digestPointer("reason")
 		value.MappingDigest, value.ApprovalDigest = digestPointer("mapping"), digestPointer("approval")
+		value.GoverningDecisionDigest = digestPointer("redaction.decision")
 	case Transfer, Export:
 		value.PurposeDigest, value.DestinationDigest = digestPointer("purpose"), digestPointer("destination")
 		value.RecipientDigest = digestPointer("recipient")

@@ -50,7 +50,7 @@ type Publisher interface {
 type CustodyRecorder interface {
 	LoadCustodyHead(context.Context, domain.CaseRef) (CustodyHead, error)
 	RecordRedaction(context.Context, CustodyRequest) (CustodyProof, bool, error)
-	VerifyRedaction(context.Context, CustodyProof) error
+	VerifyRedaction(context.Context, CustodyRequest, CustodyProof) error
 }
 
 type Store interface {
