@@ -5,7 +5,7 @@
 | Issue | COH-E10-02 / CYB-71 |
 | Requirements | FR-019, FR-020, NFR-011, EVAL-012, SEC-023 |
 | Data | Raw and derived security evidence plus sensitive provenance metadata |
-| Status | Implemented; verification pending final evidence capture |
+| Status | Implemented and verified; see `docs/evidence/CYB-71-immutable-cas-ingestion-report.md` |
 
 ## Purpose and boundary
 
