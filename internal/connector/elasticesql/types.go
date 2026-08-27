@@ -4,7 +4,6 @@ package elasticesql
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
@@ -47,17 +46,26 @@ type SortField struct {
 }
 
 type Plan struct {
-	QueryID           string
-	SourceID          string
-	ResourceID        string
-	CanonicalPipeline string
-	Parameters        []Parameter
-	Projection        []string
-	Sort              []SortField
-	MaximumRows       uint64
-	MandatoryFilter   map[string]any
-	FilterDigest      string
-	PlanDigest        string
+	QueryID               string
+	SourceID              string
+	ResourceID            string
+	CanonicalPipeline     string
+	Parameters            []Parameter
+	Projection            []string
+	Columns               []Column
+	Sort                  []SortField
+	MaximumRows           uint64
+	MaximumBytes          uint64
+	MaximumDurationMillis uint64
+	MandatoryFilter       map[string]any
+	FilterDigest          string
+	PlanDigest            string
+}
+
+type Column struct {
+	LogicalName string
+	VendorName  string
+	Type        string
 }
 
 type ValidatedPlan struct {
@@ -66,13 +74,35 @@ type ValidatedPlan struct {
 }
 
 func (plan ValidatedPlan) Value() Plan {
-	encoded, _ := json.Marshal(plan.value)
-	var cloned Plan
-	_ = json.Unmarshal(encoded, &cloned)
+	cloned := plan.value
+	cloned.Parameters = append([]Parameter(nil), plan.value.Parameters...)
+	cloned.Projection = append([]string(nil), plan.value.Projection...)
+	cloned.Columns = append([]Column(nil), plan.value.Columns...)
+	cloned.Sort = append([]SortField(nil), plan.value.Sort...)
+	cloned.MandatoryFilter, _ = cloneValue(plan.value.MandatoryFilter).(map[string]any)
 	return cloned
 }
 
 func (plan ValidatedPlan) Digest() string { return plan.digest }
+
+func cloneValue(value any) any {
+	switch current := value.(type) {
+	case map[string]any:
+		cloned := make(map[string]any, len(current))
+		for key, item := range current {
+			cloned[key] = cloneValue(item)
+		}
+		return cloned
+	case []any:
+		cloned := make([]any, len(current))
+		for index, item := range current {
+			cloned[index] = cloneValue(item)
+		}
+		return cloned
+	default:
+		return current
+	}
+}
 
 type Parameter struct {
 	Type  string

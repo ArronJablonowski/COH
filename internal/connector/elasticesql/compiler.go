@@ -127,9 +127,16 @@ func (compiler *Compiler) buildPlan(ctx context.Context, query queryconnector.Va
 	filter := compiler.mandatoryFilter(queryValue)
 	filterDigest := digest("COH-ELASTIC-ESQL-FILTER-V1\x00", filter)
 	pipelineText := compiler.canonicalPipeline(parsed.resource, expressionText, projection, sortFields, maximumRows)
+	columns := make([]Column, len(projection))
+	for index, name := range projection {
+		field := compiler.field(name)
+		columns[index] = Column{LogicalName: field.Name, VendorName: field.VendorName, Type: field.Type}
+	}
 	plan := Plan{QueryID: queryValue.QueryID, SourceID: queryValue.Scope.SourceID, ResourceID: parsed.resource,
-		CanonicalPipeline: pipelineText, Parameters: parameters, Projection: projection, Sort: sortFields,
-		MaximumRows: maximumRows, MandatoryFilter: filter, FilterDigest: filterDigest}
+		CanonicalPipeline: pipelineText, Parameters: parameters, Projection: projection, Columns: columns, Sort: sortFields,
+		MaximumRows: maximumRows, MaximumBytes: queryValue.Limits.MaximumBytes,
+		MaximumDurationMillis: queryValue.Limits.MaximumDurationMillis,
+		MandatoryFilter:       filter, FilterDigest: filterDigest}
 	plan.PlanDigest = digest("COH-ELASTIC-ESQL-PLAN-V1\x00", struct {
 		QueryDigest  string
 		SchemaDigest string

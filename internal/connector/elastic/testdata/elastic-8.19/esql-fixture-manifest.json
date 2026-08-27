@@ -1,0 +1,9 @@
+{
+  "contract_version": "1.0.0",
+  "origin": "sanitized replay fixture derived from Elastic 8.19 ES|QL response contracts",
+  "records": ["esql-response.json"],
+  "schema_version": "coh.elastic-esql-vendor-fixture/v1",
+  "sensitive_values": "none",
+  "vendor": "elastic",
+  "vendor_version": "8.19.2"
+}

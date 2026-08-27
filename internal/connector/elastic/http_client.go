@@ -189,10 +189,15 @@ func (client *HTTPClient) FieldCapabilities(ctx context.Context, request FieldCa
 }
 
 func (client *HTTPClient) do(ctx context.Context, binding CallBinding, method, requestPath string, query url.Values, payload []byte) ([]byte, CallReceipt, error) {
-	return client.doEscaped(ctx, binding, method, requestPath, "", query, payload)
+	return client.doChecked(ctx, binding, method, requestPath, "", query, payload, nil)
 }
 
 func (client *HTTPClient) doEscaped(ctx context.Context, binding CallBinding, method, requestPath, escapedPath string, query url.Values, payload []byte) ([]byte, CallReceipt, error) {
+	return client.doChecked(ctx, binding, method, requestPath, escapedPath, query, payload, nil)
+}
+
+func (client *HTTPClient) doChecked(ctx context.Context, binding CallBinding, method, requestPath, escapedPath string,
+	query url.Values, payload []byte, checkHeaders func(http.Header) error) ([]byte, CallReceipt, error) {
 	if client == nil || client.client == nil || nilPort(client.credentials) {
 		return nil, CallReceipt{}, invalid("elastic_http_client_required")
 	}
@@ -239,6 +244,11 @@ func (client *HTTPClient) doEscaped(ctx context.Context, binding CallBinding, me
 		if transportDigest != client.config.TransportIdentityDigest {
 			return conflict("elastic_tls_identity_mismatch")
 		}
+		if checkHeaders != nil {
+			if err := checkHeaders(response.Header.Clone()); err != nil {
+				return err
+			}
+		}
 		maximum := int64(client.config.HardLimits.MaximumBytes)
 		if maximum > queryconnector.MaximumDocumentBytes {
 			maximum = queryconnector.MaximumDocumentBytes
@@ -274,6 +284,7 @@ func decodeVendor(input []byte, output any) error {
 		return errors.New("invalid vendor JSON")
 	}
 	decoder := json.NewDecoder(bytes.NewReader(input))
+	decoder.UseNumber()
 	if err := decoder.Decode(output); err != nil {
 		return err
 	}

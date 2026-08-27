@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/connector/elasticesql"
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
 
@@ -52,6 +53,10 @@ type Client interface {
 	Inspect(context.Context, CallBinding) (ClusterIdentity, CallReceipt, error)
 	Resolve(context.Context, ResolveRequest) (ResolveResult, CallReceipt, error)
 	FieldCapabilities(context.Context, FieldCapabilitiesRequest) (FieldCapabilitiesResult, CallReceipt, error)
+}
+
+type ESQLClient interface {
+	ExecuteESQL(context.Context, ESQLRequest) (ESQLResult, CallReceipt, error)
 }
 
 // CredentialSource resolves and consumes one broker-owned credential lease per
@@ -135,4 +140,19 @@ type FieldCapability struct {
 	Indices      []string
 	Searchable   bool
 	Aggregatable bool
+}
+
+type ESQLRequest struct {
+	Binding CallBinding
+	Indices []string
+	Plan    elasticesql.ValidatedPlan
+}
+
+type ESQLResult struct {
+	Columns        []elasticesql.Column
+	Rows           []map[string]any
+	TookMillis     uint64
+	DocumentsFound uint64
+	ValuesLoaded   uint64
+	ResultDigest   string
 }

@@ -1,0 +1,13 @@
+{
+  "columns": [
+    {"name": "@timestamp", "type": "date"},
+    {"name": "event.id", "type": "keyword"}
+  ],
+  "documents_found": 1,
+  "is_partial": false,
+  "took": 4,
+  "values": [
+    ["2026-08-27T17:30:00.000Z", "event-1"]
+  ],
+  "values_loaded": 2
+}
