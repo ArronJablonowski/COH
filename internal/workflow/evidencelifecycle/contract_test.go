@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/ArronJablonowski/COH/internal/domain"
 )
 
 func TestPublishedEvidenceLifecycleSchemaIsStrictAndVersioned(t *testing.T) {
@@ -35,6 +37,43 @@ func TestPublishedEvidenceLifecycleSchemaIsStrictAndVersioned(t *testing.T) {
 	assertStringEnum(t, definitions, "operation", []string{"export", "import", "place_hold", "release_hold", "delete"})
 	if packageHeader := definitions["package_header"].(map[string]any); packageHeader["additionalProperties"] != false {
 		t.Fatal("package header is not closed")
+	}
+}
+
+func TestEvidenceLifecycleSchemaAndGoRecordsStaySynchronized(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "contracts", "evidence-lifecycle", "v1", "evidence-lifecycle.schema.json")
+	input, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err = json.Unmarshal(input, &document); err != nil {
+		t.Fatal(err)
+	}
+	definitions := document["$defs"].(map[string]any)
+	for name, value := range map[string]any{
+		"command": Command{}, "export_manifest": ExportManifest{}, "detached_signature": DetachedSignature{},
+		"package_header": PackageHeader{}, "import_verification": ImportVerification{},
+		"authorization_request": AuthorizationRequest{}, "decision": Decision{}, "progress": Progress{},
+		"disposition_attestation": DispositionAttestation{}, "record": Record{}, "receipt": Receipt{},
+		"case": domain.CaseRef{}, "artifact": domain.ArtifactRef{}, "evidence_reference": EvidenceReference{},
+		"custody_head": CustodyHead{}, "package_limits": PackageLimits{}, "component": Component{},
+		"manifest_artifact": ManifestArtifact{}, "artifact_progress": ArtifactProgress{},
+		"disposition_object": DispositionObject{},
+	} {
+		definition := definitions[name].(map[string]any)
+		properties := definition["properties"].(map[string]any)
+		required := definition["required"].([]any)
+		goFields := reflect.TypeOf(value)
+		if len(properties) != goFields.NumField() || len(required) != goFields.NumField() {
+			t.Fatalf("%s schema=%d required=%d Go=%d", name, len(properties), len(required), goFields.NumField())
+		}
+		for index := 0; index < goFields.NumField(); index++ {
+			field := snakeName(goFields.Field(index).Name)
+			if _, found := properties[field]; !found || !containsRequired(required, field) {
+				t.Fatalf("%s.%s is not a required schema property", name, field)
+			}
+		}
 	}
 }
 
@@ -93,6 +132,15 @@ func assertStringEnum(t *testing.T, definitions map[string]any, name string, wan
 	if !reflect.DeepEqual(actual, want) {
 		t.Fatalf("%s=%v want=%v", name, actual, want)
 	}
+}
+
+func containsRequired(values []any, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
+			return true
+		}
+	}
+	return false
 }
 
 func assertSafeLifecycleType(t *testing.T, value reflect.Type, seen map[reflect.Type]bool) {

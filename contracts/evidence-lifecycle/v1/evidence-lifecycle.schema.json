@@ -24,7 +24,7 @@
     "nullable_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
     "nullable_timestamp": {"oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]},
     "operation": {"enum": ["export", "import", "place_hold", "release_hold", "delete"]},
-    "phase": {"enum": ["planned", "quarantined", "verified", "authorized", "packaged", "published", "case_recorded", "disposed", "custodied", "completed"]},
+    "phase": {"enum": ["planned", "quarantined", "verified", "authorized", "packaged", "published", "case_recorded", "tombstoned", "disposed", "custodied", "completed"]},
     "classification": {"enum": ["public", "internal", "confidential", "restricted"]},
     "artifact_role": {"enum": ["source", "derived", "imported"]},
     "decision_outcome": {"enum": ["allow", "deny"]},
@@ -48,7 +48,7 @@
         "digest": {"$ref": "#/$defs/digest"},
         "media_type": {"$ref": "#/$defs/media_type"},
         "classification": {"$ref": "#/$defs/classification"},
-        "length": {"type": "integer", "minimum": 1, "maximum": 1099511627776}
+        "length": {"type": "integer", "minimum": 1, "maximum": 1073741824}
       },
       "additionalProperties": false
     },
@@ -81,7 +81,7 @@
         "maximum_manifest_bytes": {"type": "integer", "minimum": 1, "maximum": 16777216},
         "maximum_signature_bytes": {"type": "integer", "minimum": 64, "maximum": 4096},
         "maximum_artifacts": {"type": "integer", "minimum": 1, "maximum": 4096},
-        "maximum_artifact_bytes": {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+        "maximum_artifact_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
         "maximum_package_bytes": {"type": "integer", "minimum": 1, "maximum": 4398046511104}
       },
       "additionalProperties": false

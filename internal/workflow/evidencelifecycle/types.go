@@ -47,6 +47,7 @@ const (
 	Packaged     Phase = "packaged"
 	Published    Phase = "published"
 	CaseRecorded Phase = "case_recorded"
+	Tombstoned   Phase = "tombstoned"
 	Disposed     Phase = "disposed"
 	Custodied    Phase = "custodied"
 	Completed    Phase = "completed"
