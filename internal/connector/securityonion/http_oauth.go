@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 	"github.com/ArronJablonowski/COH/internal/helper/domaincontract"
 )
 
@@ -83,8 +84,15 @@ func (client *HTTPClient) exchangeToken(ctx context.Context, binding CallBinding
 	responseDigest := hash("COH-SECURITY-ONION-TOKEN-RESPONSE-V1\x00", body)
 	receipt := CallReceipt{RequestDigest: requestDigest, ResponseDigest: responseDigest,
 		TransportDigest: transportDigest}
-	if response.StatusCode != http.StatusOK || !jsonMediaType(response.Header.Get("Content-Type")) {
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
 		return oauthToken{}, receipt, denied("securityonion_authentication_denied")
+	}
+	if response.StatusCode != http.StatusOK {
+		return oauthToken{}, receipt, queryconnector.NewError(queryconnector.Unavailable,
+			"securityonion_token_service_unavailable", nil)
+	}
+	if !jsonMediaType(response.Header.Get("Content-Type")) {
+		return oauthToken{}, receipt, denied("securityonion_token_response_invalid")
 	}
 	canonical, err := domaincontract.Canonicalize(body)
 	if err != nil {

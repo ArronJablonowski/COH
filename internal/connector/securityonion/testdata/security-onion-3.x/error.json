@@ -1,0 +1,20 @@
+[
+  {
+    "completeTime": "2026-08-27T18:00:00Z",
+    "createTime": "2026-08-27T17:59:59Z",
+    "criteria": {
+      "beginTime": "2026-08-27T17:00:00Z",
+      "createTime": "2026-08-27T17:59:59Z",
+      "dateRange": "",
+      "endTime": "2026-08-27T18:00:00Z",
+      "eventLimit": 10,
+      "metricLimit": 1,
+      "query": "(tenant.id:\"018f1f2e\\-7a6b\\-7c8d\\-8e9f\\-000000000002\") AND (observer.name:\"security\\-onion\\-prod\") AND (*) | table @timestamp event.id message source.ip | sortby @timestamp^ event.id^"
+    },
+    "elapsedMs": 4,
+    "errors": ["sanitized backend failure"],
+    "events": [],
+    "metrics": {},
+    "totalEvents": 0
+  }
+]

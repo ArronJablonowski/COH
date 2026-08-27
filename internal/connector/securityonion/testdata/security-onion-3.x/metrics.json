@@ -1,0 +1,28 @@
+[
+  {
+    "completeTime": "2026-08-27T18:00:00Z",
+    "createTime": "2026-08-27T17:59:59Z",
+    "criteria": {
+      "beginTime": "2026-08-27T17:00:00Z",
+      "createTime": "2026-08-27T17:59:59Z",
+      "dateRange": "",
+      "endTime": "2026-08-27T18:00:00Z",
+      "eventLimit": 1,
+      "metricLimit": 10,
+      "query": "(tenant.id:\"018f1f2e\\-7a6b\\-7c8d\\-8e9f\\-000000000002\") AND (observer.name:\"security\\-onion\\-prod\") AND (*) | groupby source.ip"
+    },
+    "elapsedMs": 5,
+    "errors": [],
+    "events": [],
+    "metrics": {
+      "groupby_0_source_ip": {
+        "buckets": [
+          {"doc_count": 7, "key": "10.0.0.1"}
+        ],
+        "doc_count_error_upper_bound": 0,
+        "sum_other_doc_count": 3
+      }
+    },
+    "totalEvents": 10
+  }
+]
