@@ -334,6 +334,9 @@ func TestConfigurationCapsAreMandatory(t *testing.T) {
 		func(value *Config) { value.MaximumSessions = MaximumSessionCapacity + 1 },
 		func(value *Config) { value.CancellationWait = MaximumCancellationWait + 1 },
 		func(value *Config) { value.RecordWait = MaximumRecordWait + 1 },
+		func(value *Config) { value.Interactive.MinimumPollInterval = 0 },
+		func(value *Config) { value.Export.MaximumPollInterval = MaximumPollInterval + time.Millisecond },
+		func(value *Config) { value.Interactive.MinimumPollInterval = 1500 * time.Microsecond },
 	} {
 		config := testConfig()
 		mutate(&config)

@@ -8,7 +8,10 @@ This bundle defines strict redacted records for the CYB-87 runtime broker:
 
 Session identity binds the CYB-85 query and execution digests, CYB-84 bounds
 decision, effective limits, cumulative usage, status, handle digests, last page
-and rate digests, cancellation intent, vendor provenance, revision, and time.
+and rate digests, cancellation intent, vendor provenance, revision, capped
+poll-delay milliseconds, and exact next-poll time. Early polling is denied
+before rate reservation or adapter I/O, and successful running/uncertain polls
+double the delay only up to the trusted profile maximum.
 Records contain no native query text, result rows, credential, URL, raw handle,
 or dependency error.
 

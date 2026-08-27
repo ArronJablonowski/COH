@@ -18,7 +18,7 @@ func TestCanonicalSessionFixtureAndStrictDecoder(t *testing.T) {
 		t.Fatal(err)
 	}
 	session, canonical, err := DecodeSession(context.Background(), input)
-	if err != nil || session.SessionDigest != "sha256:159644d34412244c8e04de04aef71dc7d64f7adcda7ca14d3a6301c124622332" ||
+	if err != nil || session.SessionDigest != "sha256:be5ee732472726d9b0796fed5c5a35d0485fe90d6b6241b59e6f266f472778fd" ||
 		!bytes.Equal(bytes.TrimSpace(input), canonical) {
 		t.Fatalf("digest=%s canonical=%t err=%v", session.SessionDigest, bytes.Equal(bytes.TrimSpace(input), canonical), err)
 	}
@@ -186,6 +186,28 @@ func TestConcurrentExactPollCoalescesByTransitionReplay(t *testing.T) {
 	}
 	if adapter.pollCalls != 1 {
 		t.Fatalf("poll calls=%d", adapter.pollCalls)
+	}
+}
+
+func TestPollingBackoffIsImmutableAndEnforcedBeforeRateOrAdapter(t *testing.T) {
+	running := pollRecord(t, "running", stats(1, 1, 1), complete(), nil)
+	adapter := &adapterStub{polls: []queryconnector.ValidatedPoll{running, running}}
+	controller, clock, rate, _, request := testController(t, adapter)
+	started, _ := controller.Start(context.Background(), request)
+	first, err := controller.Poll(context.Background(), SessionRef{started.SessionID, started.SessionDigest})
+	if err != nil || first.Session.Status != "running" || first.Session.PollDelayMillis != 100 ||
+		first.Session.NextPollAt != testNow.Add(100*time.Millisecond).Format(timestampLayout) {
+		t.Fatalf("first backoff=%+v err=%v", first.Session, err)
+	}
+	if _, err := controller.Poll(context.Background(), SessionRef{started.SessionID, first.Session.SessionDigest}); Code(err) != Denied || Reason(err) != "poll_backoff_active" || adapter.pollCalls != 1 || rate.calls != 1 {
+		t.Fatalf("early poll adapter=%d rate=%d err=%v", adapter.pollCalls, rate.calls, err)
+	}
+	clock.Add(100 * time.Millisecond)
+	second, err := controller.Poll(context.Background(), SessionRef{started.SessionID, first.Session.SessionDigest})
+	if err != nil || second.Session.PollDelayMillis != 200 ||
+		second.Session.NextPollAt != testNow.Add(300*time.Millisecond).Format(timestampLayout) ||
+		adapter.pollCalls != 2 || rate.calls != 2 || VerifySession(second.Session) != nil {
+		t.Fatalf("second backoff=%+v adapter=%d rate=%d err=%v", second.Session, adapter.pollCalls, rate.calls, err)
 	}
 }
 

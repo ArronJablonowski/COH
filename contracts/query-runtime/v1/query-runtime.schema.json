@@ -29,7 +29,7 @@
     },
     "session": {
       "type":"object","additionalProperties":false,
-      "required":["schema_version","contract_version","session_digest","session_id","revision","query_id","query_digest","bounds_decision_digest","execution_digest","attempt_id","organization_id","tenant_id","actor_id","source_id","mode","effective_limits","usage","status","reason_code","next_page_number","job_handle_digest","vendor_provenance_digest","started_at","updated_at","deadline"],
+      "required":["schema_version","contract_version","session_digest","session_id","revision","query_id","query_digest","bounds_decision_digest","execution_digest","attempt_id","organization_id","tenant_id","actor_id","source_id","mode","effective_limits","usage","status","reason_code","next_page_number","poll_delay_millis","next_poll_at","job_handle_digest","vendor_provenance_digest","started_at","updated_at","deadline"],
       "properties":{
         "schema_version":{"const":"coh.query-runtime-session/v1"},"contract_version":{"const":"1.0.0"},
         "session_digest":{"$ref":"#/$defs/digest"},"previous_session_digest":{"$ref":"#/$defs/digest"},
@@ -42,6 +42,7 @@
         "effective_limits":{"$ref":"#/$defs/limits"},"usage":{"$ref":"#/$defs/usage"},
         "status":{"enum":["running","complete","partial","truncated","canceled","uncertain","failed"]},
         "reason_code":{"$ref":"#/$defs/token"},"next_page_number":{"type":"integer","minimum":1},
+        "poll_delay_millis":{"type":"integer","minimum":1,"maximum":60000},"next_poll_at":{"$ref":"#/$defs/timestamp"},
         "job_handle_digest":{"$ref":"#/$defs/digest"},"page_handle_digest":{"$ref":"#/$defs/digest"},
         "last_page_digest":{"$ref":"#/$defs/digest"},"last_rate_reservation_digest":{"$ref":"#/$defs/digest"},
         "cancellation_intent_digest":{"$ref":"#/$defs/digest"},"vendor_provenance_digest":{"$ref":"#/$defs/digest"},

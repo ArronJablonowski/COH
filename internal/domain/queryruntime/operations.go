@@ -63,6 +63,9 @@ func (controller *Controller) run(ctx context.Context, reference SessionRef, ope
 	if controller.elapsedExceeded(managed.value, now) {
 		return controller.truncate(ctx, managed, reference.SessionDigest, operation, "duration_limit_reached", now, nil)
 	}
+	if operation == "poll" && now.Before(managed.nextPollAt) {
+		return Result{}, newError(Denied, "poll_backoff_active", nil)
+	}
 	if operation == "poll" && !handleCurrent(managed.jobHandle, now) {
 		return controller.markUncertain(ctx, managed, reference.SessionDigest, operation, "job_handle_expired", now)
 	}
@@ -116,11 +119,17 @@ func (controller *Controller) acceptPoll(ctx context.Context, managed *managedSe
 	status, reason := pollOutcome(value, managed.partial)
 	input := transitionInput{usage: usage, status: status, reason: reason, rateDigest: rateDigest,
 		provenance: value.ProvenanceDigest, nextPageNumber: managed.value.NextPageNumber}
+	if active(status) {
+		controller.schedulePoll(managed, now, &input)
+	}
 	session, err := controller.commit(ctx, managed, input, now)
 	if err != nil {
 		return Result{}, err
 	}
 	result := Result{Session: session}
+	if active(status) {
+		controller.advancePollDelay(managed)
+	}
 	managed.cacheOperation(operation, inputDigest, result, nil)
 	return result, nil
 }
@@ -161,13 +170,39 @@ func (controller *Controller) acceptPageWithUsage(ctx context.Context, managed *
 		controller.protectiveCancel(ctx, managed, now, &input)
 		input.pageHandle = nil
 	}
+	if status == "uncertain" {
+		controller.schedulePoll(managed, now, &input)
+	}
 	session, err := controller.commit(ctx, managed, input, now)
 	if err != nil {
 		return Result{}, err
 	}
 	result := Result{Session: session, Page: page, HasPage: release}
+	if status == "uncertain" {
+		controller.advancePollDelay(managed)
+	}
 	managed.cacheOperation(operation, inputDigest, result, nil)
 	return result, nil
+}
+
+func (controller *Controller) schedulePoll(managed *managedSession, now time.Time, input *transitionInput) {
+	input.pollDelay = managed.pollDelay
+	input.nextPollAt = now.Add(managed.pollDelay)
+}
+
+func (controller *Controller) advancePollDelay(managed *managedSession) {
+	managed.nextPollAt = managed.valueTimeNextPoll()
+	next := managed.pollDelay * 2
+	profile, _ := controller.profile(managed.value.Mode)
+	if next > profile.MaximumPollInterval {
+		next = profile.MaximumPollInterval
+	}
+	managed.pollDelay = next
+}
+
+func (managed *managedSession) valueTimeNextPoll() time.Time {
+	value, _ := time.Parse(timestampLayout, managed.value.NextPollAt)
+	return value
 }
 
 func pollOutcome(value queryconnector.PollResult, partial bool) (string, string) {

@@ -155,8 +155,10 @@ func testController(t testing.TB, adapter *adapterStub) (*Controller, *clockStub
 }
 
 func testConfig() Config {
-	return Config{Interactive: Profile{Mode: "interactive", Limits: limits(100, 1000, 60_000, 3, 2, 100, 5)},
-		Export:          Profile{Mode: "export", Limits: limits(500, 5000, 120_000, 8, 4, 1000, 10)},
+	return Config{Interactive: Profile{Mode: "interactive", Limits: limits(100, 1000, 60_000, 3, 2, 100, 5),
+		MinimumPollInterval: 100 * time.Millisecond, MaximumPollInterval: time.Second},
+		Export: Profile{Mode: "export", Limits: limits(500, 5000, 120_000, 8, 4, 1000, 10),
+			MinimumPollInterval: 100 * time.Millisecond, MaximumPollInterval: 2 * time.Second},
 		MaximumSessions: 100, CancellationWait: time.Second, RecordWait: time.Second}
 }
 

@@ -26,6 +26,8 @@ type managedSession struct {
 	cancellationKey    string
 	cancellationReason string
 	cancellationDigest string
+	pollDelay          time.Duration
+	nextPollAt         time.Time
 }
 
 type Controller struct {
@@ -94,13 +96,16 @@ func (controller *Controller) Start(ctx context.Context, request StartRequest) (
 		OrganizationID: queryValue.Scope.OrganizationID, TenantID: queryValue.Scope.TenantID,
 		ActorID: queryValue.Authority.ActorID, SourceID: queryValue.Scope.SourceID, Mode: profile.Mode,
 		EffectiveLimits: effective, Status: "running", ReasonCode: "execution_" + executionValue.Outcome,
-		NextPageNumber: 1, JobHandleDigest: handleDigest, VendorProvenanceDigest: executionValue.ProvenanceDigest,
-		StartedAt: executionValue.StartedAt, UpdatedAt: now.Format(timestampLayout), Deadline: queryValue.Deadline}
+		NextPageNumber: 1, PollDelayMillis: uint64(profile.MinimumPollInterval / time.Millisecond),
+		NextPollAt: now.Format(timestampLayout), JobHandleDigest: handleDigest,
+		VendorProvenanceDigest: executionValue.ProvenanceDigest,
+		StartedAt:              executionValue.StartedAt, UpdatedAt: now.Format(timestampLayout), Deadline: queryValue.Deadline}
 	finalized, err := finalizeSession(session)
 	if err != nil {
 		return Session{}, err
 	}
-	managed := &managedSession{value: finalized, query: query, authority: queryValue.Authority, jobHandle: executionValue.Handle}
+	managed := &managedSession{value: finalized, query: query, authority: queryValue.Authority,
+		jobHandle: executionValue.Handle, pollDelay: profile.MinimumPollInterval, nextPollAt: now}
 	controller.mu.Lock()
 	if existing := controller.sessions[session.SessionID]; existing != nil {
 		controller.mu.Unlock()

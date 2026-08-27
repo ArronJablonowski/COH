@@ -18,6 +18,7 @@ var (
 func validateConfig(config Config) error {
 	if config.Interactive.Mode != "interactive" || config.Export.Mode != "export" ||
 		!validLimits(config.Interactive.Limits) || !validLimits(config.Export.Limits) ||
+		!validPollProfile(config.Interactive) || !validPollProfile(config.Export) ||
 		config.MaximumSessions <= 0 || config.MaximumSessions > MaximumSessionCapacity ||
 		config.CancellationWait <= 0 || config.CancellationWait > MaximumCancellationWait ||
 		config.RecordWait <= 0 || config.RecordWait > MaximumRecordWait {
@@ -36,7 +37,8 @@ func validateSession(value Session, digestEmpty bool) error {
 		!uuidPattern.MatchString(value.ActorID) || !tokenPattern.MatchString(value.SourceID) ||
 		!oneOf(value.Mode, "interactive", "export") || !validLimits(value.EffectiveLimits) ||
 		!oneOf(value.Status, "running", "complete", "partial", "truncated", "canceled", "uncertain", "failed") ||
-		!tokenPattern.MatchString(value.ReasonCode) || value.NextPageNumber == 0 ||
+		!tokenPattern.MatchString(value.ReasonCode) || value.NextPageNumber == 0 || value.PollDelayMillis == 0 ||
+		!validTimestamp(value.NextPollAt) ||
 		!digestPattern.MatchString(value.JobHandleDigest) || !digestPattern.MatchString(value.VendorProvenanceDigest) ||
 		!validOptionalDigest(value.PreviousSessionDigest) || !validOptionalDigest(value.PageHandleDigest) ||
 		!validOptionalDigest(value.LastPageDigest) || !validOptionalDigest(value.LastRateReservationDigest) ||
@@ -51,6 +53,12 @@ func validateSession(value Session, digestEmpty bool) error {
 		return newError(InvalidInput, "session_invalid", nil)
 	}
 	return nil
+}
+
+func validPollProfile(value Profile) bool {
+	return value.MinimumPollInterval > 0 && value.MinimumPollInterval <= value.MaximumPollInterval &&
+		value.MaximumPollInterval <= MaximumPollInterval && value.MinimumPollInterval%time.Millisecond == 0 &&
+		value.MaximumPollInterval%time.Millisecond == 0
 }
 
 func validateRateReservation(value RateReservation, digestEmpty bool) error {

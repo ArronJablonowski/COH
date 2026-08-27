@@ -17,6 +17,8 @@ type transitionInput struct {
 	cancelDigest   string
 	provenance     string
 	nextPageNumber uint32
+	pollDelay      time.Duration
+	nextPollAt     time.Time
 }
 
 func (controller *Controller) commit(ctx context.Context, managed *managedSession, input transitionInput,
@@ -35,6 +37,10 @@ func (controller *Controller) commit(ctx context.Context, managed *managedSessio
 	candidate.UpdatedAt = now.Format(timestampLayout)
 	if input.nextPageNumber != 0 {
 		candidate.NextPageNumber = input.nextPageNumber
+	}
+	if input.pollDelay > 0 && !input.nextPollAt.IsZero() {
+		candidate.PollDelayMillis = uint64(input.pollDelay / time.Millisecond)
+		candidate.NextPollAt = input.nextPollAt.UTC().Format(timestampLayout)
 	}
 	candidate.LastPageDigest = input.pageDigest
 	candidate.PageHandleDigest = ""

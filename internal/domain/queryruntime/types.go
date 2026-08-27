@@ -17,11 +17,14 @@ const (
 	MaximumRecordWait       = 5 * time.Second
 	MaximumSessionCapacity  = 10000
 	MaximumSliceDescriptors = 4096
+	MaximumPollInterval     = time.Minute
 )
 
 type Profile struct {
-	Mode   string                `json:"mode"`
-	Limits queryconnector.Limits `json:"limits"`
+	Mode                string                `json:"mode"`
+	Limits              queryconnector.Limits `json:"limits"`
+	MinimumPollInterval time.Duration         `json:"-"`
+	MaximumPollInterval time.Duration         `json:"-"`
 }
 
 type Config struct {
@@ -64,6 +67,8 @@ type Session struct {
 	Status                    string                `json:"status"`
 	ReasonCode                string                `json:"reason_code"`
 	NextPageNumber            uint32                `json:"next_page_number"`
+	PollDelayMillis           uint64                `json:"poll_delay_millis"`
+	NextPollAt                string                `json:"next_poll_at"`
 	JobHandleDigest           string                `json:"job_handle_digest"`
 	PageHandleDigest          string                `json:"page_handle_digest,omitempty"`
 	LastPageDigest            string                `json:"last_page_digest,omitempty"`
