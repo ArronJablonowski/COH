@@ -129,6 +129,15 @@ The labels are deterministic:
 | 750,000–899,999 | high |
 | 900,000–1,000,000 | very_high |
 
+The frozen `coh.entity-confidence` v1 method assigns 500,000 for an exact
+typed match, 150,000 for each additional independent corroboration (at most
+two), the maximum declared source-quality weight (0/25,000/50,000/100,000),
+and the maximum declared recency weight (0/50,000/100,000). Multiple active
+entity matches subtract 250,000. Counterevidence has fixed reason-specific
+weights from -150,000 through -1,000,000; temporal impossibility, explicit
+separation, and analyst rejection also block merge. The canonical executable
+method fixture is `contracts/entity/v1/fixtures/confidence-method-v1.json`.
+
 The final score cannot exceed the lowest confidence ceiling among observations
 used by the decision. Repeated observations from the same source/provenance
 family do not count as independent corroboration. Missing evidence does not
