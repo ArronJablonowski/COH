@@ -1,0 +1,9 @@
+{
+  "contract_version": "1.0.0",
+  "origin": "sanitized replay fixtures derived from Elastic 8.19 validate, PIT, search, and close response contracts",
+  "records": ["query-validate-response.json", "pit-open-response.json", "pit-search-page.json", "pit-close-response.json"],
+  "schema_version": "coh.elastic-querydsl-vendor-fixture/v1",
+  "sensitive_values": "none",
+  "vendor": "elastic",
+  "vendor_version": "8.19.2"
+}

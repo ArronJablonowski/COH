@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/connector/elasticesql"
+	"github.com/ArronJablonowski/COH/internal/connector/elasticquerydsl"
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
 
@@ -57,6 +58,13 @@ type Client interface {
 
 type ESQLClient interface {
 	ExecuteESQL(context.Context, ESQLRequest) (ESQLResult, CallReceipt, error)
+}
+
+type QueryDSLClient interface {
+	ValidateQuery(context.Context, QueryValidationRequest) (QueryValidationResult, CallReceipt, error)
+	OpenPIT(context.Context, OpenPITRequest) (PITResult, CallReceipt, error)
+	SearchPIT(context.Context, SearchPITRequest) (SearchPITResult, CallReceipt, error)
+	ClosePIT(context.Context, ClosePITRequest) (ClosePITResult, CallReceipt, error)
 }
 
 // CredentialSource resolves and consumes one broker-owned credential lease per
@@ -155,4 +163,67 @@ type ESQLResult struct {
 	DocumentsFound uint64
 	ValuesLoaded   uint64
 	ResultDigest   string
+}
+
+type QueryValidationRequest struct {
+	Binding CallBinding
+	Indices []string
+	Plan    elasticquerydsl.ValidatedPlan
+}
+
+type QueryValidationResult struct {
+	Valid        bool
+	TotalShards  uint64
+	FailedShards uint64
+	ResultDigest string
+}
+
+type OpenPITRequest struct {
+	Binding   CallBinding
+	Indices   []string
+	Plan      elasticquerydsl.ValidatedPlan
+	KeepAlive time.Duration
+}
+
+type PITResult struct {
+	ID           string
+	TotalShards  uint64
+	FailedShards uint64
+	PITDigest    string
+}
+
+type SearchPITRequest struct {
+	Binding     CallBinding
+	Indices     []string
+	Plan        elasticquerydsl.ValidatedPlan
+	PITID       string
+	KeepAlive   time.Duration
+	Size        uint64
+	SearchAfter []any
+}
+
+type SearchHit struct {
+	Row  map[string]any
+	Sort []any
+}
+
+type SearchPITResult struct {
+	PITID        string
+	PITDigest    string
+	Hits         []SearchHit
+	TookMillis   uint64
+	TotalShards  uint64
+	ResultDigest string
+}
+
+type ClosePITRequest struct {
+	Binding CallBinding
+	Indices []string
+	PITID   string
+}
+
+type ClosePITResult struct {
+	Succeeded    bool
+	Freed        uint64
+	ResultDigest string
 }

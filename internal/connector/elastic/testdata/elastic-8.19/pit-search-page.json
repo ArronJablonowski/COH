@@ -1,0 +1,33 @@
+{
+  "_shards": {"failed": 0, "failures": [], "skipped": 0, "successful": 1, "total": 1},
+  "hits": {
+    "hits": [
+      {
+        "_id": "doc-1",
+        "_index": "logs-security-000001",
+        "_score": null,
+        "fields": {"@timestamp": ["2026-08-27T17:10:00.000000000Z"], "event.id": ["event-1"], "message": ["first"]},
+        "sort": ["2026-08-27T17:10:00.000000000Z", "event-1", 1]
+      },
+      {
+        "_id": "doc-2",
+        "_index": "logs-security-000001",
+        "_score": null,
+        "fields": {"@timestamp": ["2026-08-27T17:20:00.000000000Z"], "event.id": ["event-2"], "message": ["second"]},
+        "sort": ["2026-08-27T17:20:00.000000000Z", "event-2", 2]
+      },
+      {
+        "_id": "doc-3",
+        "_index": "logs-security-000001",
+        "_score": null,
+        "fields": {"@timestamp": ["2026-08-27T17:30:00.000000000Z"], "event.id": ["event-3"], "message": ["lookahead"]},
+        "sort": ["2026-08-27T17:30:00.000000000Z", "event-3", 3]
+      }
+    ],
+    "max_score": null,
+    "total": {"relation": "gte", "value": 3}
+  },
+  "pit_id": "pit-version-2",
+  "timed_out": false,
+  "took": 3
+}
