@@ -1,0 +1,30 @@
+{
+  "schema_version": "coh.query-bound-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"reason":"authority_invalid","class":"invalid","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"approval_authority_invalid","class":"invalid","covered_by":"TestApprovalIsExactQueryPolicyAndExpiryBound"},
+    {"reason":"authority_stale","class":"denied","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"scope_denied","class":"denied","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"capability_mismatch","class":"denied","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"authority_binding_mismatch","class":"denied","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"actor_revoked","class":"revoked","covered_by":"TestChangedReplayAndCurrentRevocationFailClosed"},
+    {"reason":"source_revoked","class":"revoked","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"allowlist_revoked","class":"revoked","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"capability_revoked","class":"revoked","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"emergency_stop","class":"revoked","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"authorization_denied","class":"denied","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"policy_denied","class":"denied","covered_by":"TestAuthorityAndScopeAdversarialMatrix"},
+    {"reason":"approval_denied","class":"denied","covered_by":"TestApprovalIsExactQueryPolicyAndExpiryBound"},
+    {"reason":"interval_excessive","class":"bounds","covered_by":"TestUTCIntervalDeadlineAndLimitMatrix"},
+    {"reason":"future_unsafe","class":"bounds","covered_by":"TestUTCIntervalDeadlineAndLimitMatrix"},
+    {"reason":"query_deadline_elapsed","class":"bounds","covered_by":"TestUTCIntervalDeadlineAndLimitMatrix"},
+    {"reason":"limits_excessive","class":"bounds","covered_by":"TestUTCIntervalDeadlineAndLimitMatrix"},
+    {"reason":"changed_replay","class":"replay","covered_by":"TestChangedReplayAndCurrentRevocationFailClosed"},
+    {"reason":"replay_guard_unavailable","class":"unavailable","covered_by":"TestReplayDependencyFailureIsRedactedAndAudited"},
+    {"reason":"request_canceled","class":"canceled","covered_by":"TestCancellationTimeoutAuditFailureAndRecovery"},
+    {"reason":"request_timeout","class":"timeout","covered_by":"TestCancellationTimeoutAuditFailureAndRecovery"},
+    {"reason":"audit_unavailable","class":"unavailable","covered_by":"TestCancellationTimeoutAuditFailureAndRecovery"},
+    {"reason":"context_required","class":"invalid","covered_by":"TestCancellationTimeoutAuditFailureAndRecovery"}
+  ]
+}
