@@ -33,7 +33,7 @@ type Adapter struct {
 }
 
 func New(config Config, client Client, clock Clock) (*Adapter, error) {
-	if err := validateConfig(config); err != nil || client == nil || clock == nil {
+	if err := validateConfig(config); err != nil || nilPort(client) || nilPort(clock) {
 		if err != nil {
 			return nil, err
 		}

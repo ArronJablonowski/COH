@@ -23,6 +23,7 @@ type Config struct {
 	Deployment              string
 	Endpoint                string
 	ExpectedClusterUUID     string
+	ExpectedBuildFlavor     string
 	MinimumMajorVersion     uint32
 	MaximumMajorVersion     uint32
 	QualifiedMinorVersions  []string
@@ -50,6 +51,13 @@ type Client interface {
 	Inspect(context.Context, CallBinding) (ClusterIdentity, CallReceipt, error)
 	Resolve(context.Context, ResolveRequest) (ResolveResult, CallReceipt, error)
 	FieldCapabilities(context.Context, FieldCapabilitiesRequest) (FieldCapabilitiesResult, CallReceipt, error)
+}
+
+// CredentialSource resolves and consumes one broker-owned credential lease per
+// call. Implementations must destroy the temporary bytes after consumer
+// returns and return the immutable allowed decision digest.
+type CredentialSource interface {
+	Use(context.Context, CallBinding, func([]byte) error) (string, error)
 }
 
 type Clock interface {

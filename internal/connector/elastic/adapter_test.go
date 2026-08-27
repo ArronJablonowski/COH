@@ -162,6 +162,7 @@ func testAdapter(t testing.TB) (*Adapter, *clientStub, *fixedClock) {
 func testConfig() Config {
 	return Config{SourceID: "elastic-prod", AdapterVersion: "elastic-1.0.0", Deployment: "self_managed",
 		Endpoint: "https://elastic.example.test", ExpectedClusterUUID: "cluster-uuid-1234",
+		ExpectedBuildFlavor: "default",
 		MinimumMajorVersion: 8, MaximumMajorVersion: 9, QualifiedMinorVersions: []string{"8.19", "9.1"},
 		TransportIdentityDigest: testDigest("4"),
 		Resources:               []Resource{{ID: "securityevent", Expression: "logs-security-*"}},

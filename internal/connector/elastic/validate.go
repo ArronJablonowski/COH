@@ -2,6 +2,7 @@ package elastic
 
 import (
 	"net/url"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -40,15 +41,20 @@ func validateConfig(config Config) error {
 	}
 	if !tokenPattern.MatchString(config.SourceID) || !tokenPattern.MatchString(config.AdapterVersion) ||
 		!oneOf(config.Deployment, "self_managed", "serverless") ||
-		!clusterUUIDPattern.MatchString(config.ExpectedClusterUUID) || !digestPattern.MatchString(config.TransportIdentityDigest) ||
+		!clusterUUIDPattern.MatchString(config.ExpectedClusterUUID) || !tokenPattern.MatchString(config.ExpectedBuildFlavor) ||
+		!digestPattern.MatchString(config.TransportIdentityDigest) ||
 		config.MinimumMajorVersion == 0 || config.MaximumMajorVersion < config.MinimumMajorVersion ||
 		config.CapabilityLifetime <= 0 || config.CapabilityLifetime > time.Hour ||
-		!validLimits(config.HardLimits) || len(config.Resources) == 0 || len(config.Resources) > maximumResources ||
+		!validLimits(config.HardLimits) || config.HardLimits.MaximumBytes > queryconnector.MaximumDocumentBytes ||
+		config.HardLimits.MaximumDurationMillis > 120000 || len(config.Resources) == 0 || len(config.Resources) > maximumResources ||
 		len(config.Fields) == 0 || len(config.Fields) > maximumFields {
 		return invalid("elastic_configuration_invalid")
 	}
 	if config.Deployment == "self_managed" && len(config.QualifiedMinorVersions) == 0 {
 		return invalid("elastic_versions_unqualified")
+	}
+	if (config.Deployment == "serverless") != (config.ExpectedBuildFlavor == "serverless") {
+		return invalid("elastic_build_flavor_invalid")
 	}
 	if !slices.IsSorted(config.QualifiedMinorVersions) || duplicate(config.QualifiedMinorVersions) {
 		return invalid("elastic_versions_invalid")
@@ -101,7 +107,8 @@ func validateScope(config Config, scope queryconnector.Scope) ([]Resource, error
 }
 
 func validateIdentity(config Config, identity ClusterIdentity) error {
-	if identity.ClusterUUID != config.ExpectedClusterUUID {
+	if identity.ClusterUUID != config.ExpectedClusterUUID || identity.BuildFlavor != config.ExpectedBuildFlavor ||
+		strings.TrimSpace(identity.BuildHash) == "" || identity.BuildHash == "<nil>" {
 		return conflict("elastic_cluster_identity_mismatch")
 	}
 	if identity.Snapshot {
@@ -149,3 +156,16 @@ func duplicate[T comparable](values []T) bool {
 }
 
 func oneOf(value string, options ...string) bool { return slices.Contains(options, value) }
+
+func nilPort(value any) bool {
+	if value == nil {
+		return true
+	}
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return reflected.IsNil()
+	default:
+		return false
+	}
+}
