@@ -13,6 +13,9 @@ const decisionDigestDomain = "COH-QUERY-BOUND-DECISION-V1\x00"
 
 func FinalizeDecision(decision Decision) (Decision, error) {
 	decision.DecisionDigest = ""
+	if err := validateDecision(decision); err != nil {
+		return Decision{}, err
+	}
 	canonical, err := CanonicalDecision(decision)
 	if err != nil {
 		return Decision{}, newError(InvalidInput, "decision_encoding", err)

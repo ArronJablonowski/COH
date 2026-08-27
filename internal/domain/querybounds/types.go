@@ -8,44 +8,49 @@ import (
 )
 
 const (
-	ContractVersion       = "1.0.0"
-	DecisionSchemaVersion = "coh.query-bound-decision/v1"
-	MaximumAuthorityAge   = 30 * time.Second
+	ContractVersion        = "1.0.0"
+	DecisionSchemaVersion  = "coh.query-bound-decision/v1"
+	MaximumAuthorityAge    = 30 * time.Second
+	MaximumFutureSkewLimit = 5 * time.Minute
+	auditTimeout           = 5 * time.Second
 )
 
 // AuthoritySnapshot is fresh trusted broker input. Query data cannot assert
 // or widen any field in this value.
 type AuthoritySnapshot struct {
-	OrganizationID              string
-	TenantID                    string
-	CaseID                      string
-	ActorID                     string
-	ActorRevision               uint64
-	ActorActive                 bool
-	SourceID                    string
-	SourceRevision              uint64
-	SourceActive                bool
-	ResourceIDs                 []string
-	AllowlistRevision           uint64
-	CapabilityDigest            string
-	CapabilityRevision          uint64
-	CapabilityActive            bool
-	AuthorizationAllowed        bool
-	AuthorizationDecisionDigest string
-	PolicyAllowed               bool
-	PolicyDecisionDigest        string
-	PolicyRevision              uint64
-	ApprovalRequired            bool
-	ApprovalAllowed             bool
-	ApprovalDecisionDigest      string
-	ApprovalExpiresAt           time.Time
-	AuditReservationDigest      string
-	EmergencyStopActive         bool
-	RevocationRevision          uint64
-	MaximumInterval             time.Duration
-	MaximumFutureSkew           time.Duration
-	MaximumLimits               queryconnector.Limits
-	ObservedAt                  time.Time
+	OrganizationID               string
+	TenantID                     string
+	CaseID                       string
+	ActorID                      string
+	ActorRevision                uint64
+	ActorActive                  bool
+	SourceID                     string
+	SourceRevision               uint64
+	SourceActive                 bool
+	ResourceIDs                  []string
+	AllowlistRevision            uint64
+	AllowlistActive              bool
+	CapabilityDigest             string
+	CapabilityRevision           uint64
+	CapabilityActive             bool
+	AuthorizationAllowed         bool
+	AuthorizationDecisionDigest  string
+	PolicyAllowed                bool
+	PolicyDecisionDigest         string
+	PolicyRevision               uint64
+	ApprovalRequired             bool
+	ApprovalAllowed              bool
+	ApprovalDecisionDigest       string
+	ApprovalQueryDigest          string
+	ApprovalPolicyDecisionDigest string
+	ApprovalExpiresAt            time.Time
+	AuditReservationDigest       string
+	EmergencyStopActive          bool
+	RevocationRevision           uint64
+	MaximumInterval              time.Duration
+	MaximumFutureSkew            time.Duration
+	MaximumLimits                queryconnector.Limits
+	ObservedAt                   time.Time
 }
 
 // Decision is redacted audit and evidence input. Native query text, result

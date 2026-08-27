@@ -54,5 +54,3 @@ func fixtureDecision() Decision {
 		IntervalStart: "2026-08-27T17:00:00.000000000Z", IntervalEnd: "2026-08-27T18:00:00.000000000Z",
 		LimitsDigest: digest("8"), EvaluatedAt: "2026-08-27T18:00:01.000000000Z"}
 }
-
-func digest(character string) string { return "sha256:" + strings.Repeat(character, 64) }

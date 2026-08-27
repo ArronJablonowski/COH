@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+var ErrChangedReplay = errors.New("query ID replayed with changed canonical input")
+
 type ErrorCode string
 
 const (
