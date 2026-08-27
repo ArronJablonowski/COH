@@ -165,8 +165,10 @@ Every evidence object has one canonical encrypted `ArtifactManifest` binding:
 The receipt stores the encrypted manifest reference and complete canonical
 digests, not manifest plaintext. Provenance chains from the source/parent
 manifest set and exact ingestion command. The later custody leaf records
-acquisition and access events; this leaf supplies its immutable acquisition
-receipt and audit proof without pre-implementing the custody ledger.
+acquisition and access events through the frozen
+[`chain-of-custody`](chain-of-custody.md) boundary; this leaf supplies its
+immutable acquisition receipt and audit proof without pre-implementing the
+custody ledger.
 
 ## Replay, concurrency, and failures
 
