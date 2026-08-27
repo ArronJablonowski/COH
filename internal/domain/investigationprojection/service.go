@@ -62,15 +62,22 @@ func (service *Service) Read(ctx context.Context, query Query) (Projection, erro
 	if service == nil {
 		return Projection{}, newError(InvalidInputError, DependencyUnavailable, nil)
 	}
+	if err := checkContext(ctx); err != nil {
+		return Projection{}, err
+	}
+	if projection, found := service.loadCached(query); found {
+		deadline, _ := time.Parse(timestampLayout, query.Deadline)
+		if !time.Now().Before(deadline) {
+			return Projection{}, newError(TimeoutError, ContextDeadline, context.DeadlineExceeded)
+		}
+		return projection, nil
+	}
 	if err := validateBoundQuery(ctx, query); err != nil {
 		return Projection{}, err
 	}
 	deadline, _ := time.Parse(timestampLayout, query.Deadline)
 	workContext, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
-	if projection, found := service.loadCached(query); found {
-		return projection, nil
-	}
 	target, err := service.verifyTarget(workContext, query)
 	if err != nil {
 		return Projection{}, serviceError(workContext, err)
@@ -219,7 +226,7 @@ func (service *Service) loadCached(query Query) (Projection, bool) {
 	defer service.mu.RUnlock()
 	entry, found := service.cache[query.QueryDigest]
 	head, known := service.heads[query.Scope]
-	return cloneProjection(entry.projection), found && known && entry.query.QueryDigest == query.QueryDigest &&
+	return cloneProjection(entry.projection), found && known && entry.query == query &&
 		entry.stateVersion == query.StateVersion && head.version == query.StateVersion &&
 		digestPattern.MatchString(entry.checkpointDigest) && entry.projectionDigest == entry.projection.ProjectionDigest &&
 		sameWatermark(head.watermark, entry.watermark)

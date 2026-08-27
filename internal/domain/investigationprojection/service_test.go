@@ -321,7 +321,7 @@ func TestServiceHandlesDenialTimeoutAndLostCommitResponse(t *testing.T) {
 	})
 }
 
-func projectionServiceFixture(t *testing.T, count int) (*projectionMemory, Query) {
+func projectionServiceFixture(t testing.TB, count int) (*projectionMemory, Query) {
 	t.Helper()
 	memory := &projectionMemory{facts: []Fact{}}
 	for index := 0; index < count; index++ {
@@ -341,7 +341,7 @@ func projectionServiceFixture(t *testing.T, count int) (*projectionMemory, Query
 	return memory, query
 }
 
-func (memory *projectionMemory) appendFact(t *testing.T, factType string) {
+func (memory *projectionMemory) appendFact(t testing.TB, factType string) {
 	t.Helper()
 	sequence := uint64(len(memory.facts) + 1)
 	var previous *string
@@ -362,7 +362,7 @@ func (memory *projectionMemory) appendFact(t *testing.T, factType string) {
 		AuthoritativeStateDigest: fixtureStateVersion().AuthoritativeStateDigest}
 }
 
-func newProjectionService(t *testing.T, memory *projectionMemory) *Service {
+func newProjectionService(t testing.TB, memory *projectionMemory) *Service {
 	t.Helper()
 	service, err := NewService(Dependencies{Authority: memory, Facts: memory, Checkpoints: memory, Evidence: memory})
 	if err != nil {
@@ -375,4 +375,19 @@ func projectionCallCounts(memory *projectionMemory) [5]int {
 	memory.mu.Lock()
 	defer memory.mu.Unlock()
 	return [5]int{memory.authorityCalls, memory.factLoads, memory.checkpointLoads, memory.evidenceBuilds, memory.commits}
+}
+
+func BenchmarkCachedCurrentRead(b *testing.B) {
+	memory, query := projectionServiceFixture(b, 50)
+	service := newProjectionService(b, memory)
+	if _, err := service.Read(context.Background(), query); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		if _, err := service.Read(context.Background(), query); err != nil {
+			b.Fatal(err)
+		}
+	}
 }

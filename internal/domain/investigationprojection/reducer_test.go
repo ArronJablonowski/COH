@@ -167,7 +167,7 @@ func TestFactBoundaryRejectsMalformedInputAndHonorsContext(t *testing.T) {
 	}
 }
 
-func validProjectionFact(t *testing.T, sequence uint64, previous *string, factType string) Fact {
+func validProjectionFact(t testing.TB, sequence uint64, previous *string, factType string) Fact {
 	t.Helper()
 	claimID, hypothesisID := "claim-a", "hypothesis-a"
 	confidence := Confidence{Method: "coh.projection-confidence", MethodVersion: ReducerVersion,
