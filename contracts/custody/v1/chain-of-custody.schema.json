@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/custody/v1/chain-of-custody.schema.json",
+  "title": "COH chain-of-custody v1",
+  "oneOf": [
+    {"$ref": "#/$defs/command"},
+    {"$ref": "#/$defs/authorization_request"},
+    {"$ref": "#/$defs/decision"},
+    {"$ref": "#/$defs/record"},
+    {"$ref": "#/$defs/receipt"},
+    {"$ref": "#/$defs/verification_report"}
+  ],
+  "$defs": {
+    "uuid_v7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "nullable_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{9}Z$"},
+    "nullable_timestamp": {"oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]},
+    "opaque": {"type": "string", "minLength": 1, "maxLength": 256},
+    "media_type": {"type": "string", "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$"},
+    "classification": {"enum": ["public", "internal", "confidential", "restricted"]},
+    "case_state": {"enum": ["open", "closed", "deleted"]},
+    "operation": {"enum": ["acquire", "access", "transform", "redact", "transfer", "export", "place_hold", "release_hold", "delete"]},
+    "phase": {"enum": ["authorized", "completed"]},
+    "decision_outcome": {"enum": ["allow", "deny"]},
+    "decision_reason": {"enum": ["authorized", "invalid_input", "case_not_found", "case_state_denied", "artifact_not_found", "artifact_invalid", "manifest_invalid", "lineage_invalid", "authority_denied", "approval_required", "approval_invalid", "revoked", "stale_case", "stale_head", "changed_replay", "retention_active", "legal_hold_active"]},
+    "verification_outcome": {"enum": ["valid", "invalid", "incomplete"]},
+    "verification_reason": {"enum": ["verified", "invalid_scope", "invalid_sequence", "invalid_record", "invalid_chain", "invalid_receipt", "invalid_artifact", "invalid_manifest", "broken_lineage", "invalid_operation", "missing_audit", "invalid_audit", "invalid_checkpoint", "truncated_interval"]},
+    "case": {
+      "type": "object",
+      "required": ["organization_id", "tenant_id", "case_id"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid_v7"},
+        "tenant_id": {"$ref": "#/$defs/uuid_v7"},
+        "case_id": {"$ref": "#/$defs/uuid_v7"}
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["digest", "media_type", "classification", "length"],
+      "properties": {
+        "digest": {"$ref": "#/$defs/digest"},
+        "media_type": {"$ref": "#/$defs/media_type"},
+        "classification": {"$ref": "#/$defs/classification"},
+        "length": {"type": "integer", "minimum": 1, "maximum": 1073741824}
+      },
+      "additionalProperties": false
+    },
+    "evidence_reference": {
+      "type": "object",
+      "required": ["artifact", "manifest", "manifest_provenance_digest", "ingestion_receipt_digest"],
+      "properties": {
+        "artifact": {"$ref": "#/$defs/artifact"},
+        "manifest": {"$ref": "#/$defs/artifact"},
+        "manifest_provenance_digest": {"$ref": "#/$defs/digest"},
+        "ingestion_receipt_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "head": {
+      "type": "object",
+      "required": ["case", "sequence", "chain_hash", "last_record_at"],
+      "properties": {
+        "case": {"$ref": "#/$defs/case"},
+        "sequence": {"type": "integer", "minimum": 0},
+        "chain_hash": {"$ref": "#/$defs/digest"},
+        "last_record_at": {"$ref": "#/$defs/nullable_timestamp"}
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "operation", "phase", "case", "actor_id", "actor_revision", "subject", "parents", "source_identity_digest", "purpose_digest", "destination_digest", "recipient_digest", "transformation_digest", "rule_digest", "reason_digest", "mapping_digest", "approval_digest", "external_receipt_digest", "lifecycle_receipt_digest", "prior_authorization_digest", "artifact_set_digest", "policy_digest", "expected_case_revision", "expected_head", "deadline"],
+      "properties": {
+        "schema_version": {"const": "coh.custody-command/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "request_id": {"$ref": "#/$defs/uuid_v7"},
+        "idempotency_key": {"$ref": "#/$defs/opaque"},
+        "operation": {"$ref": "#/$defs/operation"},
+        "phase": {"$ref": "#/$defs/phase"},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1},
+        "subject": {"$ref": "#/$defs/evidence_reference"},
+        "parents": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/evidence_reference"}},
+        "source_identity_digest": {"$ref": "#/$defs/nullable_digest"},
+        "purpose_digest": {"$ref": "#/$defs/nullable_digest"},
+        "destination_digest": {"$ref": "#/$defs/nullable_digest"},
+        "recipient_digest": {"$ref": "#/$defs/nullable_digest"},
+        "transformation_digest": {"$ref": "#/$defs/nullable_digest"},
+        "rule_digest": {"$ref": "#/$defs/nullable_digest"},
+        "reason_digest": {"$ref": "#/$defs/nullable_digest"},
+        "mapping_digest": {"$ref": "#/$defs/nullable_digest"},
+        "approval_digest": {"$ref": "#/$defs/nullable_digest"},
+        "external_receipt_digest": {"$ref": "#/$defs/nullable_digest"},
+        "lifecycle_receipt_digest": {"$ref": "#/$defs/nullable_digest"},
+        "prior_authorization_digest": {"$ref": "#/$defs/nullable_digest"},
+        "artifact_set_digest": {"$ref": "#/$defs/nullable_digest"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "expected_case_revision": {"type": "integer", "minimum": 1},
+        "expected_head": {"$ref": "#/$defs/head"},
+        "deadline": {"$ref": "#/$defs/timestamp"}
+      },
+      "allOf": [
+        {"if": {"properties": {"operation": {"const": "acquire"}}}, "then": {"properties": {"phase": {"const": "completed"}, "parents": {"maxItems": 0}, "source_identity_digest": {"$ref": "#/$defs/digest"}}}},
+        {"if": {"properties": {"operation": {"const": "access"}}}, "then": {"properties": {"phase": {"const": "authorized"}, "purpose_digest": {"$ref": "#/$defs/digest"}}}},
+        {"if": {"properties": {"operation": {"const": "transform"}}}, "then": {"properties": {"phase": {"const": "completed"}, "parents": {"minItems": 1}, "transformation_digest": {"$ref": "#/$defs/digest"}}}},
+        {"if": {"properties": {"operation": {"const": "redact"}}}, "then": {"properties": {"phase": {"const": "completed"}, "parents": {"minItems": 1}, "rule_digest": {"$ref": "#/$defs/digest"}, "reason_digest": {"$ref": "#/$defs/digest"}, "mapping_digest": {"$ref": "#/$defs/digest"}, "approval_digest": {"$ref": "#/$defs/digest"}}}},
+        {"if": {"properties": {"operation": {"enum": ["transfer", "export"]}}}, "then": {"properties": {"purpose_digest": {"$ref": "#/$defs/digest"}}, "anyOf": [{"properties": {"destination_digest": {"$ref": "#/$defs/digest"}}}, {"properties": {"recipient_digest": {"$ref": "#/$defs/digest"}}}]}},
+        {"if": {"properties": {"operation": {"enum": ["place_hold", "release_hold"]}}}, "then": {"properties": {"phase": {"const": "completed"}, "reason_digest": {"$ref": "#/$defs/digest"}, "lifecycle_receipt_digest": {"$ref": "#/$defs/digest"}, "artifact_set_digest": {"$ref": "#/$defs/digest"}}}},
+        {"if": {"properties": {"operation": {"const": "delete"}, "phase": {"const": "authorized"}}}, "then": {"properties": {"reason_digest": {"$ref": "#/$defs/digest"}, "lifecycle_receipt_digest": {"$ref": "#/$defs/digest"}, "artifact_set_digest": {"$ref": "#/$defs/digest"}}}},
+        {"if": {"properties": {"operation": {"const": "delete"}, "phase": {"const": "completed"}}}, "then": {"properties": {"reason_digest": {"$ref": "#/$defs/digest"}, "lifecycle_receipt_digest": {"$ref": "#/$defs/digest"}, "prior_authorization_digest": {"$ref": "#/$defs/digest"}, "artifact_set_digest": {"$ref": "#/$defs/digest"}, "external_receipt_digest": {"$ref": "#/$defs/digest"}}}}
+      ],
+      "additionalProperties": false
+    },
+    "authorization_request": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "authorization_digest", "intent_digest", "command", "case_state", "case_classification", "case_revision", "retention_policy_digest", "retain_until", "legal_hold", "case_provenance_digest", "evidence_verified_digest", "current_head"],
+      "properties": {
+        "schema_version": {"const": "coh.custody-authorization/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "command": {"$ref": "#/$defs/command"},
+        "case_state": {"$ref": "#/$defs/case_state"},
+        "case_classification": {"$ref": "#/$defs/classification"},
+        "case_revision": {"type": "integer", "minimum": 1},
+        "retention_policy_digest": {"$ref": "#/$defs/digest"},
+        "retain_until": {"$ref": "#/$defs/timestamp"},
+        "legal_hold": {"type": "boolean"},
+        "case_provenance_digest": {"$ref": "#/$defs/digest"},
+        "evidence_verified_digest": {"$ref": "#/$defs/digest"},
+        "current_head": {"$ref": "#/$defs/head"}
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "decision_id", "decision_digest", "authorization_digest", "intent_digest", "operation", "phase", "case", "actor_id", "actor_revision", "expected_case_revision", "expected_head", "policy_digest", "revocation_digest", "outcome", "reason_code", "issued_at", "expires_at", "revision"],
+      "properties": {
+        "schema_version": {"const": "coh.custody-decision/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "decision_id": {"$ref": "#/$defs/uuid_v7"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "operation": {"$ref": "#/$defs/operation"},
+        "phase": {"$ref": "#/$defs/phase"},
+        "case": {"$ref": "#/$defs/case"},
+        "actor_id": {"$ref": "#/$defs/uuid_v7"},
+        "actor_revision": {"type": "integer", "minimum": 1},
+        "expected_case_revision": {"type": "integer", "minimum": 1},
+        "expected_head": {"$ref": "#/$defs/head"},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "revocation_digest": {"$ref": "#/$defs/digest"},
+        "outcome": {"$ref": "#/$defs/decision_outcome"},
+        "reason_code": {"$ref": "#/$defs/decision_reason"},
+        "issued_at": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "revision": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "custody_id", "case", "sequence", "previous_chain_hash", "command", "intent_digest", "authorization_digest", "decision_digest", "revocation_digest", "evidence_verified_digest", "previous_provenance_digest", "provenance_digest", "audit_event_digest", "occurred_at", "record_digest", "chain_hash"],
+      "properties": {
+        "schema_version": {"const": "coh.custody-record/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "custody_id": {"$ref": "#/$defs/uuid_v7"},
+        "case": {"$ref": "#/$defs/case"},
+        "sequence": {"type": "integer", "minimum": 1},
+        "previous_chain_hash": {"$ref": "#/$defs/digest"},
+        "command": {"$ref": "#/$defs/command"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "authorization_digest": {"$ref": "#/$defs/digest"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "revocation_digest": {"$ref": "#/$defs/digest"},
+        "evidence_verified_digest": {"$ref": "#/$defs/digest"},
+        "previous_provenance_digest": {"$ref": "#/$defs/nullable_digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "audit_event_digest": {"$ref": "#/$defs/digest"},
+        "occurred_at": {"$ref": "#/$defs/timestamp"},
+        "record_digest": {"$ref": "#/$defs/digest"},
+        "chain_hash": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "receipt": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "request_id", "case", "idempotency_digest", "intent_digest", "decision_digest", "custody_id", "sequence", "record_digest", "chain_hash", "audit_event_digest", "provenance_digest", "created_at", "receipt_digest"],
+      "properties": {
+        "schema_version": {"const": "coh.custody-receipt/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "request_id": {"$ref": "#/$defs/uuid_v7"},
+        "case": {"$ref": "#/$defs/case"},
+        "idempotency_digest": {"$ref": "#/$defs/digest"},
+        "intent_digest": {"$ref": "#/$defs/digest"},
+        "decision_digest": {"$ref": "#/$defs/digest"},
+        "custody_id": {"$ref": "#/$defs/uuid_v7"},
+        "sequence": {"type": "integer", "minimum": 1},
+        "record_digest": {"$ref": "#/$defs/digest"},
+        "chain_hash": {"$ref": "#/$defs/digest"},
+        "audit_event_digest": {"$ref": "#/$defs/digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"$ref": "#/$defs/timestamp"},
+        "receipt_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "verification_report": {
+      "type": "object",
+      "required": ["schema_version", "contract_version", "case", "from_sequence", "to_sequence", "head_chain_hash", "audit_checkpoint_id", "audit_checkpoint_digest", "outcome", "reason_code", "verified_at", "report_digest"],
+      "properties": {
+        "schema_version": {"const": "coh.custody-verification/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "case": {"$ref": "#/$defs/case"},
+        "from_sequence": {"type": "integer", "minimum": 1},
+        "to_sequence": {"type": "integer", "minimum": 1},
+        "head_chain_hash": {"$ref": "#/$defs/digest"},
+        "audit_checkpoint_id": {"oneOf": [{"$ref": "#/$defs/uuid_v7"}, {"type": "null"}]},
+        "audit_checkpoint_digest": {"$ref": "#/$defs/nullable_digest"},
+        "outcome": {"$ref": "#/$defs/verification_outcome"},
+        "reason_code": {"$ref": "#/$defs/verification_reason"},
+        "verified_at": {"$ref": "#/$defs/timestamp"},
+        "report_digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
