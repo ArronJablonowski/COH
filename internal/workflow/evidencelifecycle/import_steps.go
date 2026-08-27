@@ -247,8 +247,11 @@ func (service *ImportService) custodyImport(ctx context.Context, state importSta
 		return CustodyProofSet{}, Progress{}, newError(Denied, "import_custody_invalid", false, nil)
 	}
 	verified, err := service.custody.VerifyLifecycle(ctx, state.Command.Case, 1, proof.Head.Sequence)
-	if err != nil || !validCustodyVerification(verified, proof.Head) {
+	if err != nil {
 		return CustodyProofSet{}, Progress{}, mapExportDependency(ctx, "import_custody_verification_unavailable", err)
+	}
+	if !validCustodyVerification(verified, proof.Head) {
+		return CustodyProofSet{}, Progress{}, newError(Denied, "import_custody_verification_invalid", false, nil)
 	}
 	for index := range progress.Artifacts {
 		digest := proof.Proofs[index].ReceiptDigest
