@@ -1,0 +1,23 @@
+{
+  "schema_version": "coh.connector-truncation-environment/v1",
+  "environment_version": "1.0.0",
+  "corpus_version": "1.0.0",
+  "go_version": "1.26.7",
+  "qualified_platform": "darwin/arm64",
+  "clock": "logical-trial-clock/v1",
+  "randomness": "none",
+  "network": "disabled",
+  "contracts": [
+    {"name": "artifacts-contract", "version": "1.0.0", "digest": "sha256:dc9099abfa9b2252078b4fd1a1dbe9ca0ac724122c48784e51a9289d216bc88c"},
+    {"name": "corpus-contract", "version": "1.0.0", "digest": "sha256:8bad152a446770e3d23b658307d871e930c0294784cd7955dedd30e662843e68"},
+    {"name": "environment-contract", "version": "1.0.0", "digest": "sha256:9fcb0bc2570bdc106baacc8a0947b9d914e54c779bed3aca4524bc0b2e19e873"},
+    {"name": "graders-contract", "version": "1.0.0", "digest": "sha256:b9bcbbcb35f49de141311712fd6bbc69457f08667d7eede223e0551870a9ae6d"},
+    {"name": "recording-contract", "version": "1.0.0", "digest": "sha256:003bbcd9a2f3669dfc755fd9b34a711f8a924fe6ff4ceff07000a3586cc2ef96"},
+    {"name": "threshold-contract", "version": "1.0.0", "digest": "sha256:419225e9b2b4fbcdd8a6574a2360a2d80cb9edbde0a9fd8b33af264729dd7616"},
+    {"name": "trace-contract", "version": "1.0.0", "digest": "sha256:3692a111f6de6d29670488eb8a80553551c9e3e5d970b52814dbf1aeb6d832b2"}
+  ],
+  "fixture_manifests": [
+    {"name": "elastic-recordings", "version": "1.0.0", "digest": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"},
+    {"name": "security-onion-recordings", "version": "1.0.0", "digest": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"}
+  ]
+}

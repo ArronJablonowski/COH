@@ -75,7 +75,9 @@ func DecodeRecordings(input []byte) (RecordingSet, error) {
 		return RecordingSet{}, denied("recording set identity invalid")
 	}
 	seen := make(map[string]struct{}, len(value.Recordings))
-	for _, recording := range value.Recordings {
+	for index := range value.Recordings {
+		value.Recordings[index].Vendor = value.Vendor
+		recording := value.Recordings[index]
 		if err := validateRecording(value.Vendor, recording); err != nil {
 			return RecordingSet{}, err
 		}

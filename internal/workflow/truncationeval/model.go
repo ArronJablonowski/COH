@@ -66,6 +66,7 @@ type RecordingStep struct {
 }
 
 type Recording struct {
+	Vendor     string          `json:"-"`
 	ID         string          `json:"id"`
 	Mode       string          `json:"mode"`
 	Boundary   string          `json:"boundary"`
@@ -177,4 +178,18 @@ type ArtifactManifest struct {
 	EnvironmentDigest   string     `json:"environment_digest"`
 	ReproductionCommand string     `json:"reproduction_command"`
 	Artifacts           []Artifact `json:"artifacts"`
+}
+
+type Suite struct {
+	Corpus            Corpus
+	Environment       Environment
+	CorpusDigest      string
+	EnvironmentDigest string
+	Recordings        map[string]Recording
+}
+
+type RunResult struct {
+	Traces    []Trace
+	Graders   GraderReport
+	Threshold ThresholdResult
 }

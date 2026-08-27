@@ -1,0 +1,692 @@
+{
+  "schema_version": "coh.connector-truncation-corpus/v1",
+  "corpus_version": "1.0.0",
+  "requirements": [
+    "FR-054",
+    "EVAL-016"
+  ],
+  "trials_per_task": 5,
+  "thresholds": {
+    "maximum_false_complete": 0,
+    "maximum_duplicate_rows": 0,
+    "maximum_missing_rows": 0,
+    "minimum_replay_rate": 1,
+    "minimum_outcome_grade_rate": 1,
+    "minimum_trajectory_grade_rate": 1,
+    "minimum_boundary_coverage_rate": 1
+  },
+  "tasks": [
+    {
+      "id": "elastic-schema-drift",
+      "vendor": "elastic",
+      "mode": "esql",
+      "boundary": "schema.digest",
+      "fault": "schema_drift",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "denied",
+        "completeness_status": "not_applicable",
+        "reason_codes": [
+          "elastic_schema_digest_mismatch"
+        ],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": false,
+        "rows_returned": 0,
+        "pages_returned": 0,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "schema.loaded",
+        "schema.digest_mismatch",
+        "execution.denied"
+      ]
+    },
+    {
+      "id": "elastic-partial-shards",
+      "vendor": "elastic",
+      "mode": "esql",
+      "boundary": "response.shard_failure",
+      "fault": "partial_response",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "partial",
+        "completeness_status": "partial",
+        "reason_codes": [
+          "elastic_shard_failure"
+        ],
+        "truncated": false,
+        "partial": true,
+        "vendor_confirmed": true,
+        "rows_returned": 2,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "request.sent",
+        "response.partial",
+        "rows.accepted",
+        "completeness.partial"
+      ]
+    },
+    {
+      "id": "elastic-repeated-stable-sort",
+      "vendor": "elastic",
+      "mode": "query_dsl_pit",
+      "boundary": "sort.repeated_key",
+      "fault": "repeated_sort",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "completed",
+        "completeness_status": "complete",
+        "reason_codes": [],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": true,
+        "rows_returned": 4,
+        "pages_returned": 2,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "pit.opened",
+        "page.accepted",
+        "cursor.tie_breaker_advanced",
+        "page.accepted",
+        "pit.close_confirmed",
+        "completeness.complete"
+      ]
+    },
+    {
+      "id": "elastic-pit-rotation",
+      "vendor": "elastic",
+      "mode": "query_dsl_pit",
+      "boundary": "pit.rotation",
+      "fault": "pit_rotation",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "completed",
+        "completeness_status": "complete",
+        "reason_codes": [],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": true,
+        "rows_returned": 4,
+        "pages_returned": 2,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "pit.opened",
+        "pit.rotated",
+        "page.accepted",
+        "pit.rotated",
+        "page.accepted",
+        "pit.close_confirmed",
+        "completeness.complete"
+      ]
+    },
+    {
+      "id": "elastic-pit-expiry",
+      "vendor": "elastic",
+      "mode": "query_dsl_pit",
+      "boundary": "pit.expiry",
+      "fault": "pit_expiry",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "unknown",
+        "completeness_status": "unknown",
+        "reason_codes": [
+          "elastic_pit_expired"
+        ],
+        "truncated": true,
+        "partial": true,
+        "vendor_confirmed": false,
+        "rows_returned": 2,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "pit.opened",
+        "page.accepted",
+        "pit.expired",
+        "automatic_retry.denied",
+        "completeness.unknown"
+      ]
+    },
+    {
+      "id": "elastic-boundary-lookahead",
+      "vendor": "elastic",
+      "mode": "query_dsl_pit",
+      "boundary": "limit.lookahead",
+      "fault": "documented_cap",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "unknown",
+        "completeness_status": "unknown",
+        "reason_codes": [
+          "row_limit_reached"
+        ],
+        "truncated": true,
+        "partial": true,
+        "vendor_confirmed": false,
+        "rows_returned": 2,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "pit.opened",
+        "lookahead.detected",
+        "row_limit.enforced",
+        "pit.close_confirmed",
+        "completeness.unknown"
+      ]
+    },
+    {
+      "id": "elastic-cancel-before-request",
+      "vendor": "elastic",
+      "mode": "query_dsl_pit",
+      "boundary": "cancellation.before_request",
+      "fault": "cancel",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "canceled",
+        "completeness_status": "not_applicable",
+        "reason_codes": [
+          "elastic_request_canceled"
+        ],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": false,
+        "rows_returned": 0,
+        "pages_returned": 0,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "cancellation.observed",
+        "network_call.denied",
+        "execution.canceled"
+      ]
+    },
+    {
+      "id": "elastic-pit-close-uncertain",
+      "vendor": "elastic",
+      "mode": "query_dsl_pit",
+      "boundary": "pit.close",
+      "fault": "timeout",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "unknown",
+        "completeness_status": "unknown",
+        "reason_codes": [
+          "elastic_pit_close_unconfirmed"
+        ],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": false,
+        "rows_returned": 2,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "pit.opened",
+        "page.accepted",
+        "pit.close_requested",
+        "pit.close_unconfirmed",
+        "automatic_retry.denied",
+        "completeness.unknown"
+      ]
+    },
+    {
+      "id": "elastic-recovery-stable-cursor",
+      "vendor": "elastic",
+      "mode": "query_dsl_pit",
+      "boundary": "recovery.stable_cursor",
+      "fault": "lost_state",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "completed",
+        "completeness_status": "complete",
+        "reason_codes": [],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": true,
+        "rows_returned": 4,
+        "pages_returned": 2,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "transport.unavailable",
+        "durable_cursor.loaded",
+        "pit.reopened",
+        "deduplication.enforced",
+        "page.accepted",
+        "pit.close_confirmed",
+        "completeness.complete"
+      ]
+    },
+    {
+      "id": "elastic-adaptive-half-open",
+      "vendor": "elastic",
+      "mode": "adaptive_slice",
+      "boundary": "slicing.half_open_coverage",
+      "fault": "none",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/elastic-recordings.json",
+          "sha256": "sha256:5a7b46f4e21e064bbba6d9061122561ccff2bfdcdb38391b356995347dcaaa0f"
+        }
+      ],
+      "expected": {
+        "outcome": "completed",
+        "completeness_status": "complete",
+        "reason_codes": [],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": true,
+        "rows_returned": 4,
+        "pages_returned": 2,
+        "adaptive_slicing": "proven"
+      },
+      "trajectory": [
+        "slice.admitted",
+        "half_open_boundary.enforced",
+        "slice.complete",
+        "slice.admitted",
+        "half_open_boundary.enforced",
+        "slice.complete",
+        "cross_slice_deduplication.enforced",
+        "completeness.complete"
+      ]
+    },
+    {
+      "id": "security-onion-undocumented-event-cap",
+      "vendor": "security_onion",
+      "mode": "oql_events",
+      "boundary": "limit.undocumented_backend",
+      "fault": "undocumented_cap",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "partial",
+        "completeness_status": "partial",
+        "reason_codes": [
+          "securityonion_event_limit_reached"
+        ],
+        "truncated": true,
+        "partial": true,
+        "vendor_confirmed": true,
+        "rows_returned": 2,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "request.sent",
+        "backend_limit.detected",
+        "rows.accepted",
+        "completeness.partial"
+      ]
+    },
+    {
+      "id": "security-onion-total-count-mismatch",
+      "vendor": "security_onion",
+      "mode": "oql_events",
+      "boundary": "response.total_mismatch",
+      "fault": "undocumented_cap",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "partial",
+        "completeness_status": "partial",
+        "reason_codes": [
+          "securityonion_event_limit_reached"
+        ],
+        "truncated": true,
+        "partial": true,
+        "vendor_confirmed": true,
+        "rows_returned": 2,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "request.sent",
+        "response.counted",
+        "total_mismatch.detected",
+        "completeness.partial"
+      ]
+    },
+    {
+      "id": "security-onion-aggregation-bucket-cap",
+      "vendor": "security_onion",
+      "mode": "oql_metrics",
+      "boundary": "limit.aggregation_bucket",
+      "fault": "documented_cap",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "partial",
+        "completeness_status": "partial",
+        "reason_codes": [
+          "securityonion_metric_limit_reached"
+        ],
+        "truncated": true,
+        "partial": true,
+        "vendor_confirmed": true,
+        "rows_returned": 2,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "request.sent",
+        "aggregation.decoded",
+        "omitted_bucket_count.detected",
+        "completeness.partial"
+      ]
+    },
+    {
+      "id": "security-onion-metrics-unconfirmed",
+      "vendor": "security_onion",
+      "mode": "oql_metrics",
+      "boundary": "response.metrics_completion",
+      "fault": "none",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "partial",
+        "completeness_status": "partial",
+        "reason_codes": [
+          "securityonion_completion_unconfirmed"
+        ],
+        "truncated": false,
+        "partial": true,
+        "vendor_confirmed": false,
+        "rows_returned": 1,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "request.sent",
+        "aggregation.decoded",
+        "completion.unconfirmed",
+        "completeness.partial"
+      ]
+    },
+    {
+      "id": "security-onion-embedded-error",
+      "vendor": "security_onion",
+      "mode": "oql_events",
+      "boundary": "response.embedded_error",
+      "fault": "embedded_error",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "denied",
+        "completeness_status": "not_applicable",
+        "reason_codes": [
+          "securityonion_oql_response_error"
+        ],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": false,
+        "rows_returned": 0,
+        "pages_returned": 0,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "request.sent",
+        "embedded_error.detected",
+        "response.denied"
+      ]
+    },
+    {
+      "id": "security-onion-cancel-confirmed",
+      "vendor": "security_onion",
+      "mode": "oql_events",
+      "boundary": "cancellation.confirmed",
+      "fault": "cancel",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "canceled",
+        "completeness_status": "not_applicable",
+        "reason_codes": [
+          "securityonion_cancel_confirmed"
+        ],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": false,
+        "rows_returned": 0,
+        "pages_returned": 0,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "cancellation.requested",
+        "cancellation.confirmed",
+        "execution.canceled"
+      ]
+    },
+    {
+      "id": "security-onion-cancel-lost-state",
+      "vendor": "security_onion",
+      "mode": "oql_events",
+      "boundary": "cancellation.lost_state",
+      "fault": "lost_state",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "unknown",
+        "completeness_status": "unknown",
+        "reason_codes": [
+          "securityonion_cancel_uncertain"
+        ],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": false,
+        "rows_returned": 0,
+        "pages_returned": 0,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "cancellation.requested",
+        "job_state.missing",
+        "automatic_retry.denied",
+        "cancellation.uncertain"
+      ]
+    },
+    {
+      "id": "security-onion-backend-outage",
+      "vendor": "security_onion",
+      "mode": "oql_events",
+      "boundary": "response.backend_outage",
+      "fault": "timeout",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "unknown",
+        "completeness_status": "unknown",
+        "reason_codes": [
+          "securityonion_transport_timeout"
+        ],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": false,
+        "rows_returned": 0,
+        "pages_returned": 0,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "request.sent",
+        "transport.timeout",
+        "automatic_retry.denied",
+        "completeness.unknown"
+      ]
+    },
+    {
+      "id": "security-onion-recovery-after-outage",
+      "vendor": "security_onion",
+      "mode": "oql_events",
+      "boundary": "recovery.durable_request",
+      "fault": "lost_state",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "completed",
+        "completeness_status": "complete",
+        "reason_codes": [],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": true,
+        "rows_returned": 2,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "transport.unavailable",
+        "durable_request.loaded",
+        "operator_retry.authorized",
+        "response.complete",
+        "completeness.complete"
+      ]
+    },
+    {
+      "id": "security-onion-empty-events-complete",
+      "vendor": "security_onion",
+      "mode": "oql_events",
+      "boundary": "response.empty_complete",
+      "fault": "none",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "completed",
+        "completeness_status": "complete",
+        "reason_codes": [],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": true,
+        "rows_returned": 0,
+        "pages_returned": 1,
+        "adaptive_slicing": "not_requested"
+      },
+      "trajectory": [
+        "request.sent",
+        "response.empty",
+        "total.confirmed_zero",
+        "completeness.complete"
+      ]
+    },
+    {
+      "id": "security-onion-adaptive-unsupported",
+      "vendor": "security_onion",
+      "mode": "adaptive_slice",
+      "boundary": "slicing.vendor_semantics",
+      "fault": "unproven_slice",
+      "fixtures": [
+        {
+          "path": "internal/workflow/truncationeval/testdata/1.0.0/security-onion-recordings.json",
+          "sha256": "sha256:ae6bf9060d8ad0ce0d3ebcdcb8eb8cc8fd50a2c9723c324ae5dccfd7263b9046"
+        }
+      ],
+      "expected": {
+        "outcome": "denied",
+        "completeness_status": "not_applicable",
+        "reason_codes": [
+          "adaptive_slicing_unproven"
+        ],
+        "truncated": false,
+        "partial": false,
+        "vendor_confirmed": false,
+        "rows_returned": 0,
+        "pages_returned": 0,
+        "adaptive_slicing": "unsupported"
+      },
+      "trajectory": [
+        "slicing.proof_requested",
+        "vendor_semantics.unproven",
+        "slicing.denied"
+      ]
+    }
+  ]
+}
