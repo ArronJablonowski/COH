@@ -238,6 +238,14 @@ func (value *lookupEntityStore) LoadEntity(_ context.Context, _ Scope, reference
 	entity, found := value.values[reference]
 	return entity, found, value.loadErr
 }
+func (value *lookupEntityStore) LoadCurrentEntity(_ context.Context, _ Scope, entityID string) (Entity, EntityRef, bool, error) {
+	for reference, entity := range value.values {
+		if reference.EntityID == entityID {
+			return entity, reference, true, value.loadErr
+		}
+	}
+	return Entity{}, EntityRef{}, false, value.loadErr
+}
 func (value *lookupEntityStore) LoadEntitiesByMatch(context.Context, Scope, IdentifierBinding) ([]EntityRef, error) {
 	return append([]EntityRef(nil), value.references...), value.listErr
 }

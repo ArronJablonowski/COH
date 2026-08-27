@@ -20,6 +20,9 @@ split never rewrite observations or historical entities.
 An `entity_ref.record_digest` identifies the canonical immutable entity-revision
 core; decision, history, audit, and provenance digests are layered onto the
 full record afterward to avoid cyclic self-reference.
+History records carry a canonical set of parent heads, and split commands,
+decisions, and histories persist the exact reversed history digest. Split
+partitions bind an output entity ID, members, and assigned alias-proof digests.
 The frozen v1 weights, counterevidence effects, source-independence rule,
 arithmetic, and label thresholds are executable in
 `fixtures/confidence-method-v1.json`; changing them requires a new method

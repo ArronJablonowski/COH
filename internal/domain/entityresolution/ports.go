@@ -31,6 +31,7 @@ type ObservationStore interface {
 // EntityStore is case-partitioned and returns exact immutable revisions.
 type EntityStore interface {
 	LoadEntity(context.Context, Scope, EntityRef) (Entity, bool, error)
+	LoadCurrentEntity(context.Context, Scope, string) (Entity, EntityRef, bool, error)
 	LoadEntitiesByMatch(context.Context, Scope, IdentifierBinding) ([]EntityRef, error)
 	LoadHistory(context.Context, Scope, string) (History, bool, error)
 }

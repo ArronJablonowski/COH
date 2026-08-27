@@ -126,7 +126,9 @@ type AliasProof struct {
 
 type Partition struct {
 	PartitionID        string           `json:"partition_id"`
+	OutputEntityID     string           `json:"output_entity_id"`
 	MemberObservations []ObservationRef `json:"member_observations"`
+	AliasProofDigests  []string         `json:"alias_proof_digests"`
 }
 
 type Candidate struct {
@@ -187,6 +189,7 @@ type Decision struct {
 	ActorID                     string            `json:"actor_id"`
 	ActorRevision               uint64            `json:"actor_revision"`
 	AuthorizationDecisionDigest *string           `json:"authorization_decision_digest"`
+	ReversesHistoryDigest       *string           `json:"reverses_history_digest"`
 	InputEntities               []EntityRef       `json:"input_entities"`
 	OutputEntities              []EntityRef       `json:"output_entities"`
 	Partitions                  []Partition       `json:"partitions"`
@@ -198,39 +201,41 @@ type Decision struct {
 }
 
 type History struct {
-	SchemaVersion         string      `json:"schema_version"`
-	ContractVersion       string      `json:"contract_version"`
-	MethodVersion         string      `json:"method_version"`
-	HistoryID             string      `json:"history_id"`
-	Sequence              uint64      `json:"sequence"`
-	Scope                 Scope       `json:"scope"`
-	Operation             Operation   `json:"operation"`
-	DecisionDigest        string      `json:"decision_digest"`
-	InputEntities         []EntityRef `json:"input_entities"`
-	OutputEntities        []EntityRef `json:"output_entities"`
-	PreviousHistoryDigest *string     `json:"previous_history_digest"`
-	CreatedAt             string      `json:"created_at"`
+	SchemaVersion          string      `json:"schema_version"`
+	ContractVersion        string      `json:"contract_version"`
+	MethodVersion          string      `json:"method_version"`
+	HistoryID              string      `json:"history_id"`
+	Sequence               uint64      `json:"sequence"`
+	Scope                  Scope       `json:"scope"`
+	Operation              Operation   `json:"operation"`
+	DecisionDigest         string      `json:"decision_digest"`
+	InputEntities          []EntityRef `json:"input_entities"`
+	OutputEntities         []EntityRef `json:"output_entities"`
+	PreviousHistoryDigests []string    `json:"previous_history_digests"`
+	ReversesHistoryDigest  *string     `json:"reverses_history_digest"`
+	CreatedAt              string      `json:"created_at"`
 }
 
 type Command struct {
-	SchemaVersion      string            `json:"schema_version"`
-	ContractVersion    string            `json:"contract_version"`
-	MethodVersion      string            `json:"method_version"`
-	OperationID        string            `json:"operation_id"`
-	IdempotencyKey     string            `json:"idempotency_key"`
-	Operation          Operation         `json:"operation"`
-	Scope              Scope             `json:"scope"`
-	ActorID            string            `json:"actor_id"`
-	ActorRevision      uint64            `json:"actor_revision"`
-	Observation        *Observation      `json:"observation"`
-	CandidateDigest    *string           `json:"candidate_digest"`
-	InputEntities      []EntityRef       `json:"input_entities"`
-	Partitions         []Partition       `json:"partitions"`
-	SupportingEvidence []EvidenceLink    `json:"supporting_evidence"`
-	Counterevidence    []Counterevidence `json:"counterevidence"`
-	Reason             string            `json:"reason"`
-	RequestedAt        string            `json:"requested_at"`
-	Deadline           string            `json:"deadline"`
+	SchemaVersion         string            `json:"schema_version"`
+	ContractVersion       string            `json:"contract_version"`
+	MethodVersion         string            `json:"method_version"`
+	OperationID           string            `json:"operation_id"`
+	IdempotencyKey        string            `json:"idempotency_key"`
+	Operation             Operation         `json:"operation"`
+	Scope                 Scope             `json:"scope"`
+	ActorID               string            `json:"actor_id"`
+	ActorRevision         uint64            `json:"actor_revision"`
+	ReversesHistoryDigest *string           `json:"reverses_history_digest"`
+	Observation           *Observation      `json:"observation"`
+	CandidateDigest       *string           `json:"candidate_digest"`
+	InputEntities         []EntityRef       `json:"input_entities"`
+	Partitions            []Partition       `json:"partitions"`
+	SupportingEvidence    []EvidenceLink    `json:"supporting_evidence"`
+	Counterevidence       []Counterevidence `json:"counterevidence"`
+	Reason                string            `json:"reason"`
+	RequestedAt           string            `json:"requested_at"`
+	Deadline              string            `json:"deadline"`
 }
 
 type Status string

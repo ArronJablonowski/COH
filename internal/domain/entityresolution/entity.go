@@ -69,7 +69,8 @@ func validateEntityCore(ctx context.Context, value EntityRevisionCore) error {
 		!slices.Contains([]string{"active", "superseded"}, value.Status) || !validClassification(value.Classification) ||
 		len(value.MemberObservations) == 0 || len(value.MemberObservations) > MaximumLookupObservations ||
 		len(value.AliasProofs) > MaximumLookupEntities || !validTimestamp(value.CreatedAt) || !validTimestamp(value.UpdatedAt) ||
-		value.CreatedAt > value.UpdatedAt || !validConfidenceRecord(value.Confidence) {
+		value.CreatedAt > value.UpdatedAt || !validConfidenceRecord(value.Confidence) ||
+		!confidenceBoundToMembers(value.Confidence, value.MemberObservations) {
 		return newError(InvalidInputError, TransitionInvalid, nil)
 	}
 	for index, member := range value.MemberObservations {

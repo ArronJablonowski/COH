@@ -158,10 +158,12 @@
     },
     "partition": {
       "type": "object",
-      "required": ["partition_id", "member_observations"],
+      "required": ["partition_id", "output_entity_id", "member_observations", "alias_proof_digests"],
       "properties": {
         "partition_id": {"$ref": "#/$defs/token"},
-        "member_observations": {"type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": {"$ref": "#/$defs/observation_ref"}}
+        "output_entity_id": {"$ref": "#/$defs/uuid_v7"},
+        "member_observations": {"type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": {"$ref": "#/$defs/observation_ref"}},
+        "alias_proof_digests": {"type": "array", "maxItems": 1024, "uniqueItems": true, "items": {"$ref": "#/$defs/digest"}}
       },
       "additionalProperties": false
     },
@@ -230,7 +232,7 @@
     },
     "decision": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "method_version", "decision_id", "operation_id", "operation", "scope", "actor_id", "actor_revision", "authorization_decision_digest", "input_entities", "output_entities", "partitions", "supporting_evidence", "counterevidence", "confidence", "reason", "created_at"],
+      "required": ["schema_version", "contract_version", "method_version", "decision_id", "operation_id", "operation", "scope", "actor_id", "actor_revision", "authorization_decision_digest", "reverses_history_digest", "input_entities", "output_entities", "partitions", "supporting_evidence", "counterevidence", "confidence", "reason", "created_at"],
       "properties": {
         "schema_version": {"const": "coh.entity-decision/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -242,6 +244,7 @@
         "actor_id": {"$ref": "#/$defs/uuid_v7"},
         "actor_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
         "authorization_decision_digest": {"$ref": "#/$defs/nullable_digest"},
+        "reverses_history_digest": {"$ref": "#/$defs/nullable_digest"},
         "input_entities": {"$ref": "#/$defs/entity_refs"},
         "output_entities": {"$ref": "#/$defs/entity_refs"},
         "partitions": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/partition"}},
@@ -255,7 +258,7 @@
     },
     "history": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "method_version", "history_id", "sequence", "scope", "operation", "decision_digest", "input_entities", "output_entities", "previous_history_digest", "created_at"],
+      "required": ["schema_version", "contract_version", "method_version", "history_id", "sequence", "scope", "operation", "decision_digest", "input_entities", "output_entities", "previous_history_digests", "reverses_history_digest", "created_at"],
       "properties": {
         "schema_version": {"const": "coh.entity-history/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -267,14 +270,15 @@
         "decision_digest": {"$ref": "#/$defs/digest"},
         "input_entities": {"$ref": "#/$defs/entity_refs"},
         "output_entities": {"$ref": "#/$defs/entity_refs"},
-        "previous_history_digest": {"$ref": "#/$defs/nullable_digest"},
+        "previous_history_digests": {"type": "array", "maxItems": 4096, "uniqueItems": true, "items": {"$ref": "#/$defs/digest"}},
+        "reverses_history_digest": {"$ref": "#/$defs/nullable_digest"},
         "created_at": {"$ref": "#/$defs/timestamp"}
       },
       "additionalProperties": false
     },
     "command": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "method_version", "operation_id", "idempotency_key", "operation", "scope", "actor_id", "actor_revision", "observation", "candidate_digest", "input_entities", "partitions", "supporting_evidence", "counterevidence", "reason", "requested_at", "deadline"],
+      "required": ["schema_version", "contract_version", "method_version", "operation_id", "idempotency_key", "operation", "scope", "actor_id", "actor_revision", "reverses_history_digest", "observation", "candidate_digest", "input_entities", "partitions", "supporting_evidence", "counterevidence", "reason", "requested_at", "deadline"],
       "properties": {
         "schema_version": {"const": "coh.entity-resolution-command/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -285,6 +289,7 @@
         "scope": {"$ref": "#/$defs/scope"},
         "actor_id": {"$ref": "#/$defs/uuid_v7"},
         "actor_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "reverses_history_digest": {"$ref": "#/$defs/nullable_digest"},
         "observation": {"oneOf": [{"$ref": "#/$defs/observation"}, {"type": "null"}]},
         "candidate_digest": {"$ref": "#/$defs/nullable_digest"},
         "input_entities": {"$ref": "#/$defs/entity_refs"},

@@ -185,11 +185,16 @@ once into at least two non-empty new entities, identifies the merge/history
 event being reversed or corrected, carries evidence and counterevidence, and
 appends one atomic history event. It marks the input superseded and creates new
 entities. Split never resurrects a prior record silently and never changes an
-observation.
+observation. Each partition names its output entity and assigns every current
+alias-proof digest exactly once, so member and alias disposition are both
+complete and independently checkable.
 
 Concurrent mutation uses optimistic revisions. Stale, incomplete, overlapping,
 duplicate, missing-member, cyclic-alias, or cross-case transitions fail closed.
-History is a digest-linked directed acyclic graph and is validated before a
+History is a digest-linked directed acyclic graph: merge events bind every
+distinct input history head, while split events bind the input head and name
+the earlier history event being reversed or corrected. Commands, decisions,
+and histories persist that reversal identity. The graph is validated before a
 record is released.
 
 ## Authority boundary
