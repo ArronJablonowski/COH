@@ -49,7 +49,7 @@ func TestCustodyPortsAndRecordsExposeNoExecutionOrSensitiveSurface(t *testing.T)
 		{reflect.TypeOf((*Authority)(nil)).Elem(), []string{"AuthorizeCustody"}},
 		{reflect.TypeOf((*CaseStore)(nil)).Elem(), []string{"LoadCase", "ResolveLifecycleReceipt"}},
 		{reflect.TypeOf((*EvidenceResolver)(nil)).Elem(), []string{"ResolveEvidence"}},
-		{reflect.TypeOf((*Ledger)(nil)).Elem(), []string{"Append", "LoadHead", "Read", "Recover"}},
+		{reflect.TypeOf((*Ledger)(nil)).Elem(), []string{"Append", "LoadHead", "Read", "Recover", "ResolveReceipt"}},
 		{reflect.TypeOf((*Auditor)(nil)).Elem(), []string{"AppendCustodyEvent", "VerifyCustodyEvent"}},
 		{reflect.TypeOf((*Clock)(nil)).Elem(), []string{"Now"}},
 	}

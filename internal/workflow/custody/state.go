@@ -157,6 +157,41 @@ func (controller *Controller) verifyLifecycle(ctx context.Context, command Comma
 	return nil
 }
 
+func (controller *Controller) verifyPriorAuthorization(ctx context.Context, command Command, head Head) error {
+	if command.PriorAuthorizationDigest == nil {
+		return nil
+	}
+	receipt, found, err := controller.ledger.ResolveReceipt(ctx, command.Case, *command.PriorAuthorizationDigest)
+	if err != nil {
+		return mapDependency(ctx, "prior_authorization_unavailable", err)
+	}
+	if !found || validateReceipt(receipt) != nil || receipt.Case != command.Case ||
+		receipt.ReceiptDigest != *command.PriorAuthorizationDigest {
+		return newError(Denied, "prior_authorization_invalid", false, nil)
+	}
+	record, err := controller.readOne(ctx, receipt.Case, receipt.Sequence)
+	if err != nil {
+		return err
+	}
+	if err = validateReceiptRecordDirect(receipt, record); err != nil {
+		return err
+	}
+	if err = controller.verifyRecordToHead(ctx, record, head); err != nil {
+		return err
+	}
+	prior := record.Command
+	if prior.Phase != Authorized || prior.Operation != command.Operation || prior.Case != command.Case ||
+		prior.Subject != command.Subject || prior.PolicyDigest != command.PolicyDigest ||
+		!sameOptionalDigest(prior.PurposeDigest, command.PurposeDigest) ||
+		!sameOptionalDigest(prior.DestinationDigest, command.DestinationDigest) ||
+		!sameOptionalDigest(prior.RecipientDigest, command.RecipientDigest) ||
+		!sameOptionalDigest(prior.ReasonDigest, command.ReasonDigest) ||
+		!sameOptionalDigest(prior.ArtifactSetDigest, command.ArtifactSetDigest) {
+		return newError(Denied, "prior_authorization_scope_changed", false, nil)
+	}
+	return nil
+}
+
 func (controller *Controller) verifyAudit(ctx context.Context, receipt Receipt, appended AuditProof) error {
 	proof, err := controller.auditor.VerifyCustodyEvent(ctx, receipt.Case,
 		receipt.AuditEventDigest, receipt.RecordDigest)
@@ -172,13 +207,12 @@ func (controller *Controller) verifyAudit(ctx context.Context, receipt Receipt, 
 }
 
 func validateReceiptRecord(receipt Receipt, record Record, command Command, intent, idempotency string) error {
-	if validateReceipt(receipt) != nil || validateRecord(record) != nil || receipt.Case != command.Case ||
+	if err := validateReceiptRecordDirect(receipt, record); err != nil {
+		return err
+	}
+	if receipt.Case != command.Case ||
 		receipt.IdempotencyDigest != idempotency || receipt.IntentDigest != intent || record.IntentDigest != intent ||
-		receipt.RequestID != command.RequestID || record.Command.RequestID != command.RequestID ||
-		receipt.DecisionDigest != record.DecisionDigest || receipt.CustodyID != record.CustodyID ||
-		receipt.Sequence != record.Sequence || receipt.RecordDigest != record.RecordDigest ||
-		receipt.ChainHash != record.ChainHash || receipt.AuditEventDigest != record.AuditEventDigest ||
-		receipt.ProvenanceDigest != record.ProvenanceDigest || !receipt.CreatedAt.Equal(record.OccurredAt) {
+		receipt.RequestID != command.RequestID || record.Command.RequestID != command.RequestID {
 		return newError(Denied, "receipt_record_binding_invalid", false, nil)
 	}
 	recordIntent, err := CommandBindingDigest(record.Command)
@@ -186,6 +220,25 @@ func validateReceiptRecord(receipt Receipt, record Record, command Command, inte
 		return newError(Denied, "receipt_command_binding_invalid", false, err)
 	}
 	return nil
+}
+
+func validateReceiptRecordDirect(receipt Receipt, record Record) error {
+	if validateReceipt(receipt) != nil || validateRecord(record) != nil || receipt.Case != record.Case ||
+		receipt.RequestID != record.Command.RequestID || receipt.IntentDigest != record.IntentDigest ||
+		receipt.DecisionDigest != record.DecisionDigest || receipt.CustodyID != record.CustodyID ||
+		receipt.Sequence != record.Sequence || receipt.RecordDigest != record.RecordDigest ||
+		receipt.ChainHash != record.ChainHash || receipt.AuditEventDigest != record.AuditEventDigest ||
+		receipt.ProvenanceDigest != record.ProvenanceDigest || !receipt.CreatedAt.Equal(record.OccurredAt) {
+		return newError(Denied, "receipt_record_binding_invalid", false, nil)
+	}
+	return nil
+}
+
+func sameOptionalDigest(left, right *string) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
 }
 
 func validCaseSnapshot(value CaseSnapshot) bool {

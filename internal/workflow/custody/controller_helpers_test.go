@@ -98,6 +98,7 @@ type custodyTestLedger struct {
 	head     Head
 	records  []Record
 	receipts map[string]Receipt
+	byDigest map[string]Receipt
 	intents  map[string]string
 	fail     error
 }
@@ -122,6 +123,17 @@ func (value *custodyTestLedger) Recover(_ context.Context, _ domain.CaseRef,
 	return receipt, found, nil
 }
 
+func (value *custodyTestLedger) ResolveReceipt(_ context.Context, _ domain.CaseRef,
+	receiptDigest string) (Receipt, bool, error) {
+	value.mu.Lock()
+	defer value.mu.Unlock()
+	if value.fail != nil {
+		return Receipt{}, false, value.fail
+	}
+	receipt, found := value.byDigest[receiptDigest]
+	return receipt, found, nil
+}
+
 func (value *custodyTestLedger) Append(_ context.Context, _ string, intent string, expected Head,
 	record Record, receipt Receipt) (Receipt, bool, error) {
 	value.mu.Lock()
@@ -143,6 +155,7 @@ func (value *custodyTestLedger) Append(_ context.Context, _ string, intent strin
 	}
 	value.records = append(value.records, cloneRecord(record))
 	value.receipts[receipt.IdempotencyDigest] = receipt
+	value.byDigest[receipt.ReceiptDigest] = receipt
 	value.intents[receipt.IdempotencyDigest] = intent
 	last := record.OccurredAt
 	value.head = Head{Case: record.Case, Sequence: record.Sequence, ChainHash: record.ChainHash, LastRecordAt: &last}
@@ -226,7 +239,7 @@ func custodyControllerFixture(t interface {
 		VerificationDigest: fixtureDigest("evidence.verified")}
 	evidence := &custodyTestEvidence{values: map[string]VerifiedEvidence{evidenceKey(command.Subject): evidenceValue}}
 	ledger := &custodyTestLedger{head: cloneHead(command.ExpectedHead), receipts: make(map[string]Receipt),
-		intents: make(map[string]string)}
+		byDigest: make(map[string]Receipt), intents: make(map[string]string)}
 	auditor := &custodyTestAuditor{proofs: make(map[string]AuditProof)}
 	controller, err := New(authority, cases, evidence, ledger, auditor, &custodyTestClock{now: custodyFixtureTime})
 	if err != nil {

@@ -73,6 +73,9 @@ func (controller *Controller) Execute(ctx context.Context, command Command) (Res
 	if err = controller.verifyLifecycle(opCtx, command, current, now); err != nil {
 		return Result{}, err
 	}
+	if err = controller.verifyPriorAuthorization(opCtx, command, head); err != nil {
+		return Result{}, err
+	}
 	decision, authorization, err := controller.authorize(opCtx, command, intent, current, head, verified, now)
 	if err != nil {
 		return Result{}, err
@@ -140,6 +143,9 @@ func (controller *Controller) replay(ctx context.Context, command Command, inten
 		return Result{}, newError(Denied, "replay_evidence_invalid", false, err)
 	}
 	if err = controller.verifyLifecycle(ctx, record.Command, current, now); err != nil {
+		return Result{}, err
+	}
+	if err = controller.verifyPriorAuthorization(ctx, record.Command, head); err != nil {
 		return Result{}, err
 	}
 	decision, _, err := controller.authorize(ctx, record.Command, intent, current, head, verified, now)

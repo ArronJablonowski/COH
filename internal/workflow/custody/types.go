@@ -296,6 +296,7 @@ type EvidenceResolver interface {
 type Ledger interface {
 	LoadHead(context.Context, domain.CaseRef) (Head, error)
 	Recover(context.Context, domain.CaseRef, string) (Receipt, bool, error)
+	ResolveReceipt(context.Context, domain.CaseRef, string) (Receipt, bool, error)
 	Append(context.Context, string, string, Head, Record, Receipt) (Receipt, bool, error)
 	Read(context.Context, domain.CaseRef, uint64, uint16) ([]Record, error)
 }

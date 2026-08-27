@@ -95,7 +95,7 @@ operation, actor, case, policy decision, revocation state, and safe reason code.
 | `Authority` | Authorize an exact metadata-only custody request | Policy source, approval value, credential, evaluator handle |
 | `CaseStore` | Load the minimum current lifecycle snapshot and exact receipt | Lifecycle mutation, retention mutation, generic repository access |
 | `EvidenceResolver` | Resolve and verify committed artifact, manifest, and ingestion receipt facts | Evidence bytes, raw keys, arbitrary CAS path or deletion |
-| `Ledger` | Load head/record/receipt, atomically append, and read an ordered verification interval | Update, delete, skip sequence, repair, generic query |
+| `Ledger` | Load head, resolve an exact immutable receipt, atomically append, and read an ordered verification interval | Update, delete, skip sequence, repair, generic query |
 | `Auditor` | Append one bounded deterministic audit event and expose verification proof | Evidence or manifest content, mutable log access |
 | `Clock` | Current canonical UTC time | Timer callback or scheduler |
 
