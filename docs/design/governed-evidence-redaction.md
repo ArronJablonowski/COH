@@ -60,11 +60,11 @@ filesystem capability.
    its exact parent. The source remains independently resolvable under its
    existing authority. Deduplication may converge on an existing identical
    derived object but cannot alias or replace the source reference.
-8. A fresh authority decision and current approval lifecycle record are
-   required before the first plaintext read and are checked again before
-   publication and custody. Expired, consumed, revoked, changed, or cross-scope
-   approval is denial. The requestor cannot self-approve where the approval
-   policy forbids it.
+8. Immediately before authority and the first plaintext read, the approval
+   boundary atomically authorizes one exact intent use. Its durable proof may
+   show `granted` when uses remain or `consumed` when this exact use exhausted
+   the approval. Exact replay recovers and verifies that same proof; an expired,
+   unrelated consumed, revoked, changed, self, or cross-scope approval is denial.
 9. The derived and mapping ingestion receipts may exist before custody, but no
    result or plaintext reference is released until a `redact/completed` custody
    record binds source parent, child, rule, reason, mapping, approval, policy,
@@ -83,9 +83,9 @@ without a circular hash.
 
 | Record | Required safe facts | Explicit exclusion |
 |---|---|---|
-| `Command` | Request/idempotency, exact scope and actor revision, source reference, rule/reason, output profile, policy, expected case/custody revisions, deadline | Ranges, plaintext, policy source, approval grant body |
+| `Command` | Request/idempotency, exact scope and actor revision, source reference, rule/approved-plan/reason, output and key profiles, policy, expected case/custody revisions, deadline | Ranges, plaintext, policy source, approval grant body |
 | `Plan` | Exact source, sorted spans, rule revision/digest, mapping preimage digest, output profile/bounds, validity | Regex, script, prompt, callback, free-form replacement |
-| `ApprovalSnapshot` | Approval/fingerprint/manifest/policy digests, state/revision, grant threshold/use count, validity | Grant credentials, signatures, free-form comments |
+| `ApprovalUseProof` | Approval/fingerprint/manifest/policy/intent digests, resulting state/revision/use count, validity and exact use proof | Grant credentials, signatures, free-form comments |
 | `AuthorizationRequest` | Command, plan, current case/source/custody facts, approval snapshot digest | Plaintext or mapping plaintext |
 | `Decision` | Exact authorization digest, scope, actor, plan, policy/revocation, allow/deny, expiry | Policy source or implicit approval |
 | `Mapping` | Source/output intervals and digests, complete source/derived/plan/approval/provenance bindings | Selected bytes or reversible originals |
@@ -102,7 +102,7 @@ oversized inputs, and non-canonical bytes.
 | Port | Allowed operation | Forbidden surface |
 |---|---|---|
 | `Authority` | Decide one exact metadata-only authorization request | Policy source, plaintext, approval mutation |
-| `ApprovalStore` | Resolve one exact current approval snapshot/fingerprint | Grant, consume, revoke, generic query |
+| `ApprovalStore` | Atomically authorize/recover one idempotent exact intent use and verify its proof | Grant, revoke, generic query, approval reuse |
 | `CaseStore` | Load minimum current case snapshot | Lifecycle mutation or generic storage |
 | `PlanStore` | Resolve one signed/versioned closed plan by digest | Rule authoring, script execution, arbitrary selector |
 | `Deriver` | Deterministically verify and transform one immutable source twice | Authority, network, shell, release, generic callback |

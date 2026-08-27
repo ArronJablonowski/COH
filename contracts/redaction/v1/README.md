@@ -14,8 +14,8 @@ all operations use closed version, outcome, reason, classification, replacement,
 approval-state, and time values.
 
 The command is metadata-only. It binds exact organization, tenant, case, actor
-revision, immutable source artifact and encrypted manifest, signed rule digest,
-reason digest, output profile, key profile, policy, expected case revision,
+revision, immutable source artifact and encrypted manifest, signed rule and
+exact approved-plan digests, reason digest, output profile, key profile, policy, expected case revision,
 expected custody head, idempotency identity, and deadline. It has no span list,
 selected text, replacement value, policy source, or approval grant body.
 
@@ -24,7 +24,11 @@ binds the exact selected source-segment digest, one of `remove`, `mask`, or
 `token`, and the expected output interval. The plan binds the signed rule
 revision, mapping-plan digest, output bounds, exact approval fingerprint,
 approval manifest, positive policy decision, policy digest, and validity window.
-Go semantic validation additionally rejects empty, overlapping, unsorted,
+Before plaintext processing, the approval boundary atomically authorizes one
+exact intent use and returns a durable use proof. The proof may end in `granted`
+when uses remain or `consumed` when that exact use exhausted the approval; a
+consumed record without the matching use proof is terminal denial. Go semantic
+validation additionally rejects empty, overlapping, unsorted,
 touching-ambiguous, out-of-range, excessive, and output-inconsistent spans.
 
 The signed rule set limits media types, permitted replacement modes, span and
@@ -41,7 +45,7 @@ reversible copy. Its public reference and digest remain safe metadata but still
 inherit the source case's access, classification, retention, and audit policy.
 
 The authorization request binds the current case, independently verified
-source, exact approved plan and approval snapshot, and current custody head.
+source, exact approved plan and approval-use proof, and current custody head.
 The decision repeats the exact scope, actor, source, plan, approval, policy,
 revocation, case revision, head, validity, and bounded allow/deny reason. A
 decision cannot be reused after any bound fact changes.
