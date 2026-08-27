@@ -6,7 +6,7 @@
 | Requirements | FR-028, FR-029, SEC-037, SEC-042 |
 | Package contract | `coh.evidence-package/v1` / `1.0.0` |
 | Lifecycle contract | `coh.evidence-lifecycle/v1` / `1.0.0` |
-| Status | Design frozen for implementation |
+| Status | Implemented and verified |
 
 ## Purpose and boundary
 
@@ -115,6 +115,15 @@ A final record and receipt commit atomically. Exact replay obtains fresh
 authority where authority is still meaningful, validates every durable fact,
 and resumes without a second package, signature, case transition, custody link,
 or disposition. Changed idempotency reuse is denied.
+
+The production `Store` adapter persists progress, final records, and receipts
+through the guarded metadata repository under the validated
+`evidence_lifecycle` kind. Every progress write uses an optimistic expected
+revision. Completion atomically writes the completed progress, immutable record,
+immutable receipt, and deterministic outbox message. Lost responses reload and
+validate the exact digest-bound result. SQLite restart and concurrent retry
+tests prove that one canonical operation survives process loss and that exact
+callers converge without silently merging changed work.
 
 ## Narrow ports
 
@@ -304,6 +313,49 @@ remain available for the longest applicable package/evidence retention period.
 Rotation never rewrites an old signature. Backup and disaster recovery must
 restore public verification history and audit checkpoints before package
 release or import resumes.
+
+## Operator runbook
+
+Key custody: provision signing keys only inside the configured signer boundary,
+publish the matching key identifier and revision to the verifier trust store,
+retain retired public keys and revocation history, and test restore before
+enabling release. Operators never place signing private keys in COH metadata,
+packages, logs, backups, or import-worker storage.
+
+Package compatibility and offline verification: accept only exact V1 framing
+and schema versions. Supply the verifier with an explicit public-key trust
+snapshot, revocation snapshot, and audit-checkpoint trust root; preserve the
+resulting report with the package. An offline-valid report proves only the
+named snapshot and cannot substitute for current online import or release
+authority.
+
+Import isolation: stage the opaque input in the dedicated quarantine root,
+invoke the unprivileged bounded worker, and publish nothing unless its complete
+report is `valid` and fresh local authority succeeds. On worker failure, retain
+or abandon staging through the quarantine reconciler; never inspect or extract
+package paths in the Web process.
+
+Retention, hold, and deletion: check the current case revision, latest retain
+until value, every applicable hold, incomplete hold-release progress, custody
+head, approval, and policy immediately before consequential work. Treat a
+placed hold as effective once the case transition commits. Treat a released
+hold as incomplete until custody verifies. Treat a tombstone without a valid
+disposition attestation and completed custody as not physically disposed.
+
+Migration, recovery, and rollback: deploy V1 readers, validators, trust data,
+and recovery tooling before writers. Recover only an exact validated progress
+record and reauthorize before advancing. During rollback, disable new writers
+and keep V1 readers plus restrictive holds active; do not delete quarantine,
+progress, receipts, tombstones, public keys, revocations, custody, or audit
+history. Resume forward only from the last verified monotonic phase.
+
+Privacy and backups: restrict manifests, verification reports, lifecycle
+metadata, quarantine, and backups as case-sensitive data even though evidence
+bytes and raw destinations are absent. Back up encrypted objects, metadata,
+public verification history, revocation intervals, and audit checkpoints as a
+consistent recovery set. A restore is not ready for import, export, or deletion
+until repository integrity, public-key history, custody, and audit verification
+all pass.
 
 ## Verification plan
 
