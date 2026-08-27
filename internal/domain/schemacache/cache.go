@@ -336,20 +336,21 @@ func hasDuplicate(values []string) bool {
 func entryIdentity(key cacheKey, page queryconnector.ValidatedSchemaPage, cachedAt, expiresAt time.Time) (string, error) {
 	value := page.Value()
 	record := struct {
-		ContractVersion  string `json:"contract_version"`
-		OrganizationID   string `json:"organization_id"`
-		TenantID         string `json:"tenant_id"`
-		SourceID         string `json:"source_id"`
-		ResourceDigest   string `json:"resource_digest"`
-		CapabilityDigest string `json:"capability_digest"`
-		AdapterVersion   string `json:"adapter_version"`
-		SchemaVersion    string `json:"schema_version"`
-		PageDigest       string `json:"page_digest"`
-		VendorSchema     string `json:"vendor_schema_digest"`
-		ProvenanceDigest string `json:"provenance_digest"`
-		CachedAt         string `json:"cached_at"`
-		ExpiresAt        string `json:"expires_at"`
-	}{ContractVersion, key.organizationID, key.tenantID, key.sourceID, key.resourceDigest, key.capabilityDigest,
+		SchemaVersion          string `json:"schema_version"`
+		ContractVersion        string `json:"contract_version"`
+		OrganizationID         string `json:"organization_id"`
+		TenantID               string `json:"tenant_id"`
+		SourceID               string `json:"source_id"`
+		ResourceDigest         string `json:"resource_digest"`
+		CapabilityDigest       string `json:"capability_digest"`
+		AdapterVersion         string `json:"adapter_version"`
+		ConnectorSchemaVersion string `json:"connector_schema_version"`
+		PageDigest             string `json:"page_digest"`
+		VendorSchema           string `json:"vendor_schema_digest"`
+		ProvenanceDigest       string `json:"provenance_digest"`
+		CachedAt               string `json:"cached_at"`
+		ExpiresAt              string `json:"expires_at"`
+	}{SchemaVersion, ContractVersion, key.organizationID, key.tenantID, key.sourceID, key.resourceDigest, key.capabilityDigest,
 		key.adapterVersion, key.schemaVersion, page.Digest(), value.SchemaDigest, value.ProvenanceDigest,
 		cachedAt.Format(timestampLayout), expiresAt.Format(timestampLayout)}
 	return digestValue(identityDigestDomain, record)

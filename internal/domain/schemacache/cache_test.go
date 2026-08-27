@@ -3,6 +3,7 @@ package schemacache
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -60,6 +61,24 @@ func TestMissHitPreservesImmutableProvenance(t *testing.T) {
 		hit.Page().CanonicalBytes()[0] != '{' || hit.Page().Value().Entries[0].Name != "event_id" ||
 		hit.Page().Value().ProvenanceDigest != digest("7") {
 		t.Fatalf("hit=%+v calls=%d err=%v", hit, calls.Load(), err)
+	}
+}
+
+func TestCanonicalIdentityFixture(t *testing.T) {
+	input, err := os.ReadFile("../../../contracts/schema-cache/v1/fixtures/entry-identity.canonical.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var value map[string]any
+	if err := json.Unmarshal(input, &value); err != nil {
+		t.Fatal(err)
+	}
+	identity, err := digestValue(identityDigestDomain, value)
+	if err != nil || identity != "sha256:dd5207492cd0a8a5ad7a7f584b10e88c61125401b742c18086b6318017b6de2c" {
+		t.Fatalf("identity=%s err=%v", identity, err)
+	}
+	if value["schema_version"] != SchemaVersion || value["contract_version"] != ContractVersion {
+		t.Fatalf("fixture version=%v contract=%v", value["schema_version"], value["contract_version"])
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 
 const (
 	ContractVersion          = "1.0.0"
+	SchemaVersion            = "coh.schema-cache-entry/v1"
 	MaximumConfiguredEntries = 4096
 	MaximumConfiguredBytes   = 256 << 20
 	MaximumConfiguredTTL     = time.Hour
