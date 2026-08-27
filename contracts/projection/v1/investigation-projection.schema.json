@@ -143,7 +143,7 @@
     },
     "fact": {
       "type": "object",
-      "required": ["schema_version", "contract_version", "reducer_version", "fact_id", "scope", "sequence", "previous_fact_digest", "fact_type", "subject_id", "claim_id", "hypothesis_id", "supporting_evidence_digests", "counterevidence_digests", "unknowns", "entity_refs", "time_refs", "confidence", "completeness", "binding", "payload_digest", "committed_at"],
+      "required": ["schema_version", "contract_version", "reducer_version", "fact_id", "scope", "sequence", "previous_fact_digest", "fact_type", "subject_id", "claim_id", "hypothesis_id", "hypothesis_disposition", "time_relation", "order_confidence_millionths", "duplicate_of", "gap_digests", "conflict_digests", "supporting_evidence_digests", "counterevidence_digests", "unknowns", "entity_refs", "time_refs", "confidence", "completeness", "binding", "payload_digest", "committed_at"],
       "properties": {
         "schema_version": {"const": "coh.investigation-fact/v1"},
         "contract_version": {"const": "1.0.0"},
@@ -156,6 +156,12 @@
         "subject_id": {"$ref": "#/$defs/token"},
         "claim_id": {"$ref": "#/$defs/nullable_token"},
         "hypothesis_id": {"$ref": "#/$defs/nullable_token"},
+        "hypothesis_disposition": {"oneOf": [{"enum": ["open", "supported", "refuted", "inconclusive"]}, {"type": "null"}]},
+        "time_relation": {"oneOf": [{"enum": ["genesis", "before", "after", "overlap", "equal", "uncertain"]}, {"type": "null"}]},
+        "order_confidence_millionths": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1000000}, {"type": "null"}]},
+        "duplicate_of": {"$ref": "#/$defs/nullable_token"},
+        "gap_digests": {"$ref": "#/$defs/digests"},
+        "conflict_digests": {"$ref": "#/$defs/digests"},
         "supporting_evidence_digests": {"$ref": "#/$defs/digests"},
         "counterevidence_digests": {"$ref": "#/$defs/digests"},
         "unknowns": {"$ref": "#/$defs/unknowns"},
