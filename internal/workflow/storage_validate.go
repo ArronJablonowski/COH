@@ -30,7 +30,7 @@ var (
 		"query": {}, "risk": {}, "roe": {}, "run": {}, "skill": {},
 		"task": {}, "timeline_event": {}, "vulnerability": {}, "memory": {}, "retrieval": {}, "subagent_dag": {},
 		"case_lifecycle": {}, "custody_record": {}, "redaction_record": {}, "evidence_lifecycle": {},
-		"evidence_artifact_set": {},
+		"evidence_artifact_set": {}, "lifecycle_custody_set": {},
 	}
 )
 

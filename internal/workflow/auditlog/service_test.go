@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -186,6 +187,22 @@ func TestVerifyDetectsMutationAndMissingDailyCheckpoint(t *testing.T) {
 	report, err := service.Verify(context.Background(), "0198d6c4-1111-7111-8111-111111111111", "0198d6c4-2222-7222-8222-222222222222")
 	if err != nil || report.RecordCount != 2 || report.CheckpointCount != 1 || report.LastCheckpoint != 1 {
 		t.Fatalf("verification report=%+v err=%v", report, err)
+	}
+	checkpoint := store.checkpoints[0]
+	checkpointDigest, err := CheckpointDigest(checkpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proof, err := service.ResolveCheckpointProof(context.Background(), report.OrganizationID, report.TenantID,
+		checkpoint.CheckpointID, checkpointDigest, 1)
+	if err != nil || proof.CheckpointID != checkpoint.CheckpointID || proof.CheckpointDigest != checkpointDigest ||
+		proof.Sequence != checkpoint.Sequence || proof.SigningKeyRevision != checkpoint.SigningKeyRevision ||
+		proof.ProofDigest == "" {
+		t.Fatalf("checkpoint proof=%+v err=%v", proof, err)
+	}
+	if _, err = service.ResolveCheckpointProof(context.Background(), report.OrganizationID, report.TenantID,
+		checkpoint.CheckpointID, "sha256:"+strings.Repeat("f", 64), 1); err != ErrIntegrity {
+		t.Fatalf("substituted checkpoint err=%v", err)
 	}
 	store.mu.Lock()
 	store.records[0].Event.Outcome = "denied"

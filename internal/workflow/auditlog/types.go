@@ -78,3 +78,13 @@ type VerificationReport struct {
 	LastCheckpoint      uint64
 	UncheckpointedCount uint64
 }
+
+// CheckpointProof is the independently verified, non-secret proof material
+// required to bind a custody interval into an evidence lifecycle manifest.
+type CheckpointProof struct {
+	CheckpointID       string
+	CheckpointDigest   string
+	Sequence           uint64
+	SigningKeyRevision uint64
+	ProofDigest        string
+}

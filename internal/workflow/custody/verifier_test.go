@@ -42,6 +42,33 @@ func TestVerifierAcceptsCompleteChainFromGenesis(t *testing.T) {
 	}
 }
 
+func TestVerifierAcceptsExactHistoricalPrefix(t *testing.T) {
+	_, command, _, _, evidence, ledger, auditor := custodyControllerFixture(t)
+	records := buildTwoRecordChain(t, command, evidence, ledger, auditor)
+	checkpointID, checkpointDigest := custodyUUID(9), fixtureDigest("historical-checkpoint")
+	auditor.mu.Lock()
+	proof := auditor.proofs[records[0].AuditEventDigest]
+	proof.CheckpointID, proof.CheckpointDigest = &checkpointID, &checkpointDigest
+	auditor.proofs[records[0].AuditEventDigest] = proof
+	auditor.mu.Unlock()
+	verifier, err := NewVerifier(ledger, evidence, auditor, &custodyTestClock{now: custodyFixtureTime})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := verifier.VerifyInterval(t.Context(), command.Case, 1, 1)
+	if err != nil || report.Outcome != VerificationValid || report.FromSequence != 1 ||
+		report.ToSequence != 1 || report.HeadChainHash != records[0].ChainHash ||
+		report.AuditCheckpointID == nil || *report.AuditCheckpointID != checkpointID {
+		t.Fatalf("report=%+v err=%v", report, err)
+	}
+	if _, err = verifier.VerifyInterval(t.Context(), command.Case, 2, 2); CodeOf(err) != InvalidInput {
+		t.Fatalf("non-genesis interval err=%v", err)
+	}
+	if _, err = verifier.VerifyInterval(t.Context(), command.Case, 1, 3); CodeOf(err) != InvalidInput {
+		t.Fatalf("future interval err=%v", err)
+	}
+}
+
 func TestVerifierMarksUncheckpointedCompleteIntervalIncomplete(t *testing.T) {
 	_, command, _, _, evidence, ledger, auditor := custodyControllerFixture(t)
 	buildTwoRecordChain(t, command, evidence, ledger, auditor)
