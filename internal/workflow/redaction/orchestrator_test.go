@@ -76,10 +76,31 @@ func TestOrchestratorWithholdsReleaseOnCustodyOrAuditFailure(t *testing.T) {
 			if err == nil || result.Receipt.ReceiptDigest != "" {
 				t.Fatalf("result=%+v err=%v", result, err)
 			}
-			if test.name[:7] == "custody" && containsCall(*calls, "audit_append") {
-				t.Fatalf("audit reached after custody failure: %v", *calls)
+			if test.name[:7] == "custody" && auditor.event.Outcome != "denied" {
+				t.Fatalf("custody failure lacked bounded denial audit: event=%+v calls=%v", auditor.event, *calls)
 			}
 		})
+	}
+}
+
+func TestOrchestratorAuditsRevocationDenialBeforePlaintextOrPublication(t *testing.T) {
+	fixture := newBindingFixture(t)
+	fixture.decision.Outcome, fixture.decision.ReasonCode = Deny, ReasonRevoked
+	fixture.decision.DecisionDigest = mustDigest(t, func() (string, error) { return DecisionBindingDigest(fixture.decision) })
+	dependencies, calls := preflightDependencies(fixture)
+	preflightService, _ := newPreflight(dependencies.authority, dependencies.approvals, dependencies.cases,
+		dependencies.plans, dependencies.sources, dependencies.custody, dependencies.clock)
+	_, derivation := publicationFixture(t, fixture)
+	derivationService, _ := newDerivationService(&transformerStub{derivation: derivation, calls: calls},
+		&publisherStub{calls: calls})
+	auditor := &orchestrationAuditor{calls: calls}
+	service, _ := newOrchestrator(preflightService, derivationService, dependencies.custody,
+		&orchestrationStore{}, auditor, dependencies.clock)
+	result, err := service.execute(context.Background(), fixture.command)
+	if Reason(err) != string(ReasonRevoked) || result.Receipt.ReceiptDigest != "" ||
+		auditor.event.Outcome != "denied" || auditor.event.ReasonCode != string(ReasonRevoked) ||
+		containsCall(*calls, "transform") || containsCall(*calls, "publish:derived") || containsCall(*calls, "custody_record") {
+		t.Fatalf("result=%+v err=%v event=%+v calls=%v", result, err, auditor.event, *calls)
 	}
 }
 

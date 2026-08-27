@@ -12,10 +12,11 @@
 | Stale actor, case revision, policy, revocation digest, or custody head | Reject/conflict | Reload, reevaluate, reapprove where needed, and retry with a new intent |
 | Deterministic pass mismatch, invalid output format, or mapping drift | Reject and quarantine candidate | Investigate adapter/rule integrity; never bless the bytes manually |
 | Exact replay after derived/mapping publication or custody commit | Reauthorize, verify durable evidence, repair audit, return original receipt | No duplicate or synthetic record |
+| Governing redaction decision placed in prior custody authorization | Reject before custody append | Bind it in the dedicated governing-decision field |
 | Changed idempotency reuse | Deny | Submit a new idempotency identity and approval-bound plan |
 | Complete interval without valid audit/checkpoint coverage | No releasable success | Repair audit proof or restore verified state |
 | Source overwrite, relabel, replacement, or deletion request | Unsupported and denied | Retain the immutable source under its original controls |
-| Older binary encountering `redaction` metadata kind | Reject unknown kind | Disable writes; retain V1 reader for forward recovery |
+| Older binary encountering `redaction_record` metadata kind | Reject unknown kind | Disable writes; retain V1 reader for forward recovery |
 
 The contract is forward-incompatible by default. A future version may add a
 new signed rule profile or mapping form only with a new schema version, explicit

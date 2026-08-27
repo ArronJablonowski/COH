@@ -23,6 +23,17 @@ func newOrchestrator(preflight *preflight, derivation *derivationService, custod
 }
 
 func (service *orchestrator) execute(ctx context.Context, command Command) (Result, error) {
+	result, err := service.executeOperation(ctx, command)
+	if err == nil {
+		return result, nil
+	}
+	if auditErr := service.auditDenial(ctx, command, err); auditErr != nil {
+		return Result{}, auditErr
+	}
+	return Result{}, err
+}
+
+func (service *orchestrator) executeOperation(ctx context.Context, command Command) (Result, error) {
 	state, err := service.preflight.authorize(ctx, command)
 	if err != nil {
 		return Result{}, err

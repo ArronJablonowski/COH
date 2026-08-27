@@ -15,8 +15,9 @@ approval-state, and time values.
 
 The command is metadata-only. It binds exact organization, tenant, case, actor
 revision, immutable source artifact and encrypted manifest, signed rule and
-exact approved-plan digests, reason digest, output profile, key profile, policy, expected case revision,
-expected custody head, idempotency identity, and deadline. It has no span list,
+exact approved-plan digests, reason digest, output profile, key profile, policy,
+expected case revision, expected custody head, idempotency identity, and
+deadline. It has no span list,
 selected text, replacement value, policy source, or approval grant body.
 
 An approved plan carries one or more sorted half-open byte spans. Each span
@@ -55,6 +56,13 @@ The completed record links derived and mapping ingestion receipts to one exact
 chains from the immutable source. The final receipt is the only releasable
 result and supports exact lost-response recovery without duplicate publication
 or custody append. Partial phase state is internal, strict, and never a success.
+The custody command separately binds the exact governing redaction decision;
+it never overloads the prior-custody-authorization receipt field.
+
+Durable internal progress advances optimistically through planned, published
+and custodied evidence. The completed record and receipt then commit atomically.
+Exact replay reauthorizes, verifies the stored audit, and returns the original
+receipt; a changed intent under the same idempotency identity is denied.
 
 Readers and writers require exact schema and contract versions. Unknown,
 missing, duplicate, trailing, malformed, oversized, or non-canonical input

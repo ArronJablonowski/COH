@@ -7,7 +7,7 @@
 | Source of truth | Immutable encrypted CAS ingestion (CYB-71) |
 | Custody boundary | Append-only chain of custody (CYB-79) |
 | Approval boundary | Exact approval fingerprint and lifecycle (CYB-50/CYB-51) |
-| Status | Design frozen for implementation |
+| Status | Implemented and verified |
 
 ## Purpose and trust boundary
 
@@ -68,7 +68,9 @@ filesystem capability.
 9. The derived and mapping ingestion receipts may exist before custody, but no
    result or plaintext reference is released until a `redact/completed` custody
    record binds source parent, child, rule, reason, mapping, approval, policy,
-   current case revision, and exact custody head and its audit proof verifies.
+   governing redaction decision, current case revision, and exact custody head
+   and its audit proof verifies. The governing decision is distinct from a
+   prior custody authorization receipt.
 10. A final redaction receipt links the intent, plan, policy decision,
     approval, source, derived and mapping ingestion receipts, custody receipt,
     audit event, and provenance. Exact replay reauthorizes and returns only that
@@ -139,6 +141,23 @@ may be raised by policy because offsets and segment digests are linkable.
 Mapping access is a separate governed custody operation and is never implied by
 permission to access the redacted artifact.
 
+## Rule governance and mapping access
+
+Rule publishers control the closed media profiles, replacement modes and
+digest-bound mask/token material. A deployment admits a rule only after its
+signature, signer revision and revocation state verify through the trusted rule
+resolver. Rotation installs the new verify-capable signer and rule revision
+before writers use it; historical verify-only keys and rule material remain for
+the full evidence-retention period. Revocation prevents new plans and cannot
+rewrite an existing receipt or silently substitute replacement material.
+
+Mapping authorization is independent of derived-artifact authorization. The
+encrypted mapping reference, classification and digest may be disclosed only
+through a separately approved case-scoped access/custody operation. Operators,
+exports and downstream workflows cannot infer access merely because they hold
+the redacted artifact or its receipt. Backup, retention, legal hold and key
+recovery treat mapping objects as at least as sensitive as their source.
+
 ## State and release ordering
 
 | Phase | Durable/observable effect | Recovery behavior |
@@ -195,7 +214,7 @@ domain-separated and nonce-bound before crossing the workflow boundary.
 
 ## Migration, rollback, and ownership
 
-V1 adds a validated `redaction` metadata kind to the existing guarded
+V1 adds a validated `redaction_record` metadata kind to the existing guarded
 repository and new strict contract readers before enabling writers. It requires
 no SQL DDL. Deployment must also install the derivation rule revision, mapping
 encryption profile, source reader, ingestion publisher, custody adapter, and
@@ -213,11 +232,19 @@ CYB-79 remains the custody/lineage owner; CYB-50/CYB-51 remain approval owners;
 CYB-77 consumes completed redaction receipts for signed export and deletion but
 cannot reinterpret or weaken them.
 
+Downstream release therefore requires an exact valid completed receipt, its
+matching durable record, verified custody receipt and verified redaction audit
+event. A derived CAS reference alone, a progress record, an ingestion receipt,
+or mapping possession is never release authority. CYB-77 may package the
+completed derived artifact but must preserve the source lineage and cannot use
+that permission to disclose the mapping, delete the source, bypass retention or
+manufacture completion after rollback.
+
 ## Requirement trace
 
-| Requirement | Frozen evidence |
+| Requirement | Implemented evidence |
 |---|---|
 | FR-030 | Every redaction yields a new immutable derived artifact and encrypted mapping bound to exact rule, reason, actor, source, approval, custody, audit, and provenance while retaining the source. |
 | SEC-036 | Redaction is a default-deny approved transformation with no in-place mutation, implicit authority, plaintext metadata leakage, uncustodied release, or unverifiable mapping. |
 
-No unresolved design decision remains for the V1 implementation.
+No unresolved implementation or release-order decision remains for V1.
