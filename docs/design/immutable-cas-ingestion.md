@@ -5,7 +5,7 @@
 | Issue | COH-E10-02 / CYB-71 |
 | Requirements | FR-019, FR-020, NFR-011, EVAL-012, SEC-023 |
 | Data | Raw and derived security evidence plus sensitive provenance metadata |
-| Status | Design frozen for implementation |
+| Status | Implemented; verification pending final evidence capture |
 
 ## Purpose and boundary
 
@@ -24,7 +24,8 @@ or changed identity is rejected before source bytes are read.
 
 The controller never receives policy source, credentials, raw encryption keys,
 connectors, executors, shell, HTTP clients, paths, or generic callbacks. Raw
-bytes are consumed through one bounded `io.Reader`; they are never serialized
+bytes are consumed through one bounded, cancellation-aware, forward-only
+`Source`; they are never serialized
 into workflow history, audit, receipts, SQL metadata, logs, or errors.
 
 ## Published records
@@ -56,8 +57,9 @@ encrypted manifest object; durable SQL state carries their canonical digest.
 |---|---|---|
 | `Authority` | authorize exact metadata-only request | policy source, approval token, credential, evaluator handle |
 | `TransportVerifier` | validate in-process or mTLS channel binding | socket, certificate private key, listener, HTTP client |
-| `EncryptedCAS` | stage one stream, verify, publish, open verified, abandon | raw key material, filesystem path, arbitrary delete |
-| `ManifestStore` | recover receipt, commit immutable manifest/receipt references | evidence bytes, source metadata plaintext, physical CAS mutation |
+| `CaseStore` | load the minimum current lifecycle snapshot | lifecycle mutation, retention mutation, generic repository access |
+| `EncryptedCAS` | stage, verify, plan, publish, resolve/find verified objects, list stale stages, abandon a stage | raw key material, filesystem path, arbitrary delete |
+| `ManifestStore` | track/recover pending identities, recover/commit receipts, prove committed references | evidence bytes, source metadata plaintext, physical CAS mutation |
 | `Auditor` | append bounded tamper-evident event | evidence or manifest content |
 | `Clock` | current UTC time | timer callback or scheduler |
 
@@ -75,17 +77,20 @@ revisions, algorithms, and digests of wrapped material.
 | create hidden case-scoped stage and data key | incomplete stage only | stage removed or later swept; no reference |
 | stream, hash, and chunk-encrypt expected plaintext bytes | encrypted incomplete stage | close, zero key, remove/sweep; no reference |
 | fsync, reopen, decrypt, and verify plaintext/ciphertext facts | verified encrypted stage | quarantine/remove; no reference |
-| atomically publish at case-scoped SHA-256 location and fsync directory | complete encrypted object, possibly orphaned | exact replay/reconciliation; no reference yet |
-| construct and publish encrypted canonical manifest | complete artifact plus manifest, possibly orphaned | exact replay/reconciliation; no reference yet |
-| atomically commit immutable receipt and reference metadata | resolvable reference | recover exact commit; changed replay denied |
+| durably track stable planned artifact identity | pending SQL identity; no resolvable reference | restart classifies missing/staged state without guessing |
+| atomically link at case-scoped SHA-256 location and fsync directory | complete encrypted object, possibly orphaned | exact replay/reconciliation; no reference yet |
+| construct, track, and publish encrypted canonical manifest | complete artifact plus manifest, pending SQL identities | exact replay/reconciliation; no reference yet |
+| atomically commit immutable receipt and both reference markers while deleting pending identities | resolvable reference | recover exact commit; changed replay denied |
 | append deterministic audit event | committed reference, success withheld | exact replay republishes audit before release |
 | return `ArtifactRef` and manifest reference | published | success |
 
-CAS publication precedes SQL reference publication because filesystem rename
+CAS publication precedes SQL reference publication because filesystem linking
 and database commit cannot share a transaction. This ordering permits an
 unreferenced encrypted orphan but never a dangling reference. Staging and
-orphan collection operates only on objects absent from committed receipts,
-after a bounded reconciliation age, and cannot delete a referenced digest.
+orphan reconciliation classifies only stale hidden stages or decrypt-verified
+objects with a durable pending identity and no committed reference marker.
+The v1 surface provides no deletion operation, so classification cannot delete
+a referenced digest or turn missing metadata into destructive proof.
 
 ## Streaming and immutable identity
 
@@ -105,7 +110,7 @@ length, media type, classification, key context, and format. A conflict or
 corrupt existing object fails closed; it is never overwritten.
 
 Retrieval first authorizes and loads the exact committed manifest reference,
-then opens through `EncryptedCAS.OpenVerified`. The adapter authenticates every
+then resolves through `EncryptedCAS.Resolve`. The adapter authenticates every
 frame, unwraps only the bound key revision, and recomputes plaintext digest and
 length through EOF. A missing key, revoked key, unwrap/decrypt error, changed
 header/frame/footer, truncated stream, or digest/length mismatch yields no
@@ -115,20 +120,24 @@ plaintext success and no valid reference claim.
 
 At-rest objects use a versioned chunked AEAD envelope. V1 uses AES-256-GCM with
 a fresh random data-encryption key and nonce prefix per staged object. Each
-bounded frame has a monotonic counter and terminal flag. Its additional
-authenticated data binds format version, organization, tenant, case, expected
-plaintext digest and length, media type, classification, key profile, frame
-counter, and terminal flag. The authenticated footer binds the complete
-plaintext digest/length, ciphertext digest/length, frame count, wrapped-key
-digest, and encryption-context digest.
+bounded data frame and the distinct terminal footer have a monotonic counter.
+Additional authenticated data contains the canonical header digest, frame
+type, and counter; that header binds format version, hashed case scope,
+expected plaintext digest and length, media type, classification, key profile,
+wrapped-key digest, and encryption-context digest. The encrypted authenticated
+footer repeats the complete plaintext digest, length, and frame count. The
+published object and receipt bind the independently computed full ciphertext
+digest and length.
 
 The data key is wrapped by a configured operator- or platform-managed key. Key
 reference, revision, algorithm, and wrapped bytes are stored in the encrypted
 object header; sensitive provenance stays in the separately encrypted manifest.
-The wrapping key is never persisted by COH metadata. Key rotation may rewrap a
-verified data key into a new immutable envelope revision but cannot change the
-plaintext digest, manifest lineage, or custody record. Key loss makes the
-artifact unavailable and auditable; it cannot produce a false-success read.
+The wrapping key is never persisted by COH metadata. V1 reads the exact key
+reference and revision recorded in the envelope and does not perform in-place
+rewrapping. Rotation therefore retains old decrypt-only key revisions until a
+separate, verified immutable-envelope migration exists. Key loss makes the
+artifact unavailable and auditable; it cannot produce a false-success read or
+plaintext result.
 
 Plaintext is allowed only in process memory. Temporary files, CAS objects,
 manifests, backups, and failure artifacts are encrypted. The ingestion API
@@ -177,17 +186,21 @@ digest-verified artifact plus manifest and receipt, or no resolvable reference.
 
 ## Migration and rollback
 
-The generic guarded metadata repository adds a validated `artifact_manifest`
-kind for immutable reference receipts; SQLite/PostgreSQL need no new table.
-The filesystem adapter introduces a versioned encrypted-CAS root with separate
-staging, object, manifest, quarantine, and reconciliation journals. Startup
-rejects unsafe ownership, permissions, symlinks, unknown formats, or missing
-key profiles before accepting writes.
+The generic guarded metadata repository uses the validated
+`artifact_manifest` kind for pending publication identities, committed
+reference markers, and immutable receipts; SQLite/PostgreSQL need no new table.
+The filesystem adapter introduces a versioned encrypted-CAS root with private
+`staging`, `objects`, and `quarantine` directories. Artifact and manifest
+ciphertexts share the same case-scoped CAS format. Startup rejects unsafe
+permissions, symlink roots, invalid chunk bounds, or a missing key manager
+before accepting writes.
 
-Cutover installs a reader for every format before enabling its writer. Rollback
-disables new ingestion but retains readers, receipts, key references, and
-objects. It never decrypts into a replacement plaintext store or deletes an
-unknown/newer envelope. Reconciliation resumes idempotently after restart.
+Cutover installs the v1 reader and key revision before enabling its writer.
+Rollback disables new ingestion but retains the v1 reader, old decrypt-only
+key revisions, receipts, reference markers, pending identities, and objects.
+It never decrypts into a replacement plaintext store or deletes an
+unknown/newer envelope. Reconciliation and exact replay resume idempotently
+after restart.
 
 ## Requirement trace
 
