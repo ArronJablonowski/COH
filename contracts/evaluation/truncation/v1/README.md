@@ -13,6 +13,9 @@ trajectory-grade, and required-boundary coverage rates. Unknown fields,
 versions, fixtures, expectations, thresholds, tasks, trials, or environment
 pins fail closed.
 
-The executable corpus and verifier are added by the subsequent CYB-89 tasks.
-The protocol and adaptive-slicing proof requirements are frozen in
-`docs/design/connector-truncation-evaluation.md`.
+Run `scripts/verify_connector_truncation.sh` to execute the locked 21-task,
+105-trial corpus, compare two independent artifact sets, enforce the exact
+thresholds, and retain checksummed evidence. The protocol and adaptive-slicing
+proof requirements are frozen in
+`docs/design/connector-truncation-evaluation.md`; qualification evidence is in
+`docs/evidence/CYB-89-connector-truncation-report.md`.
