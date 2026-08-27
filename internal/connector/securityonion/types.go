@@ -21,6 +21,11 @@ type Config struct {
 	Permissions             []string
 	Resources               []Resource
 	Fields                  []Field
+	Projection              []string
+	StableSort              []string
+	TimestampField          string
+	TenantField             string
+	SourceField             string
 	HardLimits              queryconnector.Limits
 	MaximumInterval         time.Duration
 	MaximumEventLimit       uint64
