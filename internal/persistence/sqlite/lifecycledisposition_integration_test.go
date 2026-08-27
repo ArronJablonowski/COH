@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,6 +28,12 @@ type lostDispositionCommitResponse struct {
 	lost bool
 }
 
+type interruptedMultiObjectCAS struct {
+	lifecycledisposition.EncryptedCAS
+	calls  int
+	failed bool
+}
+
 func (store *lostDispositionCommitResponse) Transact(ctx context.Context,
 	transaction workflow.Transaction) (workflow.CommitResult, error) {
 	result, err := store.MetadataStore.Transact(ctx, transaction)
@@ -46,6 +53,125 @@ func (store *lostDispositionResponseCAS) DisposePublished(ctx context.Context,
 		return false, errors.New("injected disposition response loss")
 	}
 	return removed, err
+}
+
+func (store *interruptedMultiObjectCAS) DisposePublished(ctx context.Context,
+	reference evidenceingest.PublishedObject, digest string, revision uint64) (bool, error) {
+	store.calls++
+	if store.calls == 2 && !store.failed {
+		store.failed = true
+		return false, errors.New("injected interruption after first object removal")
+	}
+	return store.EncryptedCAS.DisposePublished(ctx, reference, digest, revision)
+}
+
+func TestCOHE10PartialDeletionResumesExactPlanWithoutMetadataLoss(t *testing.T) {
+	now := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	root := t.TempDir()
+	databasePath, backupPath := filepath.Join(root, "coh.sqlite3"), filepath.Join(root, "backups")
+	casRoot := filepath.Join(root, "encrypted-cas")
+	for _, directory := range []string{backupPath, casRoot} {
+		if err := os.MkdirAll(directory, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	driver := openCaseSQLite(t, databasePath, backupPath, now)
+	defer driver.Close()
+	caseController, caseRepository := composeCaseController(t, driver, now, &caseAuditor{})
+	create := caseCreateCommand(now)
+	if _, err := caseController.Execute(t.Context(), create); err != nil {
+		t.Fatal(err)
+	}
+	wrappingKey := sha256.Sum256([]byte("coh-e10-partial-delete-wrapping-key"))
+	ingestion, _ := composeEvidenceController(t, driver, caseRepository, casRoot, wrappingKey[:], now)
+	results := make([]evidenceingest.Result, 2)
+	entries := make([]evidencelifecycle.ManifestArtifact, 2)
+	for index, payload := range [][]byte{[]byte("first governed deletion object"), []byte("second governed deletion object")} {
+		command := evidenceCommand(create, payload, now)
+		command.RequestID = caseUUID(fmt.Sprintf("e10-partial-delete-request-%d", index))
+		command.IdempotencyKey = fmt.Sprintf("e10-partial-delete-%d", index)
+		command.Source.Identity = fmt.Sprintf("e10-partial-delete-source-%d", index)
+		command.Source.IdentityDigest = evidenceingest.SourceIdentityDigest(command.Source.Identity)
+		result, err := ingestion.Execute(t.Context(), command, &evidenceSource{value: payload})
+		if err != nil {
+			t.Fatal(err)
+		}
+		results[index] = result
+		entries[index] = evidencelifecycle.ManifestArtifact{Ordinal: uint16(index + 1),
+			Role: evidencelifecycle.SourceArtifact, Reference: evidencelifecycle.EvidenceReference{
+				Artifact: result.Artifact, Manifest: result.Manifest,
+				ManifestProvenanceDigest: result.Receipt.ManifestProvenanceDigest,
+				IngestionReceiptDigest:   result.Receipt.ReceiptDigest},
+			ParentArtifactDigests: []string{}, ParentManifestDigests: []string{}}
+	}
+	guarded, err := workflow.GuardStorage(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipts, err := evidenceingest.NewRepositoryStore(guarded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nativeCAS := openEvidenceCAS(t, casRoot, wrappingKey[:], now)
+	catalog, err := evidencecatalog.New(guarded, receipts, nativeCAS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidenceSet, _, err := catalog.Register(t.Context(), evidencecatalog.Registration{
+		Case: create.Case, Artifacts: entries})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := evidencelifecycle.DispositionRequest{Case: create.Case,
+		OperationID: caseUUID("e10-partial-delete-operation"), ArtifactSetDigest: evidenceSet.ArtifactSetDigest,
+		Evidence: evidenceSet, AuthorizationCustodyReceiptDigest: caseDigest("e10-partial-delete-authorization"),
+		LifecycleReceiptDigest: caseDigest("e10-partial-delete-lifecycle"), Deadline: now.Add(time.Hour)}
+	interrupted := &interruptedMultiObjectCAS{EncryptedCAS: nativeCAS}
+	disposer, err := lifecycledisposition.New(receipts, interrupted, guarded, evidenceClock{now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = disposer.DisposeEvidence(t.Context(), request); err == nil ||
+		evidencelifecycle.CodeOf(err) != evidencelifecycle.Unavailable {
+		t.Fatalf("partial deletion did not fail closed: %v", err)
+	}
+	missing, remaining := 0, 0
+	for _, result := range results {
+		if _, resolveErr := nativeCAS.Resolve(t.Context(), result.Receipt.EncryptedArtifact); resolveErr == nil {
+			remaining++
+		} else {
+			missing++
+		}
+		if _, manifestErr := nativeCAS.Resolve(t.Context(), result.Receipt.EncryptedManifest); manifestErr != nil {
+			t.Fatalf("partial deletion removed immutable manifest: %v", manifestErr)
+		}
+		if recovered, found, receiptErr := receipts.ResolveReceipt(t.Context(), create.Case,
+			result.Receipt.ReceiptDigest); receiptErr != nil || !found ||
+			recovered.ReceiptDigest != result.Receipt.ReceiptDigest {
+			t.Fatalf("partial deletion lost receipt found=%v err=%v", found, receiptErr)
+		}
+	}
+	if missing != 1 || remaining != 1 {
+		t.Fatalf("partial deletion removed=%d remaining=%d", missing, remaining)
+	}
+	if recovered, resolveErr := catalog.ResolveEvidenceSet(t.Context(), create.Case,
+		evidenceSet.ArtifactSetDigest); resolveErr != nil || recovered.ArtifactSetDigest != evidenceSet.ArtifactSetDigest {
+		t.Fatalf("partial deletion lost catalog metadata: %+v err=%v", recovered, resolveErr)
+	}
+	attestation, err := disposer.DisposeEvidence(t.Context(), request)
+	if err != nil || len(attestation.Objects) != 2 {
+		t.Fatalf("resumed disposition=%+v err=%v", attestation, err)
+	}
+	for _, object := range attestation.Objects {
+		if object.Outcome != evidencelifecycle.DispositionRemoved {
+			t.Fatalf("resumed object outcome=%+v", object)
+		}
+	}
+	for _, result := range results {
+		if _, resolveErr := nativeCAS.Resolve(t.Context(), result.Receipt.EncryptedArtifact); resolveErr == nil {
+			t.Fatal("resumed disposition left artifact ciphertext resolvable")
+		}
+	}
 }
 
 func TestLifecycleDispositionRemovesExactBytesAndPreservesMetadataAcrossRestart(t *testing.T) {
