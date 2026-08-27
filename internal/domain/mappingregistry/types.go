@@ -211,6 +211,34 @@ const (
 
 type Reason string
 
+const (
+	ManifestInvalid             Reason = "manifest_invalid"
+	ManifestDigestMismatch      Reason = "manifest_digest_mismatch"
+	SignatureInvalid            Reason = "signature_invalid"
+	PublisherUntrusted          Reason = "publisher_untrusted"
+	ManifestNotYetValid         Reason = "manifest_not_yet_valid"
+	ManifestExpired             Reason = "manifest_expired"
+	ManifestRevoked             Reason = "manifest_revoked"
+	RevocationStale             Reason = "revocation_stale"
+	SourceMismatch              Reason = "source_mismatch"
+	MappingNotFound             Reason = "mapping_not_found"
+	MappingAmbiguous            Reason = "mapping_ambiguous"
+	TargetIncompatible          Reason = "target_incompatible"
+	MappingDowngrade            Reason = "mapping_downgrade"
+	RuleInvalid                 Reason = "rule_invalid"
+	OutputCollision             Reason = "output_collision"
+	TypeMismatch                Reason = "type_mismatch"
+	ConversionOverflow          Reason = "conversion_overflow"
+	UnmappedFieldDenied         Reason = "unmapped_field_denied"
+	CoverageInvalid             Reason = "coverage_invalid"
+	ReverseValidationFailed     Reason = "reverse_validation_failed"
+	EvidenceBindingMismatch     Reason = "evidence_binding_mismatch"
+	IdempotencyConflict         Reason = "idempotency_conflict"
+	ContextCanceled             Reason = "context_canceled"
+	ContextDeadline             Reason = "context_deadline"
+	DependencyUnavailableReason Reason = "dependency_unavailable"
+)
+
 type EmittedEntityHint struct {
 	RuleID                      string `json:"rule_id"`
 	OutputPath                  string `json:"output_path"`
