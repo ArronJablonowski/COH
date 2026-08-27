@@ -1,3 +1,5 @@
+// Package investigationprojection builds deterministic, evidence-bound case
+// views while preserving uncertainty and keeping authoritative stores external.
 package investigationprojection
 
 const (
