@@ -49,6 +49,9 @@ func (controller *ActivationController) Activate(ctx context.Context, admission 
 		if err := controller.validateNoActive(ctx, intent); err != nil {
 			return ActivationResult{}, err
 		}
+		if err := controller.store.PutManifest(ctx, manifest.ExtensionID, admission.Envelope().ManifestDigest(), admission.Envelope().CanonicalBytes()); err != nil {
+			return ActivationResult{}, dependencyError(err, "manifest_persist")
+		}
 		now := formatLifecycleTime(controller.clock.Now())
 		transition = Transition{SchemaVersion: TransitionSchema, ContractVersion: ContractVersion, TransitionID: intent.RequestID,
 			IntentDigest: intent.IntentDigest, ExtensionID: intent.ExtensionID, ManifestDigest: intent.ManifestDigest,

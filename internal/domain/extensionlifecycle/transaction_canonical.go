@@ -1,12 +1,118 @@
 package extensionlifecycle
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"slices"
 
 	"github.com/ArronJablonowski/COH/internal/helper/domaincontract"
 )
+
+func CanonicalTransition(ctx context.Context, value Transition) ([]byte, string, error) {
+	sealed, err := SealTransition(ctx, value)
+	if err != nil {
+		return nil, "", err
+	}
+	canonical, err := canonicalRecord(sealed)
+	return canonical, sealed.TransitionDigest, err
+}
+func CanonicalReceipt(ctx context.Context, value RegistrationReceipt) ([]byte, string, error) {
+	sealed, err := SealReceipt(ctx, value)
+	if err != nil {
+		return nil, "", err
+	}
+	canonical, err := canonicalRecord(sealed)
+	return canonical, sealed.ReceiptDigest, err
+}
+func CanonicalActive(ctx context.Context, value ActiveExtension) ([]byte, string, error) {
+	sealed, err := SealActive(ctx, value)
+	if err != nil {
+		return nil, "", err
+	}
+	canonical, err := canonicalRecord(sealed)
+	return canonical, sealed.ActiveDigest, err
+}
+
+func DecodeTransition(ctx context.Context, input []byte) (Transition, error) {
+	var value Transition
+	if err := decodeSealed(ctx, input, &value); err != nil {
+		return Transition{}, err
+	}
+	want := value.TransitionDigest
+	sealed, err := SealTransition(ctx, value)
+	if err != nil || sealed.TransitionDigest != want {
+		return Transition{}, newError(Denied, "transition_digest_mismatch")
+	}
+	return sealed, nil
+}
+func DecodeReceipt(ctx context.Context, input []byte) (RegistrationReceipt, error) {
+	var value RegistrationReceipt
+	if err := decodeSealed(ctx, input, &value); err != nil {
+		return RegistrationReceipt{}, err
+	}
+	handle, err := SealHandle(ctx, value.RevocationHandle)
+	if err != nil || handle.HandleDigest != value.RevocationHandle.HandleDigest {
+		return RegistrationReceipt{}, newError(Denied, "handle_digest_mismatch")
+	}
+	want := value.ReceiptDigest
+	sealed, err := SealReceipt(ctx, value)
+	if err != nil || sealed.ReceiptDigest != want {
+		return RegistrationReceipt{}, newError(Denied, "receipt_digest_mismatch")
+	}
+	return sealed, nil
+}
+func DecodeActive(ctx context.Context, input []byte) (ActiveExtension, error) {
+	var value ActiveExtension
+	if err := decodeSealed(ctx, input, &value); err != nil {
+		return ActiveExtension{}, err
+	}
+	want := value.ActiveDigest
+	sealed, err := SealActive(ctx, value)
+	if err != nil || sealed.ActiveDigest != want {
+		return ActiveExtension{}, newError(Denied, "active_digest_mismatch")
+	}
+	return sealed, nil
+}
+
+func canonicalRecord(value any) ([]byte, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, newError(InvalidInput, "record_encoding")
+	}
+	canonical, err := domaincontract.Canonicalize(encoded)
+	if err != nil {
+		return nil, newError(InvalidInput, "record_encoding")
+	}
+	return canonical, nil
+}
+func decodeSealed(ctx context.Context, input []byte, target any) error {
+	if err := contextError(ctx); err != nil {
+		return err
+	}
+	if len(input) == 0 || len(input) > MaximumInputBytes {
+		return newError(InvalidInput, "record_size")
+	}
+	canonical, err := domaincontract.Canonicalize(input)
+	if err != nil {
+		return newError(InvalidInput, "record_decoding")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(canonical))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return newError(InvalidInput, "record_decoding")
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return newError(InvalidInput, "record_decoding")
+	}
+	reencoded, err := canonicalRecord(target)
+	if err != nil || !bytes.Equal(canonical, reencoded) {
+		return newError(InvalidInput, "record_shape")
+	}
+	return nil
+}
 
 func SealTransition(ctx context.Context, value Transition) (Transition, error) {
 	value.TransitionDigest = ""
@@ -38,6 +144,10 @@ func SealReceipt(ctx context.Context, value RegistrationReceipt) (RegistrationRe
 	value.ReceiptDigest = ""
 	if err := validateReceipt(value); err != nil {
 		return RegistrationReceipt{}, err
+	}
+	handle, err := SealHandle(ctx, value.RevocationHandle)
+	if err != nil || handle.HandleDigest != value.RevocationHandle.HandleDigest {
+		return RegistrationReceipt{}, newError(Denied, "handle_digest_mismatch")
 	}
 	digest, err := sealRecord(ctx, receiptDigestDomain, &value, "receipt_digest")
 	if err != nil {

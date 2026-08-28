@@ -84,6 +84,10 @@ func Open(ctx context.Context, config Config) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
+	if err := store.ensureExtensionLifecycleSchema(ctx); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return store, nil
 }
 

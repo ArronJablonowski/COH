@@ -181,6 +181,8 @@ type DrainAttestation struct {
 }
 
 type ActivationStore interface {
+	LoadManifest(context.Context, string) ([]byte, bool, error)
+	PutManifest(context.Context, string, string, []byte) error
 	LoadActive(context.Context, string, string, string) (ActiveExtension, bool, error)
 	LoadTransition(context.Context, string) (Transition, bool, error)
 	LoadReceipt(context.Context, string) (RegistrationReceipt, bool, error)

@@ -1,6 +1,7 @@
 package extensionlifecycle
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 )
@@ -41,6 +42,10 @@ func (controller *DeactivationController) Deactivate(ctx context.Context, admiss
 			return DeactivationResult{}, newError(Denied, "transition_replay_drift")
 		}
 	} else {
+		storedManifest, manifestFound, manifestErr := controller.store.LoadManifest(ctx, intent.ManifestDigest)
+		if manifestErr != nil || !manifestFound || !bytes.Equal(storedManifest, admission.Envelope().CanonicalBytes()) {
+			return DeactivationResult{}, newError(Denied, "durable_manifest_binding")
+		}
 		active, activeFound, loadErr := controller.store.LoadActive(ctx, intent.ExtensionID, intent.OrganizationID, intent.TenantID)
 		if loadErr != nil {
 			return DeactivationResult{}, dependencyError(loadErr, "active_load")

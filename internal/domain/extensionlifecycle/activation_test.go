@@ -14,10 +14,26 @@ type memoryActivationStore struct {
 	transitions map[string]Transition
 	receipts    map[string]RegistrationReceipt
 	active      map[string]ActiveExtension
+	manifests   map[string][]byte
 }
 
 func newMemoryActivationStore() *memoryActivationStore {
-	return &memoryActivationStore{transitions: map[string]Transition{}, receipts: map[string]RegistrationReceipt{}, active: map[string]ActiveExtension{}}
+	return &memoryActivationStore{transitions: map[string]Transition{}, receipts: map[string]RegistrationReceipt{}, active: map[string]ActiveExtension{}, manifests: map[string][]byte{}}
+}
+func (store *memoryActivationStore) LoadManifest(_ context.Context, digest string) ([]byte, bool, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	value, ok := store.manifests[digest]
+	return slices.Clone(value), ok, nil
+}
+func (store *memoryActivationStore) PutManifest(_ context.Context, _ string, digest string, canonical []byte) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if existing, ok := store.manifests[digest]; ok && !slices.Equal(existing, canonical) {
+		return errors.New("manifest collision")
+	}
+	store.manifests[digest] = slices.Clone(canonical)
+	return nil
 }
 func activeKey(extension, organization, tenant string) string {
 	return extension + "\x00" + organization + "\x00" + tenant

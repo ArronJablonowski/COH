@@ -152,6 +152,60 @@ var profileActivationDown = []string{
 	"DROP TABLE coh_profile_activation_transitions",
 }
 
+var extensionLifecycleUp = []string{
+	`CREATE TABLE coh_extension_manifests (
+  manifest_digest TEXT PRIMARY KEY,
+  extension_id TEXT NOT NULL,
+  canonical BLOB NOT NULL
+) STRICT`,
+	`CREATE TABLE coh_extension_lifecycle_transitions (
+  transition_id TEXT PRIMARY KEY,
+  extension_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  direction TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  sequence INTEGER NOT NULL CHECK (sequence > 0),
+  intent_digest TEXT NOT NULL,
+  transition_digest TEXT NOT NULL,
+  canonical BLOB NOT NULL
+) STRICT`,
+	`CREATE INDEX coh_extension_lifecycle_scope ON coh_extension_lifecycle_transitions
+  (extension_id, organization_id, tenant_id, phase)`,
+	`CREATE TABLE coh_extension_registration_receipts (
+  receipt_digest TEXT PRIMARY KEY,
+  receipt_id TEXT NOT NULL UNIQUE,
+  extension_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  registration_ordinal INTEGER NOT NULL CHECK (registration_ordinal >= 0),
+  state TEXT NOT NULL,
+  handle_digest TEXT NOT NULL,
+  canonical BLOB NOT NULL
+) STRICT`,
+	`CREATE TABLE coh_active_extensions (
+  extension_id TEXT NOT NULL,
+  organization_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  manifest_digest TEXT NOT NULL,
+  lifecycle_revision INTEGER NOT NULL CHECK (lifecycle_revision > 0),
+  transition_id TEXT NOT NULL,
+  active_digest TEXT NOT NULL,
+  canonical BLOB NOT NULL,
+  PRIMARY KEY (extension_id, organization_id, tenant_id),
+  FOREIGN KEY (transition_id) REFERENCES coh_extension_lifecycle_transitions(transition_id),
+  FOREIGN KEY (manifest_digest) REFERENCES coh_extension_manifests(manifest_digest)
+) STRICT`,
+}
+
+var extensionLifecycleDown = []string{
+	"DROP TABLE coh_active_extensions",
+	"DROP TABLE coh_extension_registration_receipts",
+	"DROP INDEX coh_extension_lifecycle_scope",
+	"DROP TABLE coh_extension_lifecycle_transitions",
+	"DROP TABLE coh_extension_manifests",
+}
+
 type migration struct {
 	component string
 	version   uint64
@@ -173,10 +227,14 @@ func builtInMigrations() map[migrationKey]migration {
 	profileActivation := migration{component: "profile_activation", version: 1,
 		up: profileActivationUp, down: profileActivationDown}
 	profileActivation.checksum = migrationChecksum(profileActivation)
+	extensionLifecycle := migration{component: "extension_lifecycle", version: 1,
+		up: extensionLifecycleUp, down: extensionLifecycleDown}
+	extensionLifecycle.checksum = migrationChecksum(extensionLifecycle)
 	return map[migrationKey]migration{
-		{component: metadata.component, version: metadata.version}:                   metadata,
-		{component: audit.component, version: audit.version}:                         audit,
-		{component: profileActivation.component, version: profileActivation.version}: profileActivation,
+		{component: metadata.component, version: metadata.version}:                     metadata,
+		{component: audit.component, version: audit.version}:                           audit,
+		{component: profileActivation.component, version: profileActivation.version}:   profileActivation,
+		{component: extensionLifecycle.component, version: extensionLifecycle.version}: extensionLifecycle,
 	}
 }
 
@@ -240,6 +298,22 @@ func (store *Store) ensureProfileActivationSchema(ctx context.Context) error {
 		return err
 	}
 	spec := store.migrations[migrationKey{component: "profile_activation", version: 1}]
+	_, err = store.migrate(ctx, workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion,
+		Component: spec.component, Version: spec.version, Checksum: spec.checksum,
+		BackupDigest: backup.Digest, Direction: workflow.MigrationApply})
+	return err
+}
+
+func (store *Store) ensureExtensionLifecycleSchema(ctx context.Context) error {
+	result, err := store.migrationStatus(ctx, "extension_lifecycle")
+	if err != nil || result.State == workflow.MigrationApplied {
+		return err
+	}
+	backup, err := store.backup(ctx, store.nextBackupPath("extension-lifecycle-v1"))
+	if err != nil {
+		return err
+	}
+	spec := store.migrations[migrationKey{component: "extension_lifecycle", version: 1}]
 	_, err = store.migrate(ctx, workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion,
 		Component: spec.component, Version: spec.version, Checksum: spec.checksum,
 		BackupDigest: backup.Digest, Direction: workflow.MigrationApply})
