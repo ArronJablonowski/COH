@@ -1,0 +1,14 @@
+{
+  "remoteSearch": "litsearch | fields keepcolorder=t \"_time\" \"src_ip\"",
+  "remoteTimeOrdered": true,
+  "eventsSearch": "search index=security src_ip=\"192.0.2.1\"",
+  "eventsTimeOrdered": true,
+  "eventsStreaming": true,
+  "reportsSearch": "",
+  "commands": [
+    {"command":"search","rawargs":"index=security src_ip=\"192.0.2.1\"","pipeline":"streaming","args":{"search":["index=security src_ip=\"192.0.2.1\""]},"isGenerating":true,"streamType":"SP_STREAM"},
+    {"command":"fields","rawargs":"_time, src_ip","pipeline":"streaming","args":{"fields":["_time","src_ip"]},"isGenerating":false,"streamType":"SP_STREAM"},
+    {"command":"sort","rawargs":"0 -_time","pipeline":"streaming","args":{"sort":["-_time"]},"isGenerating":false,"streamType":"SP_STREAM"},
+    {"command":"head","rawargs":"100","pipeline":"streaming","args":{"head":["100"]},"isGenerating":false,"streamType":"SP_STREAM"}
+  ]
+}

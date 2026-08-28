@@ -36,6 +36,19 @@ func TestCompileBindsTypedCanonicalPlan(t *testing.T) {
 	}
 }
 
+func TestCompileCanonicalValidQueryFixture(t *testing.T) {
+	t.Parallel()
+	request := validCompileRequest(t)
+	request.Query = strings.TrimSpace(string(readFixture(t, "query.valid.spl")))
+	plan, err := Compile(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.QueryDigest == "" || plan.PlanDigest != PlanDigest(plan) || plan.MaximumRows != 100 {
+		t.Fatalf("plan=%+v", plan)
+	}
+}
+
 func TestCompileCanonicalizesEquivalentLogicalQueries(t *testing.T) {
 	t.Parallel()
 	first := validCompileRequest(t)

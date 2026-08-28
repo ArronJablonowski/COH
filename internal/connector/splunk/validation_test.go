@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -138,6 +139,50 @@ func TestAdapterValidationRejectsQueryIDSubstitutionAndRevocation(t *testing.T) 
 	adapter.mu.Unlock()
 	if retained {
 		t.Fatal("revoked plan retained")
+	}
+}
+
+func TestAdapterConcurrentValidationIsDeterministic(t *testing.T) {
+	adapter, client, _ := splunkTestAdapter(t, 256)
+	client.parser = ParserResult{Commands: []string{"search", "fields", "sort", "head"}}
+	capability, schema := prepareValidationAuthority(t, adapter)
+	query := splunkValidatedQuery(t, capability.Digest(), schema.Value().SchemaDigest,
+		`search resource=security-events | fields event.time,source.ip`)
+	const workers = 32
+	results := make(chan string, workers)
+	errors := make(chan error, workers)
+	var wait sync.WaitGroup
+	for range workers {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			validation, err := adapter.Validate(context.Background(), query)
+			if err != nil {
+				errors <- err
+				return
+			}
+			results <- validation.Digest()
+		}()
+	}
+	wait.Wait()
+	close(results)
+	close(errors)
+	for err := range errors {
+		t.Fatalf("concurrent validation: %v", err)
+	}
+	want := ""
+	for digest := range results {
+		if want == "" {
+			want = digest
+		} else if digest != want {
+			t.Fatalf("validation digest = %s, want %s", digest, want)
+		}
+	}
+	adapter.mu.Lock()
+	retained := len(adapter.validations)
+	adapter.mu.Unlock()
+	if retained != 1 {
+		t.Fatalf("retained plans = %d, want 1", retained)
 	}
 }
 

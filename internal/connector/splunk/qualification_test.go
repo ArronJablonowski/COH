@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ type splunkFixedClock struct{ now time.Time }
 func (clock *splunkFixedClock) Now() time.Time { return clock.now }
 
 type qualificationClientStub struct {
+	mu           sync.Mutex
 	identity     ServerIdentity
 	current      CurrentContext
 	indexes      IndexInventory
@@ -49,6 +51,8 @@ func (client *qualificationClientStub) RegisteredFields(_ context.Context, reque
 }
 
 func (client *qualificationClientStub) ParserPreflight(_ context.Context, request ParserRequest) (ParserResult, CallReceipt, error) {
+	client.mu.Lock()
+	defer client.mu.Unlock()
 	client.operations = append(client.operations, request.Binding.Operation)
 	return client.parser, client.nextReceipt(), client.err
 }

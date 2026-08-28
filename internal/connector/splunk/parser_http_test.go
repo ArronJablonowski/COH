@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"slices"
 	"testing"
 
@@ -60,6 +61,31 @@ func TestHTTPParserPreflightRejectsUnknownResponseShape(t *testing.T) {
 		CanonicalSPL: "search index=security | fields _time | sort 0 -_time | head 1"})
 	if err == nil || queryconnector.Reason(err) != "splunk_parser_response_invalid" {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestQualifiedParserResponseFixtures(t *testing.T) {
+	t.Parallel()
+	for _, version := range []string{"splunk-9.4", "splunk-10.0"} {
+		version := version
+		t.Run(version, func(t *testing.T) {
+			t.Parallel()
+			fixture, err := os.ReadFile("testdata/" + version + "/parser-response.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				_, _ = writer.Write(fixture)
+			}))
+			defer server.Close()
+			config, roots := splunkHTTPTestConfig(t, server)
+			client, _ := NewHTTPClient(config, &splunkCredentialStub{token: []byte("token"), decision: splunkTestDigest("8")}, roots)
+			result, _, err := client.ParserPreflight(context.Background(), ParserRequest{Binding: splunkTestBinding("splunk.parser"),
+				CanonicalSPL: `search index=security src_ip="192.0.2.1" | fields _time, src_ip | sort 0 -_time | head 100`})
+			if err != nil || !slices.Equal(result.Commands, []string{"search", "fields", "sort", "head"}) {
+				t.Fatalf("result=%+v err=%v", result, err)
+			}
+		})
 	}
 }
 
