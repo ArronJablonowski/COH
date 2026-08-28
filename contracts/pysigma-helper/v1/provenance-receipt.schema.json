@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/pysigma-helper/v1/provenance-receipt.schema.json","title":"COH pySigma provenance receipt","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","request_digest","response_digest","sigma_digest","mapping_digest","target_schema_digest","native_query_digest","helper_attestation_digest","capability_digest","qualification_digest","policy_digest","audit_reservation_digest","state","digest"],
+  "properties":{"schema_version":{"const":"coh.pysigma-provenance/v1"},"contract_version":{"const":"1.0.0"},"request_digest":{"$ref":"#/$defs/digest"},"response_digest":{"$ref":"#/$defs/digest"},"sigma_digest":{"$ref":"#/$defs/digest"},"mapping_digest":{"$ref":"#/$defs/digest"},"target_schema_digest":{"$ref":"#/$defs/digest"},"native_query_digest":{"$ref":"#/$defs/digest"},"helper_attestation_digest":{"$ref":"#/$defs/digest"},"capability_digest":{"$ref":"#/$defs/digest"},"qualification_digest":{"$ref":"#/$defs/digest"},"policy_digest":{"$ref":"#/$defs/digest"},"audit_reservation_digest":{"$ref":"#/$defs/digest"},"state":{"const":"compiled_untrusted"},"digest":{"$ref":"#/$defs/digest"}},
+  "$defs":{"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}
+}

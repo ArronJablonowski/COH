@@ -1,0 +1,14 @@
+{
+  "schema_version": "coh.pysigma-redacted-trace/v1",
+  "contract_version": "1.0.0",
+  "trace_id": "018f0000-0000-7000-8000-000000000004",
+  "events": [
+    {"sequence":1,"phase":"preflight","outcome":"accepted","reason_codes":[],"request_digest":"sha256:cca8dd9d0fb3f6bdc5143f0d01f5aab8f136896e8ab9d2a0e96077c3585457b8"},
+    {"sequence":2,"phase":"mapping","outcome":"denied","reason_codes":["mapping_ambiguous"],"request_digest":"sha256:cca8dd9d0fb3f6bdc5143f0d01f5aab8f136896e8ab9d2a0e96077c3585457b8"}
+  ],
+  "native_text_exposed": false,
+  "sigma_text_exposed": false,
+  "field_name_exposed": false,
+  "credential_exposed": false,
+  "path_exposed": false
+}

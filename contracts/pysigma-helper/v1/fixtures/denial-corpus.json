@@ -1,0 +1,18 @@
+{
+  "schema_version": "coh.pysigma-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"class":"ambient_plugin","mutation":"enable autodiscovery","outcome":"denied","reason":"ambient_plugin_denied","covered_by":"TestAttestationAndTraceRemainFailClosed"},
+    {"class":"backend_substitution","mutation":"change backend version","outcome":"denied","reason":"backend_binding_denied","covered_by":"TestBackendMatrixCannotWidenOrSubstitute"},
+    {"class":"duplicate_json","mutation":"repeat operation key","outcome":"denied","reason":"document_ambiguous","covered_by":"TestStrictDecodersDenyAmbiguityAndTamper"},
+    {"class":"external_source","mutation":"enable command placeholder","outcome":"denied","reason":"external_source_denied","covered_by":"TestAttestationAndTraceRemainFailClosed"},
+    {"class":"mapping_ambiguous","mutation":"two sources map to one target","outcome":"needs_mapping","reason":"mapping_ambiguous","covered_by":"TestMappingsAreExplicitOneToOneAndSorted"},
+    {"class":"mapping_missing","mutation":"remove all field mappings","outcome":"needs_mapping","reason":"mapping_missing","covered_by":"TestMappingsAreExplicitOneToOneAndSorted"},
+    {"class":"output_format","mutation":"request publication format","outcome":"unsupported","reason":"output_format_unsupported","covered_by":"TestBackendMatrixCannotWidenOrSubstitute"},
+    {"class":"partial_success","mutation":"return query with denial","outcome":"denied","reason":"partial_success_denied","covered_by":"TestPartialOrUnsupportedSuccessCannotReleaseQuery"},
+    {"class":"security_onion","mutation":"request OpenSearch fallback","outcome":"unsupported","reason":"native_contract_mismatch","covered_by":"TestBackendMatrixCannotWidenOrSubstitute"},
+    {"class":"sigma_tamper","mutation":"change YAML after digest","outcome":"denied","reason":"sigma_digest_mismatch","covered_by":"TestStrictDecodersDenyAmbiguityAndTamper"},
+    {"class":"skip_unsupported","mutation":"enable collected errors","outcome":"denied","reason":"skip_unsupported_denied","covered_by":"TestAttestationAndTraceRemainFailClosed"},
+    {"class":"wildcard_mapping","mutation":"map to wildcard field","outcome":"needs_mapping","reason":"mapping_wildcard_denied","covered_by":"TestMappingsAreExplicitOneToOneAndSorted"}
+  ]
+}

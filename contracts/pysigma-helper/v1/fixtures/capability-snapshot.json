@@ -1,0 +1,33 @@
+{
+  "schema_version": "coh.pysigma-capability/v1",
+  "contract_version": "1.0.0",
+  "observed_at": "2026-08-28T04:00:00Z",
+  "valid_until": "2026-09-27T04:00:00Z",
+  "sigma_profile": "sigma-basic-2.1.0-coh-v1",
+  "compiler_version": "pysigma-1.5.0-coh-1.0.0",
+  "backend_capabilities": [
+    {"target":"elastic","native_language":"esql","backend_package":"pysigma-backend-elasticsearch","backend_version":"2.1.0","backend_commit":"5bf3529d1450e46b6a937ad29ecf0e122fbadf9d","backend_class":"ESQLBackend","output_format":"default","qualification":"candidate","reason_code":""},
+    {"target":"security-onion","native_language":"security-onion-oql","backend_package":"none","backend_version":"none","backend_commit":"none","backend_class":"none","output_format":"none","qualification":"unavailable","reason_code":"native_contract_mismatch"},
+    {"target":"sentinel","native_language":"kql","backend_package":"pysigma-backend-kusto","backend_version":"1.0.1","backend_commit":"c83f737a39f1084f30022150482f8dbbc035034b","backend_class":"KustoBackend","output_format":"default","qualification":"candidate","reason_code":""},
+    {"target":"splunk","native_language":"spl","backend_package":"pysigma-backend-splunk","backend_version":"2.1.0","backend_commit":"68a5e382f1d57a14337c6e66022af34da1e3bfe6","backend_class":"SplunkBackend","output_format":"default","qualification":"candidate","reason_code":""}
+  ],
+  "policy": {
+    "profile": "sigma-basic-2.1.0-coh-v1",
+    "maximum_sigma_bytes": 131072,
+    "maximum_yaml_nodes": 4096,
+    "maximum_yaml_depth": 32,
+    "maximum_mapping_entries": 2048,
+    "maximum_sequence_entries": 2048,
+    "maximum_scalar_bytes": 16384,
+    "maximum_scalars": 4096,
+    "maximum_selections": 64,
+    "maximum_detection_items": 512,
+    "maximum_detection_values": 2048,
+    "maximum_condition_tokens": 512,
+    "maximum_condition_depth": 32,
+    "maximum_expanded_terms": 2048,
+    "maximum_native_query_bytes": 262144
+  },
+  "backend_matrix_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "digest": "sha256:33ace40f132667f6011878d3b1a32faeb3e65728b055288fecb06e619e451bb1"
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": "coh.pysigma-provenance/v1",
+  "contract_version": "1.0.0",
+  "request_digest": "sha256:cca8dd9d0fb3f6bdc5143f0d01f5aab8f136896e8ab9d2a0e96077c3585457b8",
+  "response_digest": "sha256:ea31223e4705d7e219626b0042c8949313ec82155d003144bd476be2afa08b1e",
+  "sigma_digest": "sha256:56c1a2251d3a1424bd5644c174a2fde7ec65def21f745b60b2424aa91ea600fa",
+  "mapping_digest": "sha256:cc791f2da3d3f476797218efe7954a0bfbaf28239ba9ba1c3f4205838206fb39",
+  "target_schema_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "native_query_digest": "sha256:8db03a1f1be294276bf23f65c702ee98dfcf7040e7bde5c43036d233e121b008",
+  "helper_attestation_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+  "capability_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "qualification_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "policy_digest": "sha256:4aa39e05e360811d945a573a648c931d0a698453b80a9911cc9ca903b6930e4e",
+  "audit_reservation_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "state": "compiled_untrusted",
+  "digest": "sha256:a096d05a1d61153311bf3f4c9b861542edc78ca5b49521103ba6074142d2975e"
+}

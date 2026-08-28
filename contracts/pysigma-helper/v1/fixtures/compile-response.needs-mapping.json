@@ -1,0 +1,35 @@
+{
+  "schema_version": "coh.pysigma-helper-response/v1",
+  "contract_version": "1.0.0",
+  "request_id": "018f0000-0000-7000-8000-000000000002",
+  "request_digest": "sha256:cca8dd9d0fb3f6bdc5143f0d01f5aab8f136896e8ab9d2a0e96077c3585457b8",
+  "outcome": "needs_mapping",
+  "reason_codes": ["mapping_missing"],
+  "diagnostics": [{"code":"MAP001","severity":"error","class":"mapping_missing","location":"detection.selection"}],
+  "target": {
+    "target": "elastic",
+    "native_language": "esql",
+    "backend_package": "pysigma-backend-elasticsearch",
+    "backend_version": "2.1.0",
+    "backend_commit": "5bf3529d1450e46b6a937ad29ecf0e122fbadf9d",
+    "backend_class": "ESQLBackend",
+    "output_format": "default"
+  },
+  "sigma_digest": "sha256:56c1a2251d3a1424bd5644c174a2fde7ec65def21f745b60b2424aa91ea600fa",
+  "mapping_digest": "sha256:cc791f2da3d3f476797218efe7954a0bfbaf28239ba9ba1c3f4205838206fb39",
+  "target_schema_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "native_query": "",
+  "native_query_digest": "",
+  "helper_identity": {
+    "name": "coh-pysigma-helper",
+    "version": "pysigma-1.5.0-coh-1.0.0",
+    "rid": "osx-arm64",
+    "artifact_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "package_closure_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "runtime_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "backend_matrix_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "profile_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "provenance_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "response_digest": "sha256:435ebe1819651d12925494cb32d0d1c0affca7467b5effda68e1e9cd1b88646b"
+}

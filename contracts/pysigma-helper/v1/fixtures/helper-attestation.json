@@ -1,0 +1,30 @@
+{
+  "schema_version": "coh.pysigma-helper-attestation/v1",
+  "contract_version": "1.0.0",
+  "attestation_id": "018f0000-0000-7000-8000-000000000003",
+  "observed_at": "2026-08-28T04:00:00Z",
+  "valid_until": "2026-09-27T04:00:00Z",
+  "identity": {
+    "name": "coh-pysigma-helper",
+    "version": "pysigma-1.5.0-coh-1.0.0",
+    "rid": "osx-arm64",
+    "artifact_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "package_closure_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "runtime_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "backend_matrix_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "profile_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "python_version": "3.13.15",
+  "pysigma_version": "1.5.0",
+  "pyinstaller_version": "6.22.2",
+  "manifest_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+  "sbom_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+  "provenance_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+  "network_denied": true,
+  "credential_classes": ["none"],
+  "ambient_plugins_denied": true,
+  "external_sources_denied": true,
+  "skip_unsupported_denied": true,
+  "reproducible": true,
+  "digest": "sha256:092b8d050869d5ac5fe54bae46eab87ce07f0a469ec0c7583b96ba4458d3356f"
+}

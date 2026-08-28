@@ -1,0 +1,28 @@
+# Signed pySigma helper contract v1
+
+This contract publishes the closed credentialless compiler protocol for
+CYB-105 / COH-E15-01 and FR-055, FR-056, SEC-019. The helper accepts one
+bounded Sigma 2.1 basic rule, one explicit mapping, one exact candidate backend,
+lower policy limits, digests, deadline, and expected helper identity. Actor,
+authorization, audit records, credentials, endpoints, executable selection,
+environment, paths, and publication state remain in the Go control plane.
+
+`compile-request.schema.json` and `compile-response.schema.json` are the only
+process input and output. A successful response is `compiled_untrusted`, never
+`supported`: COH-E15-02 must rebind it to current discovered schema and pass the
+matching native ES|QL, SPL, or KQL validator.
+
+`capability-snapshot.schema.json` freezes the candidate backend matrix and
+records Security Onion as unavailable because OpenSearch Lucene/PPL is not COH
+OQL. `helper-attestation.schema.json` binds the signed artifact and exact Python,
+pySigma, PyInstaller, package, backend-matrix, and security-control state.
+`provenance-receipt.schema.json` links a compiled result to its complete
+digest-only authority chain. `denial-corpus.schema.json` and
+`redacted-trace.schema.json` publish machine-checkable failure coverage without
+revealing source YAML, native queries, field names, paths, or credentials.
+
+All schemas are JSON Schema 2020-12 and closed at every object boundary. The Go
+decoder additionally rejects duplicate keys, trailing documents, noncanonical
+timestamps, unsorted sets, ambiguous field maps, self-digest mismatch, backend
+substitution, partial success, and non-redacted traces. See
+`docs/design/signed-pysigma-helper.md` and `compatibility-matrix.md`.

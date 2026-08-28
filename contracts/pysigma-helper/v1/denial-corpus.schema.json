@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/pysigma-helper/v1/denial-corpus.schema.json","title":"COH pySigma denial corpus","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","cases"],
+  "properties":{"schema_version":{"const":"coh.pysigma-denials/v1"},"contract_version":{"const":"1.0.0"},"cases":{"type":"array","minItems":12,"maxItems":128,"items":{"$ref":"#/$defs/case"}}},
+  "$defs":{"case":{"type":"object","additionalProperties":false,"required":["class","mutation","outcome","reason","covered_by"],"properties":{"class":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,127}$"},"mutation":{"type":"string","minLength":1,"maxLength":128},"outcome":{"enum":["needs_mapping","unsupported","denied"]},"reason":{"type":"string","pattern":"^[a-z][a-z0-9_]{0,63}$"},"covered_by":{"type":"string","pattern":"^Test[A-Za-z0-9]{3,127}$"}}}}
+}
