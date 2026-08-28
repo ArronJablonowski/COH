@@ -1,0 +1,16 @@
+{
+  "schema_version": "coh.sentinel-slicing-graders/v1",
+  "corpus_digest": "sha256:c542d7e2b6601e86aefb14e7480fb74b05c3a0739462377ae59fabc68778407e",
+  "environment_digest": "sha256:4c3e54347ed0aa1c2cd68c73d74537cc2eca2138a1f94f18ae3f2f1677e6da65",
+  "trace_stream_digest": "sha256:218bc81368cd2848c8d36889de056a52bd77846331888f191dd00c25ef7a7403",
+  "metrics": {
+    "task_count": 11,
+    "trial_count": 55,
+    "false_complete": 0,
+    "released_denied_rows": 0,
+    "outcome_grade_rate": 1,
+    "trajectory_grade_rate": 1,
+    "replay_rate": 1,
+    "boundary_coverage_rate": 1
+  }
+}

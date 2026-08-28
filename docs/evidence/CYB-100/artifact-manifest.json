@@ -1,0 +1,38 @@
+{
+  "schema_version": "coh.sentinel-slicing-artifacts/v1",
+  "corpus_digest": "sha256:c542d7e2b6601e86aefb14e7480fb74b05c3a0739462377ae59fabc68778407e",
+  "environment_digest": "sha256:4c3e54347ed0aa1c2cd68c73d74537cc2eca2138a1f94f18ae3f2f1677e6da65",
+  "reproduction_command": "./scripts/verify_sentinel_slicing.sh",
+  "artifacts": [
+    {
+      "path": "corpus-manifest.json",
+      "sha256": "3cfd62c5ea07c818b7084ac66f1a15e7d30affc8b81cd70e66d0242b250dafbd",
+      "length": 7128
+    },
+    {
+      "path": "environment-report.json",
+      "sha256": "2962564e2cf9078b9c51e593399cfa6afc6f902c275845a85db8951c497e28b3",
+      "length": 2218
+    },
+    {
+      "path": "grader-report.json",
+      "sha256": "1ea57761d62a7a59eda4071fb5ebbab4b0e552dde78bdb61dc744b1bbdcd52ef",
+      "length": 587
+    },
+    {
+      "path": "reproduction.txt",
+      "sha256": "f4f50dfeca7912930b4ab79e41030b4f02f21ead12654b913208f8115e0edd7d",
+      "length": 37
+    },
+    {
+      "path": "threshold-result.json",
+      "sha256": "55ef9e8f772614bef45ae77a73108080287f394d7bcbe7361795ffb65d732e58",
+      "length": 749
+    },
+    {
+      "path": "trial-traces.jsonl",
+      "sha256": "218bc81368cd2848c8d36889de056a52bd77846331888f191dd00c25ef7a7403",
+      "length": 37140
+    }
+  ]
+}

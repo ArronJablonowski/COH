@@ -1,0 +1,64 @@
+{
+  "schema_version": "coh.sentinel-slicing-environment-report/v1",
+  "environment": {
+    "schema_version": "coh.sentinel-slicing-environment/v1",
+    "environment_version": "1.0.0",
+    "corpus_version": "1.0.0",
+    "go_version": "1.26.7",
+    "qualified_platform": "darwin/arm64",
+    "clock": "logical-trial-clock/v1",
+    "randomness": "none",
+    "network": "disabled",
+    "contracts": [
+      {
+        "name": "common-query",
+        "version": "1.0.0",
+        "sha256": "sha256:e671560408f3121949a85c13e0b88b70acb81ed551a32ee25af6877df1276bf4"
+      },
+      {
+        "name": "kusto-helper-response",
+        "version": "1.0.0",
+        "sha256": "sha256:94b61b468adf78592c60c111fbb8d2da947cb4f676607b32ba4c1ad19fcdf561"
+      },
+      {
+        "name": "sentinel-query",
+        "version": "1.0.0",
+        "sha256": "sha256:cad85bd3215fe8e12a5e2d75403cdb66ea59a50acec93554e1936e6dbe2205d0"
+      },
+      {
+        "name": "sentinel-slicing-evaluation",
+        "version": "1.0.0",
+        "sha256": "sha256:f4500ff0a2db35f3d21ad414c2fc9820e5e281f39fc31141a3f49325e8ac02db"
+      },
+      {
+        "name": "sentinel-query-denials",
+        "version": "1.0.0",
+        "sha256": "sha256:d187b3984854669b0203b07579ecba6e27fbc3ce294263eaba4e2d5245dfbde4"
+      }
+    ],
+    "fixtures": [
+      {
+        "name": "sentinel-recordings",
+        "version": "1.0.0",
+        "sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589"
+      },
+      {
+        "name": "sentinel-success",
+        "version": "1.0.0",
+        "sha256": "sha256:62c178e664835d3f2cbd167b6b8b918d07e58af7658fcef5b41eb324dbeecc92"
+      },
+      {
+        "name": "sentinel-partial-error",
+        "version": "1.0.0",
+        "sha256": "sha256:cbb8562c8af3d9fb459a3f3b4684af3a3563b8a09824e58d9d12851aa177fe62"
+      },
+      {
+        "name": "sentinel-identical-timestamp",
+        "version": "1.0.0",
+        "sha256": "sha256:ba3bbd7ea78e04bd415d47b7427a26300271f5c51a1e82a725e6702eafa174c8"
+      }
+    ]
+  },
+  "environment_digest": "sha256:4c3e54347ed0aa1c2cd68c73d74537cc2eca2138a1f94f18ae3f2f1677e6da65",
+  "corpus_digest": "sha256:c542d7e2b6601e86aefb14e7480fb74b05c3a0739462377ae59fabc68778407e"
+}
