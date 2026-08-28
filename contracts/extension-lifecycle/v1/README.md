@@ -86,6 +86,15 @@ than `armed`, unavailable audit, stale profile/registry/policy/qualification,
 permission or scope widening, missing dependency, or model/agent actor denies
 before the first effect.
 
+The production entry point is the native command root. It binds the signed
+intent to fresh authenticated administrator authority, then reads current
+E-stop state through the broker-owned lifecycle control port immediately before
+verification and execution. Trusted caller and E-stop snapshots are
+non-serializable. Compiled architecture rule `ARCH-005` denies lifecycle-engine
+imports from workflow, agent, provider, connector, transport, policy, UI, and
+helper boundaries; registration effects are available to the command root only
+through the broker interface.
+
 ## Transactional effects and reverse unwind
 
 The controller persists a sealed `prepared` transition before applying effects.

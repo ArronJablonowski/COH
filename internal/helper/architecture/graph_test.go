@@ -118,6 +118,31 @@ func TestProfileCompositionImportsAreCommandOnly(t *testing.T) {
 	}
 }
 
+func TestExtensionLifecycleImportsAreControlPlaneAndPersistenceOnly(t *testing.T) {
+	contract := loadContractFixture(t)
+	target := ModulePath + "/internal/domain/extensionlifecycle"
+	denied := loadGraphFixture(t, "invalid", "extension-lifecycle-bypass.json")
+	report, err := Evaluate(context.Background(), contract, denied.Packages, testProvenance())
+	assertErrorCode(t, err, CodeDenied)
+	if report.ViolationCount != 3 {
+		t.Fatalf("extension lifecycle bypass report = %#v", report)
+	}
+	for _, violation := range report.Violations {
+		if violation.Rule != "ARCH-005" || violation.Import != target {
+			t.Fatalf("extension lifecycle violation = %#v", violation)
+		}
+	}
+	for _, source := range []string{
+		ModulePath + "/internal/command", ModulePath + "/internal/broker", ModulePath + "/internal/persistence/sqlite",
+	} {
+		report, err := Evaluate(context.Background(), contract,
+			[]Package{{ImportPath: source, Imports: []string{target}}}, testProvenance())
+		if err != nil || report.ViolationCount != 0 {
+			t.Fatalf("%s extension lifecycle import denied: report=%#v err=%v", source, report, err)
+		}
+	}
+}
+
 func TestEvaluateCancellationAndRecovery(t *testing.T) {
 	contract := loadContractFixture(t)
 	graph := loadGraphFixture(t, "valid", "allowed-graph.json")

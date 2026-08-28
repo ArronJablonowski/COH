@@ -87,6 +87,16 @@ func Evaluate(ctx context.Context, contract Contract, packages []Package, proven
 				})
 				continue
 			}
+			if isProtectedExtensionLifecycleImport(contract.Module, imported) &&
+				source != "command" && source != "broker" && source != "persistence" &&
+				!isExtensionLifecyclePackage(contract.Module, pkg.ImportPath) {
+				report.Violations = append(report.Violations, Violation{
+					Rule: "ARCH-005", Package: pkg.ImportPath, Boundary: source,
+					Import: imported, ImportBoundary: target,
+					Detail: "extension lifecycle control is restricted to command, broker, and persistence roots",
+				})
+				continue
+			}
 			if _, ok := allowed[source][target]; !ok {
 				report.Violations = append(report.Violations, Violation{
 					Rule: "ARCH-002", Package: pkg.ImportPath, Boundary: source,
@@ -119,6 +129,15 @@ func isProtectedCompositionImport(module, imported string) bool {
 func isProtectedProfileCompositionImport(module, imported string) bool {
 	root := module + "/internal/domain/profilecomposition"
 	return imported == root || strings.HasPrefix(imported, root+"/")
+}
+
+func isProtectedExtensionLifecycleImport(module, imported string) bool {
+	return isExtensionLifecyclePackage(module, imported)
+}
+
+func isExtensionLifecyclePackage(module, path string) bool {
+	root := module + "/internal/domain/extensionlifecycle"
+	return path == root || strings.HasPrefix(path, root+"/")
 }
 
 // NewReport creates provenance-bearing evidence even when discovery is later

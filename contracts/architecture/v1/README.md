@@ -17,6 +17,7 @@ This bundle belongs to COH-E02-01 / CYB-32 and is validated by the
 | `fixtures/invalid/remote-connector-bypass.json` | Remote transport connector bypass denied |
 | `fixtures/invalid/capability-composition-bypass.json` | Compiled `ARCH-003` denies non-control-plane composition imports |
 | `fixtures/invalid/profile-composition-bypass.json` | Compiled `ARCH-004` denies profile composition outside the command root |
+| `fixtures/invalid/extension-lifecycle-bypass.json` | Compiled `ARCH-005` denies workflow, agent, provider, and transport lifecycle control |
 | `fixtures/invalid/go-mod-*.txt` | Module, Go/toolchain, and replace drift denied |
 | `fixtures/invalid/go-work-*.txt` | Extra workspace use and replace drift denied |
 
