@@ -15,7 +15,7 @@ done < <(/usr/bin/find internal cmd -type f -name '*.go' ! -name '*_test.go' -pr
 while IFS= read -r path; do
   [[ -z "${path}" ]] && continue
   case "${path}" in
-    internal/domain/providercontract/*|internal/provider/*|internal/provider/**/*|internal/domain/modelsurface/admission.go) continue ;;
+    internal/domain/providercontract/*|internal/provider/*|internal/domain/modelsurface/admission.go) continue ;;
   esac
   echo "error: production code handles a raw validated provider request outside the admitted boundary: ${path}" >&2
   status=2
