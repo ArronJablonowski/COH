@@ -77,9 +77,12 @@ func TestAdapterPollRejectsMismatchDeadlineAndRevocationBeforeVendor(t *testing.
 		len(client.operations) != before {
 		t.Fatalf("stolen err=%v operations=%v", err, client.operations)
 	}
+	client.canceled = SearchCancelResult{Acknowledged: true}
+	client.status = splunkRuntimeStatus("USER_CANCEL", "0.50000", 20, 10, 1, 100)
 	clock.now = splunkTestNow.Add(6 * time.Minute)
 	if _, err := adapter.Poll(context.Background(), request); queryconnector.Reason(err) != "splunk_job_deadline_exceeded" ||
-		len(client.operations) != before {
+		len(client.operations) != before+2 || client.operations[len(client.operations)-2] != "splunk.search.cancel" ||
+		client.operations[len(client.operations)-1] != "splunk.search.status" {
 		t.Fatalf("deadline err=%v operations=%v", err, client.operations)
 	}
 

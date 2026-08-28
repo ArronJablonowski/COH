@@ -24,8 +24,9 @@ func DecodeLifecyclePolicy(input []byte) (LifecyclePolicy, error) {
 	}
 	if value.SchemaVersion != LifecyclePolicyVersion || value.ContractVersion != ContractVersion ||
 		value.ExecutionMode != "normal" || value.AllowPreviews || value.StatusBuckets != 0 ||
-		value.MaximumPageRows < 1 || value.MaximumPageRows > 10000 || value.MinimumPollIntervalMillis < 100 ||
-		value.MinimumPollIntervalMillis > 60000 || value.CancellationWaitMillis < 100 || value.CancellationWaitMillis > 120000 ||
+		value.MaximumPageRows != maximumSearchPageRows ||
+		value.MinimumPollIntervalMillis != uint64(minimumSplunkPollInterval/time.Millisecond) ||
+		value.CancellationWaitMillis != uint64(splunkCancellationWait/time.Millisecond) ||
 		!slices.Equal(value.Operations, lifecycleOperations) || !slices.Equal(value.AllowedStates, lifecycleStates) {
 		return LifecyclePolicy{}, denied("lifecycle policy invalid")
 	}

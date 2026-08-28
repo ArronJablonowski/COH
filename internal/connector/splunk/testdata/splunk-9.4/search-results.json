@@ -1,0 +1,1 @@
+{"preview":false,"init_offset":0,"messages":[],"fields":[{"name":"_time"},{"name":"src_ip"}],"results":[{"_time":"2026-08-27T23:59:00Z","src_ip":"192.0.2.1"},{"_time":"2026-08-27T23:59:30Z","src_ip":"192.0.2.2"}]}

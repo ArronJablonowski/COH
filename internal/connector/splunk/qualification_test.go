@@ -29,11 +29,14 @@ type qualificationClientStub struct {
 	statuses        []JobStatus
 	statusIndex     int
 	statusWait      <-chan struct{}
+	statusErr       error
 	results         ResultEnvelope
 	resultEnvelopes []ResultEnvelope
 	resultIndex     int
 	resultWait      <-chan struct{}
 	canceled        SearchCancelResult
+	cancelWait      <-chan struct{}
+	cancelErr       error
 	createWait      <-chan struct{}
 	receipts        []CallReceipt
 	err             error
@@ -90,7 +93,11 @@ func (client *qualificationClientStub) SearchStatus(_ context.Context, request S
 		status = client.statuses[min(client.statusIndex, len(client.statuses)-1)]
 		client.statusIndex++
 	}
-	return status, client.nextReceipt(), client.err
+	err := client.err
+	if client.statusErr != nil {
+		err = client.statusErr
+	}
+	return status, client.nextReceipt(), err
 }
 
 func (client *qualificationClientStub) SearchResults(_ context.Context, request SearchResultsRequest) (ResultEnvelope, CallReceipt, error) {
@@ -109,8 +116,17 @@ func (client *qualificationClientStub) SearchResults(_ context.Context, request 
 }
 
 func (client *qualificationClientStub) CancelSearch(_ context.Context, request SearchCancelRequest) (SearchCancelResult, CallReceipt, error) {
+	if client.cancelWait != nil {
+		<-client.cancelWait
+	}
+	client.mu.Lock()
+	defer client.mu.Unlock()
 	client.operations = append(client.operations, request.Binding.Operation)
-	return client.canceled, client.nextReceipt(), client.err
+	err := client.err
+	if client.cancelErr != nil {
+		err = client.cancelErr
+	}
+	return client.canceled, client.nextReceipt(), err
 }
 
 func (client *qualificationClientStub) nextReceipt() CallReceipt {

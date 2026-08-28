@@ -68,8 +68,8 @@ func (adapter *Adapter) NextPage(ctx context.Context,
 				"splunk_page_unavailable", nil)
 		}
 		if !now.Before(job.expiresAt) {
-			adapter.removeJobLocked(replay.jobHandleID, job)
 			adapter.mu.Unlock()
+			_, _ = adapter.Cancel(ctx, cancelRequestForJob(job, now))
 			return queryconnector.ValidatedPage{}, queryconnector.NewError(queryconnector.Timeout,
 				"splunk_job_deadline_exceeded", nil)
 		}
@@ -95,10 +95,10 @@ func (adapter *Adapter) NextPage(ctx context.Context,
 	}
 	job, exists := adapter.jobs[cursor.jobHandleID]
 	if !exists || !now.Before(job.expiresAt) {
-		if exists {
-			adapter.removeJobLocked(cursor.jobHandleID, job)
-		}
 		adapter.mu.Unlock()
+		if exists {
+			_, _ = adapter.Cancel(ctx, cancelRequestForJob(job, now))
+		}
 		return queryconnector.ValidatedPage{}, queryconnector.NewError(queryconnector.Timeout,
 			"splunk_job_deadline_exceeded", nil)
 	}

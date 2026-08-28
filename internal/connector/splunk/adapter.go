@@ -48,20 +48,22 @@ type Adapter struct {
 	qualification ValidatedQualification
 	clock         Clock
 
-	mu           sync.Mutex
-	capabilities map[string]splunkCapabilityRecord
-	cursors      map[string]splunkCursorRecord
-	schemas      map[string]splunkSchemaRecord
-	validations  map[string]splunkValidationRecord
-	queryIDs     map[string]string
-	revoked      map[string]string
-	executions   map[string]*splunkExecutionFlight
-	jobs         map[string]splunkJobRecord
-	sidOwners    map[string]string
-	polls        map[string]*splunkPollFlight
-	pages        map[string]splunkPageRecord
-	pageReplays  map[string]splunkPageReplay
-	pageFlights  map[string]*splunkPageFlight
+	mu                     sync.Mutex
+	capabilities           map[string]splunkCapabilityRecord
+	cursors                map[string]splunkCursorRecord
+	schemas                map[string]splunkSchemaRecord
+	validations            map[string]splunkValidationRecord
+	queryIDs               map[string]string
+	revoked                map[string]string
+	executions             map[string]*splunkExecutionFlight
+	jobs                   map[string]splunkJobRecord
+	sidOwners              map[string]string
+	polls                  map[string]*splunkPollFlight
+	pages                  map[string]splunkPageRecord
+	pageReplays            map[string]splunkPageReplay
+	pageFlights            map[string]*splunkPageFlight
+	cancellations          map[string]*splunkCancellationFlight
+	automaticCancellations map[string]queryconnector.ValidatedCancellation
 }
 
 func NewAdapter(config Config, client Client, qualification ValidatedQualification, clock Clock) (*Adapter, error) {
@@ -80,7 +82,9 @@ func NewAdapter(config Config, client Client, qualification ValidatedQualificati
 		executions: make(map[string]*splunkExecutionFlight), jobs: make(map[string]splunkJobRecord),
 		sidOwners: make(map[string]string), polls: make(map[string]*splunkPollFlight),
 		pages: make(map[string]splunkPageRecord), pageReplays: make(map[string]splunkPageReplay),
-		pageFlights: make(map[string]*splunkPageFlight)}, nil
+		pageFlights:            make(map[string]*splunkPageFlight),
+		cancellations:          make(map[string]*splunkCancellationFlight),
+		automaticCancellations: make(map[string]queryconnector.ValidatedCancellation)}, nil
 }
 
 func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope,
@@ -368,12 +372,13 @@ func (adapter *Adapter) ApplyRevocation(ctx context.Context, evidence splunkpars
 		return invalidInput("splunk_revocation_invalid")
 	}
 	adapter.mu.Lock()
-	defer adapter.mu.Unlock()
 	existing, exists := adapter.revoked[validated.DecisionDigest]
 	if exists && existing != validated.RevocationDigest {
+		adapter.mu.Unlock()
 		return conflictCall("splunk_revocation_conflict")
 	}
 	if !exists && len(adapter.revoked) >= maximumAdapterRecords {
+		adapter.mu.Unlock()
 		return deniedCall("splunk_adapter_capacity_reached")
 	}
 	adapter.revoked[validated.DecisionDigest] = validated.RevocationDigest
@@ -385,6 +390,23 @@ func (adapter *Adapter) ApplyRevocation(ctx context.Context, evidence splunkpars
 				delete(adapter.queryIDs, record.queryID)
 			}
 		}
+	}
+	jobs := make([]splunkJobRecord, 0)
+	if !exists {
+		for _, job := range adapter.jobs {
+			if job.query.Authority.PolicyDecisionDigest == validated.DecisionDigest &&
+				job.query.Authority.AuditReservationDigest == validated.AuditReservationDigest {
+				jobs = append(jobs, job)
+			}
+		}
+	}
+	adapter.mu.Unlock()
+	for _, job := range jobs {
+		now := adapter.clock.Now().UTC()
+		result := adapter.runSplunkCancellation(ctx, job, cancelRequestForJob(job, now), now)
+		adapter.mu.Lock()
+		adapter.automaticCancellations[job.execution.Value().Handle.HandleID] = result
+		adapter.mu.Unlock()
 	}
 	return nil
 }

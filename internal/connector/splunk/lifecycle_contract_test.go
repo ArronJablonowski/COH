@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -42,6 +43,12 @@ func TestLifecycleContractsDenyUnknownDuplicateAndUnsafeValues(t *testing.T) {
 	if _, err := DecodeLifecyclePolicy(mutateLifecycle(t, policy, func(value map[string]any) { value["allow_previews"] = true })); err == nil {
 		t.Fatal("preview policy accepted")
 	}
+	for field, changed := range map[string]any{"maximum_page_rows": 999, "minimum_poll_interval_millis": 499,
+		"cancellation_wait_millis": 4999} {
+		if _, err := DecodeLifecyclePolicy(mutateLifecycle(t, policy, func(value map[string]any) { value[field] = changed })); err == nil {
+			t.Fatalf("mutable lifecycle bound accepted: %s", field)
+		}
+	}
 	status := readLifecycleFixture(t, "job-status.done.json")
 	if _, err := DecodeJobStatus(mutateLifecycle(t, status, func(value map[string]any) { value["real_time"] = true })); err == nil {
 		t.Fatal("real-time status accepted")
@@ -79,6 +86,30 @@ func TestLifecycleContractFilesAreBoundedAndSecretFree(t *testing.T) {
 		input, readErr := os.ReadFile(path)
 		if readErr != nil || json.Unmarshal(input, &schema) != nil || schema["additionalProperties"] != false {
 			t.Fatalf("schema is not closed: %s", path)
+		}
+	}
+}
+
+func TestLifecycleDenialCorpusReferencesExecutableTests(t *testing.T) {
+	corpus, err := DecodeLifecycleDenialCorpus(readLifecycleFixture(t, "denial-corpus.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths, err := filepath.Glob("*_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var source strings.Builder
+	for _, path := range paths {
+		input, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		source.Write(input)
+	}
+	for _, denial := range corpus.Cases {
+		if !strings.Contains(source.String(), "func "+denial.CoveredBy+"(") {
+			t.Errorf("denial %s references missing %s", denial.Class, denial.CoveredBy)
 		}
 	}
 }

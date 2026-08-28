@@ -63,3 +63,10 @@ type splunkPageFlight struct {
 	result queryconnector.ValidatedPage
 	err    error
 }
+
+type splunkCancellationFlight struct {
+	done    chan struct{}
+	request queryconnector.CancelRequest
+	result  queryconnector.ValidatedCancellation
+	err     error
+}

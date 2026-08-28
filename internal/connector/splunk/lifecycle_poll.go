@@ -23,9 +23,8 @@ func (adapter *Adapter) Poll(ctx context.Context,
 	adapter.mu.Lock()
 	job, exists := adapter.jobs[request.Handle.HandleID]
 	if exists && !now.Before(job.expiresAt) {
-		adapter.removeJobLocked(request.Handle.HandleID, job)
-		adapter.removeExpiredLocked(now)
 		adapter.mu.Unlock()
+		_, _ = adapter.Cancel(ctx, cancelRequestForJob(job, now))
 		return queryconnector.ValidatedPoll{}, queryconnector.NewError(queryconnector.Timeout,
 			"splunk_job_deadline_exceeded", nil)
 	}

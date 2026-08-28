@@ -1,0 +1,13 @@
+{
+  "schema_version": "coh.splunk-lifecycle-fixtures/v1",
+  "contract_version": "1.0.0",
+  "vendor": "splunk",
+  "product": "Splunk Enterprise",
+  "origin": "Sanitized deterministic recordings derived from documented Splunk management REST response shapes",
+  "sensitive_values": "none",
+  "fixtures": [
+    {"minor": "9.4", "directory": "splunk-9.4"},
+    {"minor": "10.0", "directory": "splunk-10.0"}
+  ],
+  "records": ["search-create.json", "search-status-done.json", "search-results.json", "search-cancel.json"]
+}
