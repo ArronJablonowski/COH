@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/extension-lifecycle/v1/extension-activation-intent.schema.json",
+  "title": "COH signed extension activation intent v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "request_id", "idempotency_key", "actor_id", "actor_kind", "organization_id", "tenant_id", "extension_id", "manifest_digest", "operation", "mode", "requested_scope_digest", "requested_permissions_digest", "expected_predecessor_manifest_digest", "rollback_authorization_digest", "active_profile_revision", "profile_binding_digest", "composition_digest", "capability_graph_digest", "expected_lifecycle_revision", "expected_registry_revision", "policy_decision_digest", "promotion_snapshot_digest", "qualification_snapshot_digest", "audit_availability_digest", "estop_state", "estop_revision", "maximum_drain_duration_ms", "issued_at", "deadline_at", "intent_digest", "administrator_signature"],
+  "properties": {
+    "schema_version": {"const": "coh.extension-activation-intent/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "request_id": {"$ref": "#/$defs/uuid7"},
+    "idempotency_key": {"$ref": "#/$defs/uuid7"},
+    "actor_id": {"$ref": "#/$defs/uuid7"},
+    "actor_kind": {"const": "administrator"},
+    "organization_id": {"$ref": "#/$defs/uuid7"},
+    "tenant_id": {"$ref": "#/$defs/uuid7"},
+    "extension_id": {"$ref": "#/$defs/uuid7"},
+    "manifest_digest": {"$ref": "#/$defs/digest"},
+    "operation": {"enum": ["activate", "deactivate"]},
+    "mode": {"enum": ["maintenance", "rollback", "startup", "upgrade"]},
+    "requested_scope_digest": {"$ref": "#/$defs/digest"},
+    "requested_permissions_digest": {"$ref": "#/$defs/digest"},
+    "expected_predecessor_manifest_digest": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/digest"}]},
+    "rollback_authorization_digest": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/digest"}]},
+    "active_profile_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "profile_binding_digest": {"$ref": "#/$defs/digest"},
+    "composition_digest": {"$ref": "#/$defs/digest"},
+    "capability_graph_digest": {"$ref": "#/$defs/digest"},
+    "expected_lifecycle_revision": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+    "expected_registry_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "policy_decision_digest": {"$ref": "#/$defs/digest"},
+    "promotion_snapshot_digest": {"$ref": "#/$defs/digest"},
+    "qualification_snapshot_digest": {"$ref": "#/$defs/digest"},
+    "audit_availability_digest": {"$ref": "#/$defs/digest"},
+    "estop_state": {"const": "armed"},
+    "estop_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "maximum_drain_duration_ms": {"type": "integer", "minimum": 1000, "maximum": 300000},
+    "issued_at": {"$ref": "#/$defs/timestamp"},
+    "deadline_at": {"$ref": "#/$defs/timestamp"},
+    "intent_digest": {"$ref": "#/$defs/digest"},
+    "administrator_signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "signature": {
+      "type": "object", "additionalProperties": false,
+      "required": ["actor_id", "key_id", "key_revision", "approval_revision", "signature_algorithm", "signature"],
+      "properties": {
+        "actor_id": {"$ref": "#/$defs/uuid7"}, "key_id": {"$ref": "#/$defs/token"},
+        "key_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "approval_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "signature_algorithm": {"const": "ed25519"}, "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/extension-lifecycle/v1/extension-lifecycle-transition.schema.json",
+  "title": "COH durable transactional extension lifecycle transition v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "transition_id", "intent_digest", "extension_id", "manifest_digest", "organization_id", "tenant_id", "direction", "phase", "sequence", "expected_lifecycle_revision", "registry_revision", "next_apply_ordinal", "next_revoke_ordinal", "registration_receipt_digests", "admission_closed", "active_work_count", "terminal_work_digest", "activation_audit_digest", "terminal_audit_digest", "failure_code", "created_at", "updated_at", "transition_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.extension-lifecycle-transition/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "transition_id": {"$ref": "#/$defs/uuid7"},
+    "intent_digest": {"$ref": "#/$defs/digest"},
+    "extension_id": {"$ref": "#/$defs/uuid7"},
+    "manifest_digest": {"$ref": "#/$defs/digest"},
+    "organization_id": {"$ref": "#/$defs/uuid7"},
+    "tenant_id": {"$ref": "#/$defs/uuid7"},
+    "direction": {"enum": ["activate", "deactivate"]},
+    "phase": {"enum": ["active", "applying", "draining", "inactive", "prepared", "revoking", "unwinding"]},
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "expected_lifecycle_revision": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+    "registry_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "next_apply_ordinal": {"type": "integer", "minimum": 0, "maximum": 64},
+    "next_revoke_ordinal": {"type": "integer", "minimum": -1, "maximum": 63},
+    "registration_receipt_digests": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/digest"}},
+    "admission_closed": {"type": "boolean"},
+    "active_work_count": {"type": "integer", "minimum": 0, "maximum": 100000},
+    "terminal_work_digest": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/digest"}]},
+    "activation_audit_digest": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/digest"}]},
+    "terminal_audit_digest": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/digest"}]},
+    "failure_code": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/token"}]},
+    "created_at": {"$ref": "#/$defs/timestamp"},
+    "updated_at": {"$ref": "#/$defs/timestamp"},
+    "transition_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+  }
+}

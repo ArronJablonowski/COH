@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/extension-lifecycle/v1/signed-extension-manifest.schema.json",
+  "title": "COH signed reviewed data-plane extension manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "manifest", "manifest_digest", "publisher_signature", "review_signatures", "owner_signature"],
+  "properties": {
+    "schema_version": {"const": "coh.signed-extension-manifest/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "manifest": {"$ref": "#/$defs/manifest"},
+    "manifest_digest": {"$ref": "#/$defs/digest"},
+    "publisher_signature": {"$ref": "#/$defs/signature"},
+    "review_signatures": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/signature"}},
+    "owner_signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "semver": {"type": "string", "pattern": "^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)(-[0-9A-Za-z-]+([.][0-9A-Za-z-]+)*)?([+][0-9A-Za-z-]+([.][0-9A-Za-z-]+)*)?$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "signature": {
+      "type": "object", "additionalProperties": false,
+      "required": ["actor_id", "key_id", "key_revision", "approval_revision", "signature_algorithm", "signature"],
+      "properties": {
+        "actor_id": {"$ref": "#/$defs/uuid7"},
+        "key_id": {"$ref": "#/$defs/token"},
+        "key_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "approval_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "signature_algorithm": {"const": "ed25519"},
+        "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+      }
+    },
+    "capability_ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["capability_id", "capability_version"],
+      "properties": {"capability_id": {"$ref": "#/$defs/token"}, "capability_version": {"$ref": "#/$defs/semver"}}
+    },
+    "registration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["registration_id", "role", "capability", "provider_id", "permissions", "scope_types", "resource_limits_digest"],
+      "properties": {
+        "registration_id": {"$ref": "#/$defs/token"},
+        "role": {"enum": ["consumer", "provider"]},
+        "capability": {"$ref": "#/$defs/capability_ref"},
+        "provider_id": {"$ref": "#/$defs/token"},
+        "permissions": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/token"}},
+        "scope_types": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"enum": ["case", "organization", "task", "tenant"]}},
+        "resource_limits_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "manifest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "contract_version", "extension_id", "extension_name", "extension_version", "extension_kind", "owner_actor_id", "owner_module", "artifact_digest", "sbom_digest", "provenance_digest", "test_evidence_digest", "threat_model_digest", "predecessor_manifest_digest", "declared_permissions", "declared_scope_types", "dependencies", "registrations", "maximum_active_work", "maximum_drain_duration_ms", "review_digest", "valid_from", "valid_until"],
+      "properties": {
+        "schema_version": {"const": "coh.extension-manifest/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "extension_id": {"$ref": "#/$defs/uuid7"},
+        "extension_name": {"$ref": "#/$defs/token"},
+        "extension_version": {"$ref": "#/$defs/semver"},
+        "extension_kind": {"enum": ["data_adapter", "model_provider", "query_provider", "skill_provider", "tool_provider"]},
+        "owner_actor_id": {"$ref": "#/$defs/uuid7"},
+        "owner_module": {"$ref": "#/$defs/token"},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "sbom_digest": {"$ref": "#/$defs/digest"},
+        "provenance_digest": {"$ref": "#/$defs/digest"},
+        "test_evidence_digest": {"$ref": "#/$defs/digest"},
+        "threat_model_digest": {"$ref": "#/$defs/digest"},
+        "predecessor_manifest_digest": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/digest"}]},
+        "declared_permissions": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/token"}},
+        "declared_scope_types": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"enum": ["case", "organization", "task", "tenant"]}},
+        "dependencies": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/capability_ref"}},
+        "registrations": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/registration"}},
+        "maximum_active_work": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "maximum_drain_duration_ms": {"type": "integer", "minimum": 1000, "maximum": 300000},
+        "review_digest": {"$ref": "#/$defs/digest"},
+        "valid_from": {"$ref": "#/$defs/timestamp"},
+        "valid_until": {"$ref": "#/$defs/timestamp"}
+      }
+    }
+  }
+}
