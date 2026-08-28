@@ -1,0 +1,47 @@
+{
+  "tables": [
+    {
+      "id": "AzureActivity",
+      "name": "AzureActivity",
+      "description": "Sanitized activity record table",
+      "timespanColumn": "TimeGenerated",
+      "columns": [
+        {"name": "Category", "type": "string", "description": "Sanitized category"},
+        {"name": "TimeGenerated", "type": "datetime", "description": "Event timestamp"}
+      ],
+      "related": {},
+      "tags": {},
+      "properties": {}
+    },
+    {
+      "id": "SigninLogs",
+      "name": "SigninLogs",
+      "description": "Sanitized sign-in record table",
+      "timespanColumn": "TimeGenerated",
+      "columns": [
+        {"name": "IpAddress", "type": "string", "description": "Sanitized source address"},
+        {"name": "TimeGenerated", "type": "datetime", "description": "Event timestamp"}
+      ],
+      "related": {},
+      "tags": {},
+      "properties": {}
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "name": "coh-sentinel",
+      "region": "westus2",
+      "resourceId": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/coh-security/providers/Microsoft.OperationalInsights/workspaces/coh-sentinel",
+      "related": {}
+    }
+  ],
+  "applications": [],
+  "categories": [],
+  "functions": [],
+  "permissions": [],
+  "queries": [],
+  "resources": [],
+  "resourceTypes": [],
+  "solutions": []
+}

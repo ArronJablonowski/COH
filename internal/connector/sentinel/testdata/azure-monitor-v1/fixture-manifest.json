@@ -1,0 +1,21 @@
+{
+  "schema_version": "coh.sentinel-vendor-fixture/v1",
+  "contract_version": "1.0.0",
+  "vendor": "microsoft",
+  "product": "Azure Monitor Logs",
+  "api_version": "v1",
+  "endpoint": "https://api.loganalytics.azure.com/v1/workspaces/{workspaceId}/metadata",
+  "oauth_audience": "https://api.loganalytics.io/.default",
+  "origin": "Sanitized deterministic recordings derived from the documented Microsoft Azure Monitor Logs v1 metadata response shape",
+  "documentation": [
+    "https://learn.microsoft.com/en-us/rest/api/logsquery/metadata/get?view=rest-logsquery-v1",
+    "https://learn.microsoft.com/en-us/azure/azure-monitor/logs/api/access-api"
+  ],
+  "sensitive_values": "none",
+  "records": [
+    {"file": "metadata.json", "operation": "sentinel.metadata.get", "outcome": "success"},
+    {"file": "privilege-denied.json", "operation": "sentinel.metadata.get", "outcome": "redacted_denial"},
+    {"file": "malformed-duplicate.json", "operation": "sentinel.metadata.get", "outcome": "adversarial_duplicate_key"},
+    {"file": "truncated-continuation.json", "operation": "sentinel.metadata.get", "outcome": "adversarial_partial_inventory"}
+  ]
+}
