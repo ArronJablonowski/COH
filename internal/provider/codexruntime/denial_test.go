@@ -184,9 +184,10 @@ func TestExpiredQualificationFailsBeforeLaunch(t *testing.T) {
 
 func TestExecParserRejectsMalformedAndMissingTerminalStreams(t *testing.T) {
 	for name, input := range map[string][]byte{
-		"unknown event":    []byte(`{"type":"thread.started","thread_id":"thread-1"}` + "\n" + `{"type":"vendor.extension"}`),
-		"missing terminal": []byte(`{"type":"thread.started","thread_id":"thread-1"}` + "\n" + `{"type":"turn.started"}`),
-		"native command":   []byte(`{"type":"thread.started","thread_id":"thread-1"}` + "\n" + `{"type":"turn.started"}` + "\n" + `{"type":"item.completed","item":{"id":"cmd-1","type":"command_execution","command":"id","status":"completed"}}`),
+		"unknown event":             []byte(`{"type":"thread.started","thread_id":"thread-1"}` + "\n" + `{"type":"vendor.extension"}`),
+		"missing terminal":          []byte(`{"type":"thread.started","thread_id":"thread-1"}` + "\n" + `{"type":"turn.started"}`),
+		"native command":            []byte(`{"type":"thread.started","thread_id":"thread-1"}` + "\n" + `{"type":"turn.started"}` + "\n" + `{"type":"item.completed","item":{"id":"cmd-1","type":"command_execution","command":"id","status":"completed"}}`),
+		"cache write exceeds input": []byte(`{"type":"thread.started","thread_id":"thread-1"}` + "\n" + `{"type":"turn.started"}` + "\n" + `{"type":"item.completed","item":{"id":"msg-1","type":"agent_message","text":"done"}}` + "\n" + `{"type":"turn.completed","usage":{"input_tokens":2,"cached_input_tokens":0,"cache_write_input_tokens":3,"output_tokens":1,"reasoning_output_tokens":0}}`),
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, _, err := parseExecJSONL(input); err == nil {

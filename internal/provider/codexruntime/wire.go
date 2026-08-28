@@ -232,6 +232,7 @@ type execItem struct {
 type execUsage struct {
 	InputTokens           uint64 `json:"input_tokens"`
 	CachedInputTokens     uint64 `json:"cached_input_tokens"`
+	CacheWriteInputTokens uint64 `json:"cache_write_input_tokens"`
 	OutputTokens          uint64 `json:"output_tokens"`
 	ReasoningOutputTokens uint64 `json:"reasoning_output_tokens"`
 }

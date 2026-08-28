@@ -15,7 +15,7 @@ func (a *Adapter) invokeBatch(ctx context.Context, validated providercontract.Va
 		return providercontract.ValidatedResponse{}, newError(providercontract.Unsupported, "batch_tools_not_supported", false)
 	}
 	started := a.config.Clock().UTC()
-	argv := []string{"codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--strict-config", "--sandbox", "read-only", "--cd", a.config.Workspace, "--model", request.Provider.RequestedModel}
+	argv := []string{"codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--strict-config", "--sandbox", "read-only", "--cd", a.config.Workspace, "--model", request.Provider.RequestedModel}
 	if len(translated.OutputSchema) > 0 {
 		argv = append(argv, "--output-schema", "/coh/runtime/output-schema.json")
 	}
@@ -108,7 +108,7 @@ func parseExecJSONL(input []byte) (string, providercontract.Usage, error) {
 				return "", usage, newError(providercontract.Conflict, "exec_terminal", false)
 			}
 			u := event.Usage
-			if u.CachedInputTokens > u.InputTokens || u.ReasoningOutputTokens > u.OutputTokens {
+			if u.CachedInputTokens > u.InputTokens || u.CacheWriteInputTokens > u.InputTokens || u.ReasoningOutputTokens > u.OutputTokens {
 				return "", usage, newError(providercontract.Denied, "usage_invalid", false)
 			}
 			usage = providercontract.Usage{InputTokens: u.InputTokens, OutputTokens: u.OutputTokens, TotalTokens: u.InputTokens + u.OutputTokens, CachedInputTokens: u.CachedInputTokens, ReasoningTokens: u.ReasoningOutputTokens}
