@@ -3,6 +3,7 @@
 ./internal/domain/capabilityseam FuzzCapabilitySeamDecodersRecoverAcceptedDocuments
 ./internal/domain/extensionlifecycle FuzzDecodeLifecycleDocumentsNeverPanic
 ./internal/domain/extensionlifecycle FuzzDecodeLifecycleTransitionRoundTrip
+./internal/domain/modelsurface FuzzModelSurfaceStrictDecoders
 ./internal/domain/normalizedevent FuzzDecodeNeverAcceptsChangedCanonicalFixture
 ./internal/domain/profileactivation FuzzProfileActivationDecodersRecoverAcceptedRecords
 ./internal/domain/profilecomposition FuzzProfileLayerDecoderAndVerifierRecoverAcceptedDocuments
