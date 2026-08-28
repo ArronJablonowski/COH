@@ -1,4 +1,5 @@
 # package target
+./internal/connector/splunkparser FuzzParseNeverPanics
 ./internal/domain/normalizedevent FuzzDecodeNeverAcceptsChangedCanonicalFixture
 ./internal/domain/queryconnector FuzzQueryDecoderRecoversAcceptedDocuments
 ./internal/domain/temporaltime FuzzDecodeCommandRoundTrip
