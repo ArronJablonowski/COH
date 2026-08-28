@@ -41,18 +41,20 @@ type executionFlight struct {
 type sentinelQueryJob struct {
 	mu sync.Mutex
 
-	query       queryconnector.Query
-	queryDigest string
-	validation  queryconnector.ValidatedValidation
-	admission   kustovalidator.ValidationAdmission
-	execution   queryconnector.ValidatedExecution
-	request     QueryTransportRequest
-	response    QueryTransportResponse
-	authority   queryconnector.AuthorityBinding
-	expiresAt   time.Time
-	canceled    bool
-	released    bool
-	poll        *queryconnector.ValidatedPoll
+	query         queryconnector.Query
+	queryDigest   string
+	validation    queryconnector.ValidatedValidation
+	admission     kustovalidator.ValidationAdmission
+	execution     queryconnector.ValidatedExecution
+	requests      []QueryTransportRequest
+	responses     []QueryTransportResponse
+	plan          SlicePlan
+	failureReason string
+	authority     queryconnector.AuthorityBinding
+	expiresAt     time.Time
+	canceled      bool
+	released      bool
+	poll          *queryconnector.ValidatedPoll
 }
 
 type QueryRuntime struct {

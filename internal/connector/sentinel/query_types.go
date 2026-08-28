@@ -20,6 +20,8 @@ type QueryRuntimeConfig struct {
 	SchemaVersion              string             `json:"schema_version"`
 	ContractVersion            string             `json:"contract_version"`
 	DiscoveryConfigDigest      string             `json:"discovery_config_digest"`
+	SliceSemanticsDigest       string             `json:"slice_semantics_digest"`
+	HalfOpenQualified          bool               `json:"half_open_qualified"`
 	MinimumSliceDurationMillis uint64             `json:"minimum_slice_duration_millis"`
 	SplitThresholdRows         uint64             `json:"split_threshold_rows"`
 	SplitThresholdBytes        uint64             `json:"split_threshold_bytes"`

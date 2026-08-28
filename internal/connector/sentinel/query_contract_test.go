@@ -49,7 +49,8 @@ func TestQueryRuntimeContractsDenyTamperAndPartialRows(t *testing.T) {
 
 func queryTestRuntimeConfig() QueryRuntimeConfig {
 	value := QueryRuntimeConfig{SchemaVersion: QueryRuntimeConfigVersion, ContractVersion: ContractVersion,
-		DiscoveryConfigDigest: sentinelTestDigest("1"), MinimumSliceDurationMillis: 1000,
+		DiscoveryConfigDigest: sentinelTestDigest("1"), SliceSemanticsDigest: sentinelTestDigest("2"),
+		HalfOpenQualified: true, MinimumSliceDurationMillis: 1000,
 		SplitThresholdRows: 500, SplitThresholdBytes: 65536, MaximumResponseBytes: 262144,
 		StableKeys: []StableKeyProfile{{ResourceID: "security-events", TimestampColumn: "TimeGenerated", Columns: []string{"EventRecordId"}}}}
 	value.Digest = queryRuntimeConfigDigest(value)

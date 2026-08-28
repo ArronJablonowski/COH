@@ -21,7 +21,8 @@ func DecodeQueryRuntimeConfig(input []byte) (QueryRuntimeConfig, error) {
 		return QueryRuntimeConfig{}, err
 	}
 	if value.SchemaVersion != QueryRuntimeConfigVersion || value.ContractVersion != ContractVersion ||
-		!validDigests(value.DiscoveryConfigDigest, value.Digest) || value.Digest != queryRuntimeConfigDigest(value) ||
+		!validDigests(value.DiscoveryConfigDigest, value.SliceSemanticsDigest, value.Digest) ||
+		!value.HalfOpenQualified || value.Digest != queryRuntimeConfigDigest(value) ||
 		value.MinimumSliceDurationMillis == 0 || value.MinimumSliceDurationMillis > 86400000 ||
 		value.SplitThresholdRows == 0 || value.SplitThresholdRows > 100000 ||
 		value.SplitThresholdBytes < 1024 || value.SplitThresholdBytes > maximumContractBytes ||

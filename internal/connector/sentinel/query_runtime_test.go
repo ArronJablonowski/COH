@@ -40,6 +40,36 @@ type runtimeQueryClientStub struct {
 	partial bool
 }
 
+type slicingQueryClientStub struct {
+	calls []QueryCall
+}
+
+type retryQueryClientStub struct {
+	calls []QueryCall
+}
+
+func (client *retryQueryClientStub) Query(_ context.Context, call QueryCall) (QueryTransportResponse, error) {
+	client.calls = append(client.calls, call)
+	if len(client.calls) == 1 {
+		return QueryTransportResponse{}, queryconnector.NewError(queryconnector.Unavailable, "sentinel_test_outage", nil)
+	}
+	value := queryTestTransportResponse(call.Request)
+	value.Receipt.TransportIdentityDigest = call.Request.TransportIdentityDigest
+	value.ResponseDigest = queryTransportResponseDigest(value)
+	return DecodeQueryTransportResponse(encodeQueryContract(value))
+}
+
+func (client *slicingQueryClientStub) Query(_ context.Context, call QueryCall) (QueryTransportResponse, error) {
+	client.calls = append(client.calls, call)
+	value := queryTestTransportResponse(call.Request)
+	value.Receipt.TransportIdentityDigest = call.Request.TransportIdentityDigest
+	if call.Request.SliceNumber == 1 {
+		value.Statistics.BytesReturned = 65536
+	}
+	value.ResponseDigest = queryTransportResponseDigest(value)
+	return DecodeQueryTransportResponse(encodeQueryContract(value))
+}
+
 func (client *runtimeQueryClientStub) Query(_ context.Context, call QueryCall) (QueryTransportResponse, error) {
 	client.calls = append(client.calls, call)
 	value := queryTestTransportResponse(call.Request)
@@ -123,12 +153,89 @@ func TestQueryRuntimeRejectsPartialErrorAndFencesCancellation(t *testing.T) {
 	})
 }
 
+func TestQueryRuntimePlansContiguousHalfOpenSlicesAndWithholdsUnmergedRows(t *testing.T) {
+	client := &slicingQueryClientStub{}
+	runtime, config := sentinelTestQueryRuntimeWithClient(t, client)
+	binding := sentinelTestBinding(config)
+	capability, _ := runtime.Probe(context.Background(), binding.Scope, binding.Authority)
+	query := sentinelRuntimeQuery(t, capability.Digest(), binding, 4)
+	validation, _ := runtime.Validate(context.Background(), query)
+	execution, err := runtime.Execute(context.Background(), query, validation)
+	if err != nil || len(client.calls) != 3 {
+		t.Fatalf("execution=%+v calls=%d err=%v", execution.Value(), len(client.calls), err)
+	}
+	ranges := []queryconnector.TimeRange{client.calls[0].Request.TimeRange, client.calls[1].Request.TimeRange,
+		client.calls[2].Request.TimeRange}
+	wanted := []queryconnector.TimeRange{query.Value().TimeRange,
+		{Start: "2026-08-27T18:30:00.000000000Z", End: "2026-08-27T19:00:00.000000000Z"},
+		{Start: "2026-08-27T19:00:00.000000000Z", End: "2026-08-27T19:30:00.000000000Z"}}
+	if !slices.Equal(ranges, wanted) || client.calls[1].Request.TimeRange.End != client.calls[2].Request.TimeRange.Start {
+		t.Fatalf("ranges=%v", ranges)
+	}
+	runtime.mu.Lock()
+	job := runtime.jobs[execution.Value().Handle.HandleID]
+	runtime.mu.Unlock()
+	if job == nil || len(job.responses) != 2 || len(job.plan.Slices) != 3 || job.plan.Slices[0].State != "split" ||
+		job.plan.Slices[1].State != "complete" || job.plan.Slices[2].State != "complete" {
+		t.Fatalf("job=%+v", job)
+	}
+	poll, err := runtime.Poll(context.Background(), runtimePollRequest(execution, binding.Authority))
+	if err != nil || poll.Value().Page != nil ||
+		!slices.Equal(poll.Value().Completeness.ReasonCodes, []string{"sentinel_dedupe_required"}) {
+		t.Fatalf("poll=%+v err=%v", poll.Value(), err)
+	}
+}
+
+func TestQueryRuntimeFailsClosedWhenSliceLimitPreventsSplit(t *testing.T) {
+	client := &slicingQueryClientStub{}
+	runtime, config := sentinelTestQueryRuntimeWithClient(t, client)
+	binding := sentinelTestBinding(config)
+	capability, _ := runtime.Probe(context.Background(), binding.Scope, binding.Authority)
+	query := sentinelRuntimeQuery(t, capability.Digest(), binding, 5)
+	value := query.Value()
+	value.Limits.MaximumSlices = 2
+	encoded, _ := json.Marshal(value)
+	query, _ = queryconnector.DecodeQuery(context.Background(), encoded)
+	validation, _ := runtime.Validate(context.Background(), query)
+	execution, err := runtime.Execute(context.Background(), query, validation)
+	if err != nil || len(client.calls) != 1 {
+		t.Fatalf("execution=%+v calls=%d err=%v", execution.Value(), len(client.calls), err)
+	}
+	poll, err := runtime.Poll(context.Background(), runtimePollRequest(execution, binding.Authority))
+	if err != nil || poll.Value().Page != nil ||
+		!slices.Equal(poll.Value().Completeness.ReasonCodes, []string{"sentinel_slice_limit_exceeded"}) {
+		t.Fatalf("poll=%+v err=%v", poll.Value(), err)
+	}
+}
+
+func TestQueryRuntimeRetryReplaysExactUnreleasedSlice(t *testing.T) {
+	client := &retryQueryClientStub{}
+	runtime, config := sentinelTestQueryRuntimeWithClient(t, client)
+	binding := sentinelTestBinding(config)
+	capability, _ := runtime.Probe(context.Background(), binding.Scope, binding.Authority)
+	query := sentinelRuntimeQuery(t, capability.Digest(), binding, 6)
+	validation, _ := runtime.Validate(context.Background(), query)
+	if _, err := runtime.Execute(context.Background(), query, validation); queryconnector.Code(err) != queryconnector.Unavailable {
+		t.Fatalf("first execute err=%v", err)
+	}
+	execution, err := runtime.Execute(context.Background(), query, validation)
+	if err != nil || len(client.calls) != 2 ||
+		client.calls[0].Request.RequestDigest != client.calls[1].Request.RequestDigest {
+		t.Fatalf("execution=%+v calls=%+v err=%v", execution.Value(), client.calls, err)
+	}
+	poll, err := runtime.Poll(context.Background(), runtimePollRequest(execution, binding.Authority))
+	if err != nil || poll.Value().Outcome != "completed" {
+		t.Fatalf("poll=%+v err=%v", poll.Value(), err)
+	}
+}
+
 func sentinelTestQueryRuntime(t *testing.T, partial bool) (*QueryRuntime, *runtimeValidatorStub,
 	*runtimeQueryClientStub, Config) {
 	t.Helper()
 	discovery, _, config := sentinelTestAdapter(t, 256)
 	runtimeConfig := QueryRuntimeConfig{SchemaVersion: QueryRuntimeConfigVersion, ContractVersion: ContractVersion,
-		DiscoveryConfigDigest: hashValue("COH-SENTINEL-CONFIG-V1\x00", config), MinimumSliceDurationMillis: 1000,
+		DiscoveryConfigDigest: hashValue("COH-SENTINEL-CONFIG-V1\x00", config), SliceSemanticsDigest: sentinelTestDigest("a"),
+		HalfOpenQualified: true, MinimumSliceDurationMillis: 1000,
 		SplitThresholdRows: 500, SplitThresholdBytes: 65536, MaximumResponseBytes: 262144,
 		StableKeys: []StableKeyProfile{{ResourceID: "security-events", TimestampColumn: "TimeGenerated", Columns: []string{"EventRecordId"}}}}
 	runtimeConfig.Digest = queryRuntimeConfigDigest(runtimeConfig)
@@ -138,6 +245,22 @@ func sentinelTestQueryRuntime(t *testing.T, partial bool) (*QueryRuntime, *runti
 		t.Fatal(err)
 	}
 	return runtime, validator, client, config
+}
+
+func sentinelTestQueryRuntimeWithClient(t *testing.T, client QueryClient) (*QueryRuntime, Config) {
+	t.Helper()
+	discovery, _, config := sentinelTestAdapter(t, 256)
+	runtimeConfig := QueryRuntimeConfig{SchemaVersion: QueryRuntimeConfigVersion, ContractVersion: ContractVersion,
+		DiscoveryConfigDigest: hashValue("COH-SENTINEL-CONFIG-V1\x00", config), SliceSemanticsDigest: sentinelTestDigest("a"),
+		HalfOpenQualified: true, MinimumSliceDurationMillis: 1000,
+		SplitThresholdRows: 500, SplitThresholdBytes: 65536, MaximumResponseBytes: 262144,
+		StableKeys: []StableKeyProfile{{ResourceID: "security-events", TimestampColumn: "TimeGenerated", Columns: []string{"EventRecordId"}}}}
+	runtimeConfig.Digest = queryRuntimeConfigDigest(runtimeConfig)
+	runtime, err := NewQueryRuntime(discovery, runtimeConfig, &runtimeValidatorStub{}, client, discovery.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return runtime, config
 }
 
 func sentinelRuntimeQuery(t *testing.T, capability string, binding CallBinding,

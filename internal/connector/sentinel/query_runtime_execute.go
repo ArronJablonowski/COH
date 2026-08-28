@@ -67,51 +67,27 @@ func (runtime *QueryRuntime) runExecute(ctx context.Context, prepared preparedQu
 		OpaqueDigest: hashValue("COH-SENTINEL-QUERY-HANDLE-V1\x00", struct{ Query, Validation, Attempt string }{
 			prepared.query.Digest(), prepared.validation.Digest(), attemptID}),
 		IssuedAt: now.Format(sentinelTimestampLayout), ExpiresAt: prepared.expiresAt.Format(sentinelTimestampLayout)}
-	request := QueryTransportRequest{SchemaVersion: QueryRequestVersion, ContractVersion: ContractVersion,
-		Operation: QueryOperation, QueryID: query.QueryID, AttemptID: attemptID, SliceNumber: 1,
-		SourceID: query.Scope.SourceID, WorkspaceID: runtime.discovery.config.WorkspaceID,
-		ScopeDigest:      hashValue("COH-SENTINEL-QUERY-SCOPE-V1\x00", query.Scope),
-		AuthorityDigest:  hashValue("COH-SENTINEL-QUERY-AUTHORITY-V1\x00", query.Authority),
-		CapabilityDigest: query.CapabilityDigest, SchemaDigest: query.SchemaDigest,
-		QualificationDigest: runtime.discovery.qualification.Digest(), CommonQueryDigest: prepared.query.Digest(),
-		ValidationDigest: prepared.validation.Digest(), CanonicalKQL: admission.CanonicalKQL,
-		CanonicalKQLDigest: admission.CanonicalKQLDigest, PolicyDecisionDigest: query.Authority.PolicyDecisionDigest,
-		AuditRecordDigest: admission.Audit.AuditRecordDigest, TimeRange: query.TimeRange,
-		MaximumRows:             min(query.Limits.MaximumRows, runtime.discovery.config.HardLimits.MaximumRows),
-		MaximumBytes:            min(query.Limits.MaximumBytes, runtime.config.MaximumResponseBytes),
-		ServerWaitSeconds:       uint32(max(1, min(uint64(600), uint64((duration+time.Second-1)/time.Second)))),
-		TransportIdentityDigest: runtime.discovery.config.TransportIdentityDigest}
-	request.RequestDigest = queryTransportRequestDigest(request)
-	validatedRequest, err := DecodeQueryTransportRequest(encodeQueryContract(request))
-	if err != nil {
-		return queryconnector.ValidatedExecution{}, nil, invalidInput("sentinel_query_request_invalid")
-	}
-	binding := runtime.discovery.callBinding(query.Scope, query.Authority)
-	binding.Operation = QueryOperation
 	operationContext, cancel := context.WithTimeout(ctx, duration)
-	response, err := runtime.client.Query(operationContext, QueryCall{Binding: binding, Request: validatedRequest})
+	sliceResult, err := runtime.executeSlicePlan(operationContext, prepared, attemptID, duration)
 	cancel()
 	if err != nil {
 		return queryconnector.ValidatedExecution{}, nil, err
-	}
-	if response.RequestDigest != request.RequestDigest || response.Receipt.RequestDigest != request.RequestDigest ||
-		response.Receipt.TransportIdentityDigest != runtime.discovery.config.TransportIdentityDigest {
-		return queryconnector.ValidatedExecution{}, nil, conflictCall("sentinel_query_response_binding_mismatch")
 	}
 	value := queryconnector.Execution{SchemaVersion: queryconnector.ExecutionSchemaVersion,
 		ContractVersion: queryconnector.ContractVersion, QueryID: query.QueryID, AttemptID: attemptID,
 		Handle: handle, Outcome: "running", StartedAt: now.Format(sentinelTimestampLayout),
 		ProvenanceDigest: hashValue("COH-SENTINEL-QUERY-EXECUTION-V1\x00", struct {
-			Query, Validation, Canonical, Request, Response, Audit string
+			Query, Validation, Canonical, Plan, Audit string
 		}{prepared.query.Digest(), prepared.validation.Digest(), admission.CanonicalKQLDigest,
-			request.RequestDigest, response.ResponseDigest, admission.Audit.AuditRecordDigest})}
+			sliceResult.plan.PlanDigest, admission.Audit.AuditRecordDigest})}
 	encoded, _ := json.Marshal(value)
 	execution, err := queryconnector.DecodeExecution(ctx, encoded)
 	if err != nil {
 		return queryconnector.ValidatedExecution{}, nil, err
 	}
 	job := &sentinelQueryJob{query: query, queryDigest: prepared.query.Digest(), validation: prepared.validation,
-		admission: cloneValidationAdmission(admission), execution: execution, request: request, response: response,
+		admission: cloneValidationAdmission(admission), execution: execution, requests: sliceResult.requests,
+		responses: sliceResult.responses, plan: sliceResult.plan, failureReason: sliceResult.failureReason,
 		authority: query.Authority, expiresAt: prepared.expiresAt}
 	return execution, job, nil
 }

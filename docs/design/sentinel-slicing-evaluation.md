@@ -34,18 +34,22 @@ and `timespan` optional. If omitted, the request can cover all available data;
 COH therefore makes an absolute `start/end` timespan mandatory and rejects an
 absent, relative, noncanonical, empty, reversed, or widened value. Microsoft
 also states that the API timespan is applied in addition to time predicates in
-KQL. COH supplies both the exact POST body timespan and a helper-owned predicate
-on each selected table's qualified datetime column:
+KQL. COH supplies the exact POST body timespan, binds it to the immutable common
+query and each slice receipt, and admits returned rows only under this local
+half-open predicate on each selected table's qualified datetime column:
 
 ```text
 timestamp >= datetime(start) and timestamp < datetime(end)
 ```
 
-Kusto's `between` operator is inclusive at both ends, so it is not used to
-prove adjacent slice coverage. The explicit greater-than-or-equal and
-less-than predicate gives half-open `[start,end)` semantics, preventing an
-event exactly on an adjacent boundary from being silently lost or counted
-twice.
+Kusto's `between` operator is inclusive at both ends, so it is not introduced
+into the already signed CYB-98 canonical KQL. The runtime preserves that exact
+audited AST output, submits a separately bound Azure timespan, and applies the
+greater-than-or-equal/less-than row-admission rule before merge. Adaptive
+slicing remains disabled unless runtime configuration binds a nonempty digest
+of a qualification packet proving the configured Azure API/version honors the
+same boundary coverage. Sanitized fixtures qualify the algorithm; a separately
+authorized canary is required to qualify a live vendor boundary.
 
 Microsoft documents a non-fatal Logs Query API failure as HTTP 200 containing
 tables plus a OneAPI `error` whose code is `PartialError`. A 200 status is not

@@ -10,7 +10,7 @@
   "contracts": [
     {"name": "common-query", "version": "1.0.0", "sha256": "sha256:e671560408f3121949a85c13e0b88b70acb81ed551a32ee25af6877df1276bf4"},
     {"name": "kusto-helper-response", "version": "1.0.0", "sha256": "sha256:94b61b468adf78592c60c111fbb8d2da947cb4f676607b32ba4c1ad19fcdf561"},
-    {"name": "sentinel-query", "version": "1.0.0", "sha256": "sha256:f794e5631eeb5cc7fbbf7884e54c3ee2a1246d01f1da26382bb68010d23ca4e2"},
+    {"name": "sentinel-query", "version": "1.0.0", "sha256": "sha256:cad85bd3215fe8e12a5e2d75403cdb66ea59a50acec93554e1936e6dbe2205d0"},
     {"name": "sentinel-slicing-evaluation", "version": "1.0.0", "sha256": "sha256:f4500ff0a2db35f3d21ad414c2fc9820e5e281f39fc31141a3f49325e8ac02db"},
     {"name": "sentinel-query-denials", "version": "1.0.0", "sha256": "sha256:d187b3984854669b0203b07579ecba6e27fbc3ce294263eaba4e2d5245dfbde4"}
   ],

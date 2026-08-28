@@ -34,12 +34,15 @@ func (runtime *QueryRuntime) Poll(ctx context.Context,
 	if job.canceled {
 		return runtime.terminalPoll(ctx, job, "canceled", "sentinel_query_canceled")
 	}
-	if job.response.Error != nil {
-		return runtime.terminalPoll(ctx, job, "failed", "sentinel_partial_error")
+	if job.failureReason != "" {
+		outcome := "failed"
+		if job.failureReason == "sentinel_query_canceled" {
+			outcome = "canceled"
+		}
+		return runtime.terminalPoll(ctx, job, outcome, job.failureReason)
 	}
-	if job.response.Statistics.RowsReturned >= runtime.config.SplitThresholdRows ||
-		job.response.Statistics.BytesReturned >= runtime.config.SplitThresholdBytes {
-		return runtime.terminalPoll(ctx, job, "failed", "sentinel_slicing_required")
+	if len(job.responses) != 1 {
+		return runtime.terminalPoll(ctx, job, "failed", "sentinel_dedupe_required")
 	}
 	page, statistics, err := runtime.resultPage(job)
 	if err != nil {
@@ -63,10 +66,11 @@ func (runtime *QueryRuntime) Poll(ctx context.Context,
 
 func (runtime *QueryRuntime) resultPage(job *sentinelQueryJob) (queryconnector.ResultPage,
 	queryconnector.Statistics, error) {
-	if len(job.response.Tables) != 1 || !outputSchemaMatches(job.admission.OutputColumns, job.response.Tables[0].Columns) {
+	response := job.responses[0]
+	if len(response.Tables) != 1 || !outputSchemaMatches(job.admission.OutputColumns, response.Tables[0].Columns) {
 		return queryconnector.ResultPage{}, queryconnector.Statistics{}, conflictCall("sentinel_result_schema_mismatch")
 	}
-	table := job.response.Tables[0]
+	table := response.Tables[0]
 	rows := make([]map[string]interface{}, len(table.Rows))
 	for rowIndex, source := range table.Rows {
 		rows[rowIndex] = make(map[string]interface{}, len(table.Columns))
@@ -74,9 +78,9 @@ func (runtime *QueryRuntime) resultPage(job *sentinelQueryJob) (queryconnector.R
 			rows[rowIndex][column.Name] = source[columnIndex]
 		}
 	}
-	statistics := queryconnector.Statistics{RowsScanned: job.response.Statistics.RowsScanned,
-		RowsReturned: uint64(len(rows)), BytesReturned: job.response.Statistics.BytesReturned,
-		DurationMillis: job.response.Statistics.DurationMillis, PagesReturned: 1, SlicesCompleted: 1}
+	statistics := queryconnector.Statistics{RowsScanned: response.Statistics.RowsScanned,
+		RowsReturned: uint64(len(rows)), BytesReturned: response.Statistics.BytesReturned,
+		DurationMillis: response.Statistics.DurationMillis, PagesReturned: 1, SlicesCompleted: 1}
 	completeness := queryconnector.Completeness{Status: "complete", VendorConfirmed: true}
 	resultDigest := hashValue("COH-SENTINEL-QUERY-RESULT-V1\x00", struct {
 		Columns []QueryColumn
@@ -88,7 +92,7 @@ func (runtime *QueryRuntime) resultPage(job *sentinelQueryJob) (queryconnector.R
 		ResultDigest: resultDigest, Completeness: completeness, Statistics: statistics,
 		ProvenanceDigest: hashValue("COH-SENTINEL-QUERY-PAGE-V1\x00", struct {
 			Request, Response, Result, Validation, Canonical, Audit string
-		}{job.request.RequestDigest, job.response.ResponseDigest, resultDigest, job.validation.Digest(),
+		}{job.requests[0].RequestDigest, response.ResponseDigest, resultDigest, job.validation.Digest(),
 			job.admission.CanonicalKQLDigest, job.admission.Audit.AuditRecordDigest})}
 	encoded, _ := json.Marshal(page)
 	validated, err := queryconnector.DecodePage(context.Background(), encoded)
@@ -100,15 +104,14 @@ func (runtime *QueryRuntime) resultPage(job *sentinelQueryJob) (queryconnector.R
 
 func (runtime *QueryRuntime) terminalPoll(ctx context.Context, job *sentinelQueryJob,
 	outcome, reason string) (queryconnector.ValidatedPoll, error) {
-	statistics := queryconnector.Statistics{RowsScanned: job.response.Statistics.RowsScanned,
-		BytesReturned: job.response.Statistics.BytesReturned, DurationMillis: job.response.Statistics.DurationMillis}
+	statistics := jobAggregateStatistics(job)
 	completeness := queryconnector.Completeness{Status: "unknown", ReasonCodes: []string{reason}}
 	value := queryconnector.PollResult{SchemaVersion: queryconnector.PollSchemaVersion,
 		ContractVersion: queryconnector.ContractVersion, QueryID: job.query.QueryID,
 		AttemptID: job.execution.Value().AttemptID, Outcome: outcome, Statistics: statistics,
 		Completeness: completeness, ProvenanceDigest: hashValue("COH-SENTINEL-QUERY-TERMINAL-V1\x00", struct {
 			Request, Response, Reason string
-		}{job.request.RequestDigest, job.response.ResponseDigest, reason})}
+		}{firstRequestDigest(job), lastResponseDigest(job), reason})}
 	encoded, _ := json.Marshal(value)
 	poll, err := queryconnector.DecodePoll(ctx, encoded)
 	if err == nil {
@@ -151,7 +154,8 @@ func (runtime *QueryRuntime) Cancel(ctx context.Context,
 	if job.released {
 		return runtime.cancellation(ctx, request, "uncertain", nil)
 	}
-	job.canceled, job.response = true, QueryTransportResponse{}
+	job.canceled, job.failureReason = true, "sentinel_query_canceled"
+	job.responses = nil
 	confirmed := runtime.clock.Now().UTC().Format(sentinelTimestampLayout)
 	return runtime.cancellation(ctx, request, "confirmed", &confirmed)
 }
@@ -166,6 +170,30 @@ func (runtime *QueryRuntime) cancellation(ctx context.Context, request queryconn
 		}{request.Handle.OpaqueDigest, request.RequestedAt, outcome})}
 	encoded, _ := json.Marshal(value)
 	return queryconnector.DecodeCancellation(ctx, encoded)
+}
+
+func jobAggregateStatistics(job *sentinelQueryJob) queryconnector.Statistics {
+	var value queryconnector.Statistics
+	for _, response := range job.responses {
+		value.RowsScanned += response.Statistics.RowsScanned
+		value.BytesReturned += response.Statistics.BytesReturned
+		value.DurationMillis += response.Statistics.DurationMillis
+	}
+	return value
+}
+
+func firstRequestDigest(job *sentinelQueryJob) string {
+	if len(job.requests) == 0 {
+		return ""
+	}
+	return job.requests[0].RequestDigest
+}
+
+func lastResponseDigest(job *sentinelQueryJob) string {
+	if len(job.responses) == 0 {
+		return ""
+	}
+	return job.responses[len(job.responses)-1].ResponseDigest
 }
 
 func outputSchemaMatches(expected []kustovalidator.OutputColumn, observed []QueryColumn) bool {
