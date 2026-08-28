@@ -60,6 +60,7 @@ func (adapter *Adapter) Poll(ctx context.Context,
 
 	binding := CallBinding{Scope: job.query.Scope, Authority: job.query.Authority,
 		Operation: "splunk.search.status", Targets: append([]string(nil), job.query.Scope.ResourceIDs...)}
+	var nextPage *splunkPageRecord
 	status, receipt, err := adapter.client.SearchStatus(ctx, SearchStatusRequest{Binding: binding, SID: job.sid})
 	if err == nil {
 		encodedStatus, _ := json.Marshal(status)
@@ -72,7 +73,7 @@ func (adapter *Adapter) Poll(ctx context.Context,
 			err = conflictCall("splunk_search_state_regression")
 		} else {
 			status = validatedStatus
-			pending.result, err = buildSplunkPoll(ctx, job, status, receipt)
+			pending.result, nextPage, err = adapter.buildSplunkPoll(ctx, &job, status, receipt)
 		}
 	}
 
@@ -85,7 +86,12 @@ func (adapter *Adapter) Poll(ctx context.Context,
 			err = deniedCall("splunk_authority_revoked")
 		} else {
 			current.lastStatus, current.lastPoll, current.lastPolledAt = &status, &pending.result, now
+			current.rowsReturned, current.bytesReturned, current.pageNumber = job.rowsReturned, job.bytesReturned, job.pageNumber
+			current.resultChain, current.nextPage = job.resultChain, job.nextPage
 			adapter.jobs[request.Handle.HandleID] = current
+			if nextPage != nil {
+				adapter.pages[nextPage.handle.HandleID] = *nextPage
+			}
 		}
 	}
 	pending.err = err
@@ -95,12 +101,12 @@ func (adapter *Adapter) Poll(ctx context.Context,
 	return pending.result, err
 }
 
-func buildSplunkPoll(ctx context.Context, job splunkJobRecord, status JobStatus,
-	receipt CallReceipt) (queryconnector.ValidatedPoll, error) {
+func (adapter *Adapter) buildSplunkPoll(ctx context.Context, job *splunkJobRecord, status JobStatus,
+	receipt CallReceipt) (queryconnector.ValidatedPoll, *splunkPageRecord, error) {
 	outcome, reason := "running", "splunk_job_running"
 	switch status.State {
 	case "DONE":
-		reason = "splunk_results_pending"
+		return adapter.buildCompletedSplunkPoll(ctx, job, status, receipt)
 	case "FAILED":
 		outcome, reason = "failed", "splunk_job_failed"
 	case "BAD_INPUT_CANCEL":
@@ -112,7 +118,7 @@ func buildSplunkPoll(ctx context.Context, job splunkJobRecord, status JobStatus,
 	case "QUIT":
 		outcome, reason = "canceled", "splunk_job_quit"
 	case "PAUSE":
-		return queryconnector.ValidatedPoll{}, queryconnector.NewError(queryconnector.Unsupported,
+		return queryconnector.ValidatedPoll{}, nil, queryconnector.NewError(queryconnector.Unsupported,
 			"splunk_job_paused_unsupported", nil)
 	}
 	completeness := queryconnector.Completeness{Status: "unknown", ReasonCodes: []string{reason}}
@@ -131,7 +137,8 @@ func buildSplunkPoll(ctx context.Context, job splunkJobRecord, status JobStatus,
 			Receipt        CallReceipt
 		}{job.execution.Value().Handle.OpaqueDigest, job.plan.PlanDigest, job.sidDigest, status, receipt})}
 	encoded, _ := json.Marshal(value)
-	return queryconnector.DecodePoll(ctx, encoded)
+	validated, err := queryconnector.DecodePoll(ctx, encoded)
+	return validated, nil, err
 }
 
 func validPollRequest(request queryconnector.PollRequest, job splunkJobRecord) bool {
@@ -194,6 +201,16 @@ func waitSplunkPoll(ctx context.Context, pending *splunkPollFlight) (queryconnec
 
 func (adapter *Adapter) removeJobLocked(handleID string, job splunkJobRecord) {
 	delete(adapter.jobs, handleID)
+	for key, page := range adapter.pages {
+		if page.jobHandleID == handleID {
+			delete(adapter.pages, key)
+		}
+	}
+	for key, replay := range adapter.pageReplays {
+		if replay.jobHandleID == handleID {
+			delete(adapter.pageReplays, key)
+		}
+	}
 	if adapter.sidOwners[job.sidDigest] == job.queryDigest {
 		delete(adapter.sidOwners, job.sidDigest)
 	}

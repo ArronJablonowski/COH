@@ -18,24 +18,27 @@ type splunkFixedClock struct{ now time.Time }
 func (clock *splunkFixedClock) Now() time.Time { return clock.now }
 
 type qualificationClientStub struct {
-	mu           sync.Mutex
-	identity     ServerIdentity
-	current      CurrentContext
-	indexes      IndexInventory
-	fields       RegisteredFieldInventory
-	parser       ParserResult
-	created      SearchCreateResult
-	status       JobStatus
-	statuses     []JobStatus
-	statusIndex  int
-	statusWait   <-chan struct{}
-	results      ResultEnvelope
-	canceled     SearchCancelResult
-	createWait   <-chan struct{}
-	receipts     []CallReceipt
-	err          error
-	operations   []string
-	receiptIndex int
+	mu              sync.Mutex
+	identity        ServerIdentity
+	current         CurrentContext
+	indexes         IndexInventory
+	fields          RegisteredFieldInventory
+	parser          ParserResult
+	created         SearchCreateResult
+	status          JobStatus
+	statuses        []JobStatus
+	statusIndex     int
+	statusWait      <-chan struct{}
+	results         ResultEnvelope
+	resultEnvelopes []ResultEnvelope
+	resultIndex     int
+	resultWait      <-chan struct{}
+	canceled        SearchCancelResult
+	createWait      <-chan struct{}
+	receipts        []CallReceipt
+	err             error
+	operations      []string
+	receiptIndex    int
 }
 
 func (client *qualificationClientStub) ServerInfo(_ context.Context, binding CallBinding) (ServerIdentity, CallReceipt, error) {
@@ -91,8 +94,18 @@ func (client *qualificationClientStub) SearchStatus(_ context.Context, request S
 }
 
 func (client *qualificationClientStub) SearchResults(_ context.Context, request SearchResultsRequest) (ResultEnvelope, CallReceipt, error) {
+	if client.resultWait != nil {
+		<-client.resultWait
+	}
+	client.mu.Lock()
+	defer client.mu.Unlock()
 	client.operations = append(client.operations, request.Binding.Operation)
-	return client.results, client.nextReceipt(), client.err
+	result := client.results
+	if len(client.resultEnvelopes) > 0 {
+		result = client.resultEnvelopes[min(client.resultIndex, len(client.resultEnvelopes)-1)]
+		client.resultIndex++
+	}
+	return result, client.nextReceipt(), client.err
 }
 
 func (client *qualificationClientStub) CancelSearch(_ context.Context, request SearchCancelRequest) (SearchCancelResult, CallReceipt, error) {

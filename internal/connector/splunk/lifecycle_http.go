@@ -14,7 +14,7 @@ import (
 	"github.com/ArronJablonowski/COH/internal/connector/splunkparser"
 )
 
-const maximumSearchPageRows = 10000
+const maximumSearchPageRows = 1000
 
 func (client *HTTPClient) CreateSearch(ctx context.Context,
 	request SearchCreateRequest) (SearchCreateResult, CallReceipt, error) {

@@ -66,7 +66,7 @@ func DecodeResultEnvelope(input []byte) (ResultEnvelope, error) {
 		return ResultEnvelope{}, err
 	}
 	if value.SchemaVersion != ResultEnvelopeVersion || value.ContractVersion != ContractVersion ||
-		value.Count < 1 || value.Count > 10000 || uint64(len(value.Results)) > uint64(value.Count) ||
+		value.Count < 1 || value.Count > maximumSearchPageRows || uint64(len(value.Results)) > uint64(value.Count) ||
 		value.Offset > value.Total || uint64(len(value.Results)) > value.Total-value.Offset ||
 		!validResultFields(value.Fields) || len(value.Messages) > 16 || value.Truncated || !digestPattern.MatchString(value.ResultDigest) {
 		return ResultEnvelope{}, denied("result envelope invalid")

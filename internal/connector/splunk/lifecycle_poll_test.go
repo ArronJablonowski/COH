@@ -34,8 +34,8 @@ func TestAdapterPollEnforcesCadenceAndMonotonicProgress(t *testing.T) {
 	}
 	clock.now = clock.now.Add(minimumSplunkPollInterval)
 	ready, err := adapter.Poll(context.Background(), request)
-	if err != nil || ready.Value().Outcome != "running" ||
-		ready.Value().Completeness.ReasonCodes[0] != "splunk_results_pending" {
+	if err != nil || ready.Value().Outcome != "completed" || ready.Value().Page == nil ||
+		len(ready.Value().Page.Rows) != 2 || ready.Value().Completeness.Status != "complete" {
 		t.Fatalf("ready=%+v err=%v", ready.Value(), err)
 	}
 }
@@ -175,6 +175,11 @@ func prepareSplunkPoll(t *testing.T) (*Adapter, *qualificationClientStub, *splun
 		t.Fatal(err)
 	}
 	clock := adapter.clock.(*splunkFixedClock)
+	client.results = ResultEnvelope{SchemaVersion: ResultEnvelopeVersion, ContractVersion: ContractVersion,
+		Offset: 0, Count: 2, Total: 2, Fields: []string{"event.time", "source.ip"},
+		Results: []map[string]string{{"event.time": "2026-08-27T17:59:00Z", "source.ip": "192.0.2.1"},
+			{"event.time": "2026-08-27T17:59:30Z", "source.ip": "192.0.2.2"}},
+		Messages: []string{}, ResultDigest: splunkTestDigest("8")}
 	return adapter, client, clock, queryconnector.PollRequest{QueryID: query.Value().QueryID,
 		AttemptID: execution.Value().AttemptID, Handle: execution.Value().Handle, Authority: query.Value().Authority}
 }

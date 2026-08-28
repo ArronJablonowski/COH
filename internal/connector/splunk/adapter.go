@@ -59,6 +59,9 @@ type Adapter struct {
 	jobs         map[string]splunkJobRecord
 	sidOwners    map[string]string
 	polls        map[string]*splunkPollFlight
+	pages        map[string]splunkPageRecord
+	pageReplays  map[string]splunkPageReplay
+	pageFlights  map[string]*splunkPageFlight
 }
 
 func NewAdapter(config Config, client Client, qualification ValidatedQualification, clock Clock) (*Adapter, error) {
@@ -75,7 +78,9 @@ func NewAdapter(config Config, client Client, qualification ValidatedQualificati
 		schemas: make(map[string]splunkSchemaRecord), validations: make(map[string]splunkValidationRecord),
 		queryIDs: make(map[string]string), revoked: make(map[string]string),
 		executions: make(map[string]*splunkExecutionFlight), jobs: make(map[string]splunkJobRecord),
-		sidOwners: make(map[string]string), polls: make(map[string]*splunkPollFlight)}, nil
+		sidOwners: make(map[string]string), polls: make(map[string]*splunkPollFlight),
+		pages: make(map[string]splunkPageRecord), pageReplays: make(map[string]splunkPageReplay),
+		pageFlights: make(map[string]*splunkPageFlight)}, nil
 }
 
 func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope,
@@ -604,10 +609,7 @@ func (adapter *Adapter) removeExpiredLocked(now time.Time) {
 	}
 	for key, value := range adapter.jobs {
 		if !now.Before(value.expiresAt) {
-			delete(adapter.jobs, key)
-			if adapter.sidOwners[value.sidDigest] == value.queryDigest {
-				delete(adapter.sidOwners, value.sidDigest)
-			}
+			adapter.removeJobLocked(key, value)
 		}
 	}
 }
