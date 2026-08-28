@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain/capabilityseam"
+	"github.com/ArronJablonowski/COH/internal/domain/profileactivation"
 	"github.com/ArronJablonowski/COH/internal/domain/profilecomposition"
+	"github.com/ArronJablonowski/COH/internal/persistence/sqlite"
 )
 
 var compositionTestTime = time.Date(2026, 8, 28, 0, 1, 0, 0, time.UTC)
@@ -23,6 +25,20 @@ var compositionTestTime = time.Date(2026, 8, 28, 0, 1, 0, 0, time.UTC)
 type compositionClock struct{ now time.Time }
 
 func (clock compositionClock) Now() time.Time { return clock.now }
+
+type commandMaintenanceGate struct{ digest string }
+
+func (gate commandMaintenanceGate) Quiesce(_ context.Context,
+	plan profileactivation.QuiescencePlan) (profileactivation.QuiescenceAttestation, error) {
+	if plan.MaxDrainDurationMS != 30000 {
+		return profileactivation.QuiescenceAttestation{}, profileactivation.NewDenied("drain_bound")
+	}
+	return profileactivation.QuiescenceAttestation{TransitionID: plan.TransitionID,
+		AttestationDigest: gate.digest, AdmissionsStopped: true, Durable: true}, nil
+}
+func (commandMaintenanceGate) Release(context.Context, profileactivation.QuiescenceAttestation) error {
+	return nil
+}
 
 func TestProfileCompositionClosesCapabilityGraphDeterministically(t *testing.T) {
 	request := profilecomposition.Request{ProfileID: "018f0000-0000-7000-8000-000000000900", Revision: 1,
@@ -107,6 +123,69 @@ func TestProfileCompositionRejectsMissingCapabilityArtifact(t *testing.T) {
 	}
 	if _, err := PrepareProfileCapabilities(context.Background(), candidate, nil); profilecomposition.Code(err) != profilecomposition.Denied || profilecomposition.Reason(err) != "capability_artifacts_incomplete" {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestCommandRootActivatesOnlyExactSealedProfileAndInspection(t *testing.T) {
+	request := profilecomposition.Request{ProfileID: "018f0000-0000-7000-8000-000000000900", Revision: 1,
+		Target: profilecomposition.ExactTarget{DeploymentKind: "native_workstation", ConnectivityMode: "connected",
+			Platform: "darwin_arm64", Surface: "web"}}
+	layer := commandTestLayer("sha256:" + strings.Repeat("a", 64))
+	draft, err := profilecomposition.Prepare(context.Background(), request, commandRevisionAuthority(request),
+		[]profilecomposition.VerifiedLayer{verifyCommandTestLayer(t, layer)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle := commandCapabilityBundle(t, draft.ProfileBindingDigest())
+	layer.Contribution.CapabilityBundles[0].Digest = bundle.Digest()
+	candidate, err := profilecomposition.Prepare(context.Background(), request, commandRevisionAuthority(request),
+		[]profilecomposition.VerifiedLayer{verifyCommandTestLayer(t, layer)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := PrepareProfileCapabilities(context.Background(), candidate, []ProfileCapabilityArtifact{{
+		Reference: layer.Contribution.CapabilityBundles[0], Bundle: bundle,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, graph, err := prepared.Resolve(context.Background(), compositionClock{compositionTestTime},
+		commandQualificationAuthority(prepared, bundle.Value()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inspection, err := prepared.Inspect(context.Background(), resolved, graph)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	backup := filepath.Join(root, "backups")
+	if err := os.Mkdir(backup, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	store, err := sqlite.Open(context.Background(), sqlite.Config{Path: filepath.Join(root, "coh.sqlite3"),
+		BackupDirectory: backup, Clock: func() time.Time { return compositionTestTime }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	controller, err := profileactivation.NewController(store,
+		commandMaintenanceGate{digest: "sha256:" + strings.Repeat("d", 64)}, compositionClock{compositionTestTime})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := ActivateResolvedProfile(context.Background(), controller,
+		"018f0000-0000-7000-8000-000000000950", profileactivation.Startup, 30000,
+		resolved, inspection, 0, "")
+	if err != nil || result.Profile.CompositionDigest != resolved.Digest() ||
+		result.Profile.InspectionDigest != inspection.Digest() {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	_, err = ActivateResolvedProfile(context.Background(), controller,
+		"018f0000-0000-7000-8000-000000000951", profileactivation.LiveReload, 30000,
+		resolved, inspection, 0, "")
+	if profileactivation.Code(err) != profileactivation.Denied || profileactivation.Reason(err) != "live_hot_reload" {
+		t.Fatalf("hot reload err=%v", err)
 	}
 }
 

@@ -114,6 +114,44 @@ var auditDown = []string{
 	"DROP TABLE coh_audit_heads",
 }
 
+var profileActivationUp = []string{
+	`CREATE TABLE coh_profile_activation_transitions (
+  transition_id TEXT PRIMARY KEY,
+  profile_id TEXT NOT NULL,
+  deployment_kind TEXT NOT NULL,
+  connectivity_mode TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  surface TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  sequence INTEGER NOT NULL CHECK (sequence > 0),
+  intent_digest TEXT NOT NULL,
+  transition_digest TEXT NOT NULL,
+  canonical BLOB NOT NULL
+) STRICT`,
+	`CREATE INDEX coh_profile_activation_transition_target ON coh_profile_activation_transitions
+  (profile_id, deployment_kind, connectivity_mode, platform, surface, phase)`,
+	`CREATE TABLE coh_active_profiles (
+  profile_id TEXT NOT NULL,
+  deployment_kind TEXT NOT NULL,
+  connectivity_mode TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  surface TEXT NOT NULL,
+  profile_revision INTEGER NOT NULL CHECK (profile_revision > 0),
+  composition_digest TEXT NOT NULL,
+  transition_id TEXT NOT NULL,
+  active_digest TEXT NOT NULL,
+  canonical BLOB NOT NULL,
+  PRIMARY KEY (profile_id, deployment_kind, connectivity_mode, platform, surface),
+  FOREIGN KEY (transition_id) REFERENCES coh_profile_activation_transitions(transition_id)
+) STRICT`,
+}
+
+var profileActivationDown = []string{
+	"DROP TABLE coh_active_profiles",
+	"DROP INDEX coh_profile_activation_transition_target",
+	"DROP TABLE coh_profile_activation_transitions",
+}
+
 type migration struct {
 	component string
 	version   uint64
@@ -132,9 +170,13 @@ func builtInMigrations() map[migrationKey]migration {
 	metadata.checksum = migrationChecksum(metadata)
 	audit := migration{component: "audit", version: 1, up: auditUp, down: auditDown}
 	audit.checksum = migrationChecksum(audit)
+	profileActivation := migration{component: "profile_activation", version: 1,
+		up: profileActivationUp, down: profileActivationDown}
+	profileActivation.checksum = migrationChecksum(profileActivation)
 	return map[migrationKey]migration{
-		{component: metadata.component, version: metadata.version}: metadata,
-		{component: audit.component, version: audit.version}:       audit,
+		{component: metadata.component, version: metadata.version}:                   metadata,
+		{component: audit.component, version: audit.version}:                         audit,
+		{component: profileActivation.component, version: profileActivation.version}: profileActivation,
 	}
 }
 
@@ -182,6 +224,22 @@ func (store *Store) ensureAuditSchema(ctx context.Context) error {
 		return err
 	}
 	spec := store.migrations[migrationKey{component: "audit", version: 1}]
+	_, err = store.migrate(ctx, workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion,
+		Component: spec.component, Version: spec.version, Checksum: spec.checksum,
+		BackupDigest: backup.Digest, Direction: workflow.MigrationApply})
+	return err
+}
+
+func (store *Store) ensureProfileActivationSchema(ctx context.Context) error {
+	result, err := store.migrationStatus(ctx, "profile_activation")
+	if err != nil || result.State == workflow.MigrationApplied {
+		return err
+	}
+	backup, err := store.backup(ctx, store.nextBackupPath("profile-activation-v1"))
+	if err != nil {
+		return err
+	}
+	spec := store.migrations[migrationKey{component: "profile_activation", version: 1}]
 	_, err = store.migrate(ctx, workflow.MigrationPlan{ContractVersion: workflow.StorageContractVersion,
 		Component: spec.component, Version: spec.version, Checksum: spec.checksum,
 		BackupDigest: backup.Digest, Direction: workflow.MigrationApply})

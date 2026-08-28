@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/profile-composition/v1/active-profile.schema.json",
+  "title": "COH active profile pointer v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "profile_id", "profile_revision", "target", "profile_binding_digest", "composition_digest", "capability_graph_digest", "inspection_digest", "transition_id", "activated_at", "active_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.active-profile/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "profile_id": {"$ref": "#/$defs/uuid7"},
+    "profile_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "target": {"$ref": "#/$defs/target"},
+    "profile_binding_digest": {"$ref": "#/$defs/digest"},
+    "composition_digest": {"$ref": "#/$defs/digest"},
+    "capability_graph_digest": {"$ref": "#/$defs/digest"},
+    "inspection_digest": {"$ref": "#/$defs/digest"},
+    "transition_id": {"$ref": "#/$defs/uuid7"},
+    "activated_at": {"$ref": "#/$defs/timestamp"},
+    "active_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deployment_kind", "connectivity_mode", "platform", "surface"],
+      "properties": {
+        "deployment_kind": {"enum": ["compose", "native_server", "native_workstation"]},
+        "connectivity_mode": {"enum": ["air_gapped", "connected", "restricted_connected"]},
+        "platform": {"enum": ["darwin_arm64", "linux_amd64", "linux_arm64", "windows_amd64"]},
+        "surface": {"enum": ["api", "cli", "headless", "test", "web"]}
+      }
+    }
+  }
+}

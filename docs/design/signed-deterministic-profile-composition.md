@@ -82,7 +82,7 @@ checks reliable.
 
 Composition is side-effect free. A candidate becomes eligible for activation
 only after complete validation. Any security-critical difference from the active
-profile requires the later durable lifecycle controller to enter quiescence,
+profile requires the durable lifecycle controller to enter quiescence,
 stop new admissions, drain or cancel bounded work, publish atomically, and audit
 the transition. Live hot reload is always denied.
 
@@ -91,6 +91,15 @@ activation is recovered from the durable transition record; restart never infers
 that the candidate was active. Rollback is a new verified activation attempt
 bound to a current administrative rollback authorization, not reuse of a cached
 graph or old signature success.
+
+The transition advances by compare-and-swap through `prepared`, `quiescent`,
+`published`, and `active`. Its intent binds a 1–300 second drain/cancel ceiling.
+The maintenance gate must attest that admissions are stopped, active work is
+zero, and the state is durable before SQLite atomically publishes the active
+profile pointer with the transition. Admissions resume only after publication.
+Lost responses at every boundary reload and replay the exact phase; restart
+reconstructs the same intent from newly verified composition outputs. The
+`live_hot_reload` mode denies before persistence or maintenance side effects.
 
 ## Implementation sequence
 

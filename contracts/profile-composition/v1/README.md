@@ -22,6 +22,8 @@ policy authority, or action authority.
 | `signed-profile-layer.schema.json` | Canonical layer payload, exact targets, bounded contributions, lineage, rollback binding, and publisher/reviewer signatures |
 | `resolved-profile.schema.json` | Exact target, ordered qualified layer bindings, effective narrowed settings, capability-graph digest, and composition digest |
 | `profile-inspection.schema.json` | One redacted Web/CLI/API-safe projection of lineage, graph nodes/edges, qualifications, limits, feature states, and digests |
+| `profile-activation-transition.schema.json` | Durable CAS-advanced startup/maintenance transition through prepared, quiescent, published, and active phases |
+| `active-profile.schema.json` | Atomically published profile pointer bound to the transition, resolved profile, graph, and inspection digests |
 | `fixtures/layer.signed.valid.json` | Deterministically signed native-workstation baseline layer |
 | `fixtures/denial-corpus.json` | Executable strict-decoding, signature, trust, revocation, secret-field, ordering, and cancellation denials |
 
@@ -129,10 +131,19 @@ scope-exact administrative rollback decision. Rollback re-verifies every layer,
 key, trust record, revocation, artifact, policy bundle, deployment profile, and
 capability qualification; a prior successful graph is not authority.
 
-This contract does not activate configuration. Security-critical changes require
+Composition itself does not activate configuration. Security-critical changes require
 a durable quiescent maintenance transition. Live hot reload, model-controlled
 composition, untrusted overlay injection, and activation from Web/API/CLI parsing
-paths are forbidden. CYB-183 later implements the resolver and inspection path;
-CYB-184 owns transactional extension activation and reverse unwind.
+paths are forbidden. CYB-183 owns profile composition and durable profile
+publication; CYB-184 owns transactional extension activation and reverse unwind.
+
+The activation controller persists intent before requesting quiescence. Its
+maintenance gate must stop admissions, drain or boundedly cancel active work,
+within the signed activation intent's 1–300 second ceiling and return a durable
+zero-work attestation. SQLite atomically replaces the
+active pointer and advances the transition to `published`; admissions resume
+only afterward. A restart reloads the exact phase and requires freshly verified
+profile and inspection inputs with the same intent. Lost responses at every
+durable boundary replay forward without inferring success or publishing twice.
 
 See `compatibility-matrix.md` for mixed-version and recovery decisions.

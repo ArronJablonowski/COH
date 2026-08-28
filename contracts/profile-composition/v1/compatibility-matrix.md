@@ -24,6 +24,8 @@
 | Cancellation or timeout | Publish nothing; restart verification from immutable inputs | Partial state has no identity |
 | Interrupted pre-publication composition | Discard candidate and recompute | No active revision changed |
 | Interrupted activation | Recovery uses the durable maintenance record; never infer success | Activation is a separate state machine |
+| Lost response after prepare, quiescence, publication, release, or active commit | Reload exact phase and replay idempotently from freshly verified inputs | Active publication is atomic and never inferred from process memory |
+| Security-critical live hot reload | Deny before quiescence or persistence | Only startup or durable maintenance activation is supported |
 | Same active revision after restart | Re-verify signatures, trust, revocation, artifacts, and graph | Cached success is not authority |
 
 ## Change classification
