@@ -3,6 +3,9 @@ package capabilityseam
 import "slices"
 
 func validateResolutionBindings(bundle Bundle, definitions map[string]Definition, selected map[string]Provider) error {
+	if err := validateReservedAuthorityBindings(bundle); err != nil {
+		return err
+	}
 	for _, provider := range bundle.Providers {
 		definition := definitions[capabilityID(provider.Capability)]
 		if !permissionSubset(provider.Permissions, definition.Permissions) {

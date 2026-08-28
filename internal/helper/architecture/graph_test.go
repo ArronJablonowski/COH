@@ -74,6 +74,29 @@ func TestEvaluateDeniesCommandAndRemoteConnectorBypasses(t *testing.T) {
 	}
 }
 
+func TestCapabilityCompositionImportsAreControlPlaneOnly(t *testing.T) {
+	contract := loadContractFixture(t)
+	target := ModulePath + "/internal/domain/capabilityseam"
+	denied := loadGraphFixture(t, "invalid", "capability-composition-bypass.json")
+	report, err := Evaluate(context.Background(), contract, denied.Packages, testProvenance())
+	assertErrorCode(t, err, CodeDenied)
+	if report.ViolationCount != 4 {
+		t.Fatalf("composition bypass report = %#v", report)
+	}
+	for _, violation := range report.Violations {
+		if violation.Rule != "ARCH-003" || violation.Import != target {
+			t.Fatalf("composition violation = %#v", violation)
+		}
+	}
+	for _, source := range []string{ModulePath + "/internal/command", ModulePath + "/internal/broker"} {
+		report, err := Evaluate(context.Background(), contract,
+			[]Package{{ImportPath: source, Imports: []string{target}}}, testProvenance())
+		if err != nil || report.ViolationCount != 0 {
+			t.Fatalf("%s control-plane import denied: report=%#v err=%v", source, report, err)
+		}
+	}
+}
+
 func TestEvaluateCancellationAndRecovery(t *testing.T) {
 	contract := loadContractFixture(t)
 	graph := loadGraphFixture(t, "valid", "allowed-graph.json")

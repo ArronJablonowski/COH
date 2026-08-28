@@ -58,6 +58,7 @@ func validateDefinition(value Definition) error {
 		!oneOf(value.Replaceability, "non_replaceable", "qualified_provider") ||
 		!oneOf(value.Multiplicity, "exactly_one", "zero_or_one") ||
 		!oneOf(value.Lifecycle, "static", "restart_bound", "transactional") ||
+		!oneOf(value.AccessPolicy, "broker_intent_only", "read_only_service") ||
 		!validPermissions(value.Permissions) || len(value.Dependencies) > 128 {
 		return newError(InvalidInput, "definition")
 	}

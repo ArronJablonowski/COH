@@ -15,6 +15,7 @@
       "replaceability": "qualified_provider",
       "multiplicity": "exactly_one",
       "lifecycle": "restart_bound",
+      "access_policy": "read_only_service",
       "permissions": ["model.infer"],
       "dependencies": []
     }

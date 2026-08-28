@@ -11,6 +11,7 @@
 | Required dependency is absent or cyclic | Deny whole graph | Publish an acyclic closed declaration set |
 | Optional dependency is absent | Omit its edge deterministically | Consumer must tolerate absence under its own contract |
 | Consumer scope or permissions widen | Deny | New signed profile revision, policy decision, audit, and qualification as applicable |
+| Capability access policy or provider/consumer route changes | Deny mismatched graph; prior digest is invalid | New reviewed definition and exact typed-intent or read-only route declarations |
 | Qualification expires or is revoked | Deny before publication and use | Obtain current qualification; never revive the old record |
 | Authority service declared replaceable | Deny | Authority services remain compiled and non-replaceable |
 | Data-plane provider requests direct execution access | Deny | Submit a typed broker intent |

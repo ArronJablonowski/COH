@@ -33,7 +33,7 @@ func TestResolverFailsClosedForInvalidGraphs(t *testing.T) {
 		}, "provider_lifecycle_widening"},
 		{"broker_route_missing", func(t *testing.T) ValidatedBundle {
 			return mutateValidBundle(t, func(value *Bundle) { value.Consumers[0].AccessMode = "broker_intent" })
-		}, "broker_route_missing"},
+		}, "broker_route_required"},
 		{"dependency_missing", func(t *testing.T) ValidatedBundle {
 			return mutateValidBundle(t, func(value *Bundle) {
 				value.Definitions[0].Dependencies = []Dependency{{Capability: CapabilityRef{Name: "missing.service", Version: "1.0.0"}, Kind: "required"}}

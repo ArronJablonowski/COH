@@ -45,7 +45,11 @@ composition revision.
 ## Definitions and authority classes
 
 A definition declares its owner, authority class, replaceability,
-multiplicity, lifecycle, maximum permission set, and capability dependencies.
+multiplicity, lifecycle, access policy, maximum permission set, and capability
+dependencies. `access_policy` is schema-closed: `broker_intent_only` requires a
+typed-intent provider and broker-intent consumers, while `read_only_service`
+requires a non-dispatch provider and read-only consumers. Consequential
+permission classes cannot declare the read-only policy.
 `authority` definitions must be `non_replaceable`, `exactly_one`, and `static`.
 The following authority services are compiled invariants and cannot be supplied
 or intercepted by an ordinary extension:

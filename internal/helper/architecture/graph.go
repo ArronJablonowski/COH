@@ -71,6 +71,14 @@ func Evaluate(ctx context.Context, contract Contract, packages []Package, proven
 				})
 				continue
 			}
+			if isProtectedCompositionImport(contract.Module, imported) && source != "command" && source != "broker" {
+				report.Violations = append(report.Violations, Violation{
+					Rule: "ARCH-003", Package: pkg.ImportPath, Boundary: source,
+					Import: imported, ImportBoundary: target,
+					Detail: "capability composition authority is restricted to command and broker roots",
+				})
+				continue
+			}
 			if _, ok := allowed[source][target]; !ok {
 				report.Violations = append(report.Violations, Violation{
 					Rule: "ARCH-002", Package: pkg.ImportPath, Boundary: source,
@@ -93,6 +101,11 @@ func Evaluate(ctx context.Context, contract Contract, packages []Package, proven
 		return report, contractError(CodeDenied, "imports", fmt.Sprintf("%d dependency violation(s)", report.ViolationCount), nil)
 	}
 	return report, nil
+}
+
+func isProtectedCompositionImport(module, imported string) bool {
+	root := module + "/internal/domain/capabilityseam"
+	return imported == root || strings.HasPrefix(imported, root+"/")
 }
 
 // NewReport creates provenance-bearing evidence even when discovery is later

@@ -109,7 +109,7 @@
       "type": "object", "additionalProperties": false,
       "required": [
         "capability", "owner", "authority_class", "replaceability",
-        "multiplicity", "lifecycle", "permissions", "dependencies"
+        "multiplicity", "lifecycle", "access_policy", "permissions", "dependencies"
       ],
       "properties": {
         "capability": {"$ref": "#/$defs/capability_ref"},
@@ -118,6 +118,7 @@
         "replaceability": {"enum": ["non_replaceable", "qualified_provider"]},
         "multiplicity": {"enum": ["exactly_one", "zero_or_one"]},
         "lifecycle": {"enum": ["static", "restart_bound", "transactional"]},
+        "access_policy": {"enum": ["broker_intent_only", "read_only_service"]},
         "permissions": {"$ref": "#/$defs/permission_set"},
         "dependencies": {
           "type": "array", "maxItems": 128,

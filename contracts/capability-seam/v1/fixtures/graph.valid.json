@@ -1,7 +1,7 @@
 {
   "schema_version": "coh.resolved-capability-graph/v1",
   "contract_version": "1.0.0",
-  "bundle_digest": "sha256:66a1f97265f8abff39e6ca69ef98b6ba7e339c4f76a800da8cf475740299046c",
+  "bundle_digest": "sha256:45c616f106bfc777c2f78679998f6fc3927473f3740279a0c0f401dab5c9d74b",
   "profile_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
   "revision": 1,
   "definition_nodes": [
@@ -39,5 +39,5 @@
     }
   ],
   "resolution_order": ["capability/model.inference@1.0.0"],
-  "graph_digest": "sha256:4aa50b6cbd490416fda877f5cd53c68e9d9eecd751958851911ded97992b8c25"
+  "graph_digest": "sha256:69ce0b42803ca408b1f84a27e71bc489baf106d98a27aa5eff7da65a8a031e9d"
 }

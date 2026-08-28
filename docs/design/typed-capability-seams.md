@@ -28,9 +28,21 @@ authority cannot be registered by an extension, shadowed by a profile, or
 intercepted by a consumer. Reserved identity matching is exact and includes
 aliases maintained by the architecture gate so renaming cannot evade it.
 
+The compiled catalog has ten exact identities: broker, policy, approval, audit,
+credential, evidence, E-stop, runner, connector, and validator authority. Each
+identity pins its definition-owner roots, provider-owner roots, provider ID,
+static lifecycle, exact-one multiplicity, non-replaceability, and
+`broker_intent_only` access policy. Protected implementation roots cannot be
+registered under an alias or a data-plane capability.
+
 Registration has no implication of permission. Model-originated work remains a
 typed broker intent and passes current policy, approval, scope, budget, lease,
 audit, revocation, and E-stop checks immediately before dispatch.
+
+The Go architecture checker enforces `ARCH-003`: only command composition roots
+and the broker may import `internal/domain/capabilityseam`. Workflow, provider,
+transport, persistence, UI, policy, connector, helper, and other domain
+packages cannot construct a resolver or its trusted live-authority snapshot.
 
 ## Resolution invariant
 

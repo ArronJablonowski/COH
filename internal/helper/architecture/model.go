@@ -11,7 +11,7 @@ const (
 	SupportedMinor      = 0
 	BaselineGoVersion   = "1.26.7"
 	ModulePath          = "github.com/ArronJablonowski/COH"
-	CheckerVersion      = "0.1.0"
+	CheckerVersion      = "0.2.0"
 	MaximumContractSize = 1 << 20
 )
 

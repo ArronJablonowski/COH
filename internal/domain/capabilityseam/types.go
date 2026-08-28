@@ -53,6 +53,7 @@ type Definition struct {
 	Replaceability string        `json:"replaceability"`
 	Multiplicity   string        `json:"multiplicity"`
 	Lifecycle      string        `json:"lifecycle"`
+	AccessPolicy   string        `json:"access_policy"`
 	Permissions    []string      `json:"permissions"`
 	Dependencies   []Dependency  `json:"dependencies"`
 }

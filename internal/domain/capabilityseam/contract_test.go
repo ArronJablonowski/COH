@@ -17,7 +17,7 @@ func TestBundleCanonicalDigestAndOwnedValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode bundle: %v", err)
 	}
-	const expected = "sha256:66a1f97265f8abff39e6ca69ef98b6ba7e339c4f76a800da8cf475740299046c"
+	const expected = "sha256:45c616f106bfc777c2f78679998f6fc3927473f3740279a0c0f401dab5c9d74b"
 	if validated.Digest() != expected {
 		t.Fatalf("digest = %s, want %s", validated.Digest(), expected)
 	}
@@ -46,7 +46,7 @@ func TestGraphCanonicalDigestAndTamperDenial(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode graph: %v", err)
 	}
-	const expected = "sha256:4aa50b6cbd490416fda877f5cd53c68e9d9eecd751958851911ded97992b8c25"
+	const expected = "sha256:69ce0b42803ca408b1f84a27e71bc489baf106d98a27aa5eff7da65a8a031e9d"
 	if validated.Digest() != expected || validated.Value().GraphDigest != expected {
 		t.Fatalf("graph digest mismatch: %s", validated.Digest())
 	}
