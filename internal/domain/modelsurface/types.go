@@ -8,6 +8,7 @@ const (
 	ProjectionVersion = "1.0.0"
 
 	VocabularySchema = "coh.model-surface-event-vocabulary/v1"
+	PayloadSchema    = "coh.model-surface-payload/v1"
 	SourceSchema     = "coh.model-surface-source/v1"
 	ProjectionSchema = "coh.model-surface-projection/v1"
 	BindingSchema    = "coh.inference-surface-binding/v1"
@@ -15,12 +16,14 @@ const (
 	CompactionSchema = "coh.model-surface-compaction-replacement/v1"
 	TransitionSchema = "coh.model-surface-transition/v1"
 
-	MaximumInputBytes = 16 << 20
-	MaximumDepth      = 32
-	MaximumItems      = 16384
-	MaximumRevision   = uint64(1<<63 - 1)
+	MaximumInputBytes   = 16 << 20
+	MaximumSurfaceBytes = 64 << 20
+	MaximumDepth        = 32
+	MaximumItems        = 16384
+	MaximumRevision     = uint64(1<<63 - 1)
 
 	vocabularyDigestDomain  = "COH-MODEL-SURFACE-VOCABULARY-V1\x00"
+	surfaceDigestDomain     = "COH-MODEL-SURFACE-BYTES-V1\x00"
 	sourceDigestDomain      = "COH-MODEL-SURFACE-SOURCE-V1\x00"
 	projectionDigestDomain  = "COH-MODEL-SURFACE-PROJECTION-V1\x00"
 	bindingDigestDomain     = "COH-INFERENCE-SURFACE-BINDING-V1\x00"

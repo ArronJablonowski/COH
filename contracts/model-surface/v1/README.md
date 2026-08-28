@@ -25,6 +25,7 @@ does not authorize an action.
 | Schema | Purpose |
 |---|---|
 | `event-vocabulary.schema.json` | Versioned definitions that classify events as durable model-surface, durable log-only, or ephemeral live coordination |
+| `model-surface-payload.schema.json` | Closed owning-content envelope for the six projection rules; these immutable bytes are resolved separately from control records |
 | `model-surface-source.schema.json` | Scope-exact durable source descriptor with immutable content binding and instruction disposition |
 | `model-surface-projection.schema.json` | Exact ordered projected items, source IDs, artifact digests, composition digest, and surface digest |
 | `inference-surface-binding.schema.json` | Provider attempt binding to the verified projection and current authorization/audit decisions |
@@ -60,6 +61,14 @@ event definition, occurrence time, sequence, record digest, and immutable
 content digest. Content is either a validated durable-record projection or an
 immutable artifact; the contract stores its ID, digest, media type, byte length,
 classification, and `immutable=true`, not mutable provider-ready bytes.
+
+The separately stored owning bytes decode as
+`coh.model-surface-payload/v1`. That closed envelope fixes the projection kind,
+role, optional bounded name, inner media type, and text or object content. Tool
+schemas require a trusted system/developer role, a bounded name,
+`application/schema+json`, and object content. Retrieved and compacted content
+requires the data role. Envelope metadata is not provider-visible; the
+projector emits one canonical provider-visible item from it.
 
 Retrieved, external, and model-originated content is always
 `untrusted_data_only`. It cannot become a system/developer instruction, tool

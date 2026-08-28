@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/model-surface/v1/model-surface-payload.schema.json",
+  "title": "COH model-surface content payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "surface_kind", "role", "name", "media_type", "content"],
+  "properties": {
+    "schema_version": {"const": "coh.model-surface-payload/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "surface_kind": {"enum": ["message", "prompt_section", "tool_schema", "retrieved_context", "compaction_replacement", "policy_notice"]},
+    "role": {"enum": ["system", "developer", "user", "assistant", "tool", "data"]},
+    "name": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/token"}]},
+    "media_type": {"enum": ["application/json", "application/schema+json", "text/plain"]},
+    "content": {"oneOf": [{"type": "string", "maxLength": 8388608}, {"type": "object", "maxProperties": 4096}]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"media_type": {"const": "text/plain"}}},
+      "then": {"properties": {"content": {"type": "string"}}}
+    },
+    {
+      "if": {"properties": {"media_type": {"enum": ["application/json", "application/schema+json"]}}},
+      "then": {"properties": {"content": {"type": "object"}}}
+    },
+    {
+      "if": {"properties": {"surface_kind": {"const": "message"}}},
+      "then": {"properties": {"role": {"enum": ["system", "developer", "user", "assistant", "tool"]}, "name": {"const": ""}}}
+    },
+    {
+      "if": {"properties": {"surface_kind": {"const": "prompt_section"}}},
+      "then": {"properties": {"role": {"enum": ["system", "developer"]}, "media_type": {"enum": ["application/json", "text/plain"]}}}
+    },
+    {
+      "if": {"properties": {"surface_kind": {"const": "tool_schema"}}},
+      "then": {"properties": {"role": {"enum": ["system", "developer"]}, "name": {"$ref": "#/$defs/token"}, "media_type": {"const": "application/schema+json"}, "content": {"type": "object"}}}
+    },
+    {
+      "if": {"properties": {"surface_kind": {"enum": ["retrieved_context", "compaction_replacement"]}}},
+      "then": {"properties": {"role": {"const": "data"}}}
+    },
+    {
+      "if": {"properties": {"surface_kind": {"const": "policy_notice"}}},
+      "then": {"properties": {"role": {"enum": ["system", "developer"]}}}
+    }
+  ],
+  "$defs": {
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"}
+  }
+}

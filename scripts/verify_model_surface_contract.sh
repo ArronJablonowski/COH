@@ -6,6 +6,7 @@ contract="${root}/contracts/model-surface/v1"
 
 schemas=(
   "event-vocabulary.schema.json:coh.model-surface-event-vocabulary/v1"
+  "model-surface-payload.schema.json:coh.model-surface-payload/v1"
   "model-surface-source.schema.json:coh.model-surface-source/v1"
   "model-surface-projection.schema.json:coh.model-surface-projection/v1"
   "inference-surface-binding.schema.json:coh.inference-surface-binding/v1"
@@ -38,7 +39,8 @@ for path in "${contract}/README.md" "${contract}/compatibility-matrix.md" \
   "${root}/internal/domain/modelsurface/decode.go" \
   "${root}/internal/domain/modelsurface/canonical.go" \
   "${root}/internal/domain/modelsurface/validate_records.go" \
-  "${root}/internal/domain/modelsurface/resolution.go"; do
+  "${root}/internal/domain/modelsurface/resolution.go" \
+  "${root}/internal/domain/modelsurface/projection.go"; do
   [[ -f "${path}" && ! -L "${path}" ]] || {
     echo "error: required model-surface artifact is missing or linked: ${path}" >&2
     exit 2
@@ -47,6 +49,7 @@ done
 
 fixtures=(
   "event-vocabulary.valid.json:coh.model-surface-event-vocabulary/v1"
+  "payload.valid.json:coh.model-surface-payload/v1"
   "source.valid.json:coh.model-surface-source/v1"
   "projection.valid.json:coh.model-surface-projection/v1"
   "binding.valid.json:coh.inference-surface-binding/v1"

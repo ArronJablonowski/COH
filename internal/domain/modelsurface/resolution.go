@@ -151,6 +151,7 @@ func (resolver *Resolver) Resolve(ctx context.Context, request ResolveRequest) (
 	}
 
 	items := make([]ResolvedSource, 0, len(request.Sources))
+	totalContentBytes := uint64(0)
 	for _, reference := range request.Sources {
 		if err := contextError(ctx); err != nil {
 			return ResolvedSources{}, err
@@ -199,6 +200,10 @@ func (resolver *Resolver) Resolve(ctx context.Context, request ResolveRequest) (
 		}
 		if err := verifyContentSnapshot(request, source.Content, content); err != nil {
 			return ResolvedSources{}, err
+		}
+		totalContentBytes += uint64(len(content.Bytes))
+		if totalContentBytes > MaximumSurfaceBytes {
+			return ResolvedSources{}, newError(Denied, "content_total_size")
 		}
 		items = append(items, ResolvedSource{source: source, sourceBytes: validatedSource.CanonicalBytes(),
 			contentBytes: append([]byte(nil), content.Bytes...), eventDefinition: definition})

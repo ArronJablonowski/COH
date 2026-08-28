@@ -67,7 +67,9 @@ func validateSource(value Source) error {
 	}
 	if oneOf(value.Trust, "untrusted_external", "untrusted_model", "untrusted_retrieval") &&
 		value.InstructionDisposition != "untrusted_data_only" ||
-		value.ProjectionRule == "retrieved_context" && value.InstructionDisposition != "untrusted_data_only" {
+		value.ProjectionRule == "retrieved_context" && value.InstructionDisposition != "untrusted_data_only" ||
+		value.InstructionDisposition == "trusted_control_instruction" && value.Trust != "trusted_control" ||
+		value.InstructionDisposition == "trusted_system_instruction" && value.Trust != "trusted_system" {
 		return newError(Denied, "instruction_disposition")
 	}
 	return nil
