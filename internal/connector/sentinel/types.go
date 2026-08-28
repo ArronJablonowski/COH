@@ -1,7 +1,11 @@
 // Package sentinel implements COH's bounded Microsoft Sentinel workspace discovery boundary.
 package sentinel
 
-import "github.com/ArronJablonowski/COH/internal/domain/queryconnector"
+import (
+	"context"
+
+	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
+)
 
 const (
 	ContractVersion      = "1.0.0"
@@ -131,4 +135,37 @@ type RedactedError struct {
 	NativeTextExposed       bool   `json:"native_text_exposed"`
 	ResultRowExposed        bool   `json:"result_row_exposed"`
 	VendorBodyExposed       bool   `json:"vendor_body_exposed"`
+}
+
+// Client intentionally exposes no generic Azure or HTTP operation.
+type Client interface {
+	Metadata(context.Context, MetadataRequest) (Metadata, CallReceipt, error)
+}
+
+// CredentialSource lends one broker-owned bearer token to one bound callback.
+// Implementations must destroy the temporary bytes after the callback returns.
+type CredentialSource interface {
+	Use(context.Context, CallBinding, func([]byte) error) (string, error)
+}
+
+type CallBinding struct {
+	Scope                   queryconnector.Scope
+	Authority               queryconnector.AuthorityBinding
+	Operation               string
+	Targets                 []string
+	TenantID                string
+	Audience                string
+	Endpoint                string
+	TransportIdentityDigest string
+}
+
+type MetadataRequest struct {
+	Binding CallBinding
+}
+
+type CallReceipt struct {
+	RequestDigest       string
+	ResponseDigest      string
+	LeaseDecisionDigest string
+	TransportDigest     string
 }
