@@ -33,12 +33,39 @@ for entry in "${schemas[@]}"; do
 done
 
 for path in "${contract}/README.md" "${contract}/compatibility-matrix.md" \
-  "${root}/docs/design/durable-model-surface-provenance.md"; do
+  "${root}/docs/design/durable-model-surface-provenance.md" \
+  "${root}/internal/domain/modelsurface/types.go" \
+  "${root}/internal/domain/modelsurface/decode.go" \
+  "${root}/internal/domain/modelsurface/canonical.go" \
+  "${root}/internal/domain/modelsurface/validate_records.go"; do
   [[ -f "${path}" && ! -L "${path}" ]] || {
-    echo "error: model-surface documentation is missing or linked: ${path}" >&2
+    echo "error: required model-surface artifact is missing or linked: ${path}" >&2
     exit 2
   }
 done
+
+fixtures=(
+  "event-vocabulary.valid.json:coh.model-surface-event-vocabulary/v1"
+  "source.valid.json:coh.model-surface-source/v1"
+  "projection.valid.json:coh.model-surface-projection/v1"
+  "binding.valid.json:coh.inference-surface-binding/v1"
+  "stream.valid.json:coh.model-surface-stream/v1"
+  "compaction.valid.json:coh.model-surface-compaction-replacement/v1"
+  "transition.valid.json:coh.model-surface-transition/v1"
+)
+for entry in "${fixtures[@]}"; do
+  fixture=${entry%%:*}
+  version=${entry#*:}
+  /usr/bin/jq -e --arg version "${version}" '
+    .schema_version == $version and .contract_version == "1.0.0"
+  ' "${contract}/fixtures/${fixture}" >/dev/null
+done
+/usr/bin/jq -e '
+  .schema_version == "coh.model-surface-denial-corpus/v1"
+  and .contract_version == "1.0.0"
+  and (.cases | length == 13)
+  and ([.cases[].name] | unique | length == 13)
+' "${contract}/fixtures/denial-corpus.json" >/dev/null
 
 /usr/bin/jq -e '
   (.properties.definitions.items["$ref"] == "#/$defs/event_definition")
@@ -118,6 +145,14 @@ for phrase in 'model_surface' 'log_only' 'live_coordination' 'untrusted_data_onl
   'Provider fallback' 'Source-covering compaction'; do
   /usr/bin/grep -Fq "${phrase}" "${contract}/README.md"
 done
+
+export COH_NATIVE_STORAGE_ROOT=${COH_NATIVE_STORAGE_ROOT:-$(dirname "${root}")}
+export COH_TOOLCHAIN_ROOT=${COH_TOOLCHAIN_ROOT:-$(dirname "${root}")/COH-toolchains}
+export COH_CI_LANE=${COH_CI_LANE:-baseline}
+# shellcheck source=lib/ci_env.sh
+source "${root}/scripts/lib/ci_env.sh"
+cd "${root}"
+"${COH_GO_ROOT}/bin/go" test -count=1 ./internal/domain/modelsurface
 
 "${root}/scripts/check_markdown_links.sh" "${contract}/README.md" \
   "${contract}/compatibility-matrix.md" \
