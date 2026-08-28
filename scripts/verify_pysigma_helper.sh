@@ -42,7 +42,7 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 "${python}" -m venv "${test_root}/venv"
 PIP_NO_INDEX=1 "${test_root}/venv/bin/python" -m pip install --no-index --find-links "${wheelhouse}" \
-  --require-hashes -r "${helper}/requirements-osx-arm64.lock" >/dev/null
+  --no-deps --require-hashes -r "${helper}/requirements-osx-arm64.lock" >/dev/null
 PYTHONPATH="${helper}/src" "${test_root}/venv/bin/python" -m unittest discover \
   -s "${root}/tests/pysigma-helper" -p 'test_*.py'
 
@@ -75,6 +75,7 @@ export COH_NATIVE_STORAGE_ROOT=${COH_NATIVE_STORAGE_ROOT:-$(dirname "${root}")}
 export COH_CI_LANE=${COH_CI_LANE:-baseline}
 # shellcheck source=lib/ci_env.sh
 source "${root}/scripts/lib/ci_env.sh"
+"${root}/scripts/check_pysigma_supply_chain.sh" inventory
 COH_PYSIGMA_HELPER="${artifact}" "${COH_GO_ROOT}/bin/go" test -count=1 -run TestPinnedHelperProcessContract "${package}"
 "${root}/scripts/verify_pysigma_contract.sh"
 "${root}/scripts/check_go_architecture.sh"

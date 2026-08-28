@@ -133,6 +133,7 @@ cd "${root}"
 "${COH_GO_ROOT}/bin/go" test -count=10 ./internal/connector/sigmacompiler
 "${COH_GO_ROOT}/bin/go" test -count=1 -race ./internal/connector/sigmacompiler
 "${COH_GO_ROOT}/bin/go" vet ./internal/connector/sigmacompiler
+"${GOBIN}/staticcheck" ./internal/connector/sigmacompiler
 "${root}/scripts/check_go_architecture.sh"
 "${root}/scripts/check_file_sizes.sh"
 "${root}/scripts/check_markdown_links.sh" "${design}" "${contract}/README.md" "${contract}/compatibility-matrix.md"

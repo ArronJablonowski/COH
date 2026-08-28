@@ -22,6 +22,15 @@ products, virtual environments, wheel caches, and temporary files remain under
 the external COH toolchain root. The build refuses a runtime other than CPython
 3.13.15 or PyInstaller other than 6.22.2.
 
+The RID-specific runtime lock is an explicit `--no-deps` install set containing
+22 reviewed wheels. `diskcache` and `diskcache-stubs` are excluded because the
+helper never exposes pySigma's remote MITRE data modules and DiskCache 5.6.3 is
+affected by CVE-2025-69872. Build analysis rejects those modules if they enter
+the artifact. `scripts/check_pysigma_supply_chain.sh` verifies exact wheel
+hashes, the recorded zero-vulnerability OSV snapshot, and license dispositions.
+Its release gate remains closed until the five LGPL/PyInstaller-exception
+dispositions receive an explicit open-source compliance decision.
+
 The generated query is always `compiled_untrusted`. It cannot become runnable
 until COH-E15-02 rebinds it to current discovered schema and passes the matching
 native-language validator. See `docs/design/signed-pysigma-helper.md` and

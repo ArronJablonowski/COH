@@ -25,7 +25,7 @@ temporary="$(/usr/bin/mktemp -d "${toolchain}/pysigma-helper/builds/${rid}.XXXXX
 trap '/bin/rm -rf -- "${temporary}"' EXIT HUP INT TERM
 "${python}" -m venv "${temporary}/venv"
 PIP_NO_INDEX=1 "${temporary}/venv/bin/python" -m pip install \
-  --no-index --find-links "${wheelhouse}" --require-hashes -r "${requirements}" >/dev/null
+  --no-deps --no-index --find-links "${wheelhouse}" --require-hashes -r "${requirements}" >/dev/null
 [[ "$("${temporary}/venv/bin/python" -c 'import PyInstaller; print(PyInstaller.__version__)')" == "6.22.2" ]] || {
   echo "PyInstaller identity denied" >&2; exit 66;
 }
@@ -39,6 +39,8 @@ unset http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY
   --hidden-import sigma.backends.elasticsearch.elasticsearch_esql \
   --hidden-import sigma.backends.splunk.splunk --hidden-import sigma.backends.kusto.kusto \
   --exclude-module sigma.plugins --exclude-module sigma.processing.resolver \
+  --exclude-module sigma.data.mitre_attack --exclude-module sigma.data.mitre_d3fend \
+  --exclude-module diskcache \
   "${helper}/entrypoint.py" >/dev/null
 
 artifact="${temporary}/dist/coh-pysigma-helper"
@@ -47,8 +49,9 @@ module_toc="${temporary}/work/coh-pysigma-helper/PYZ-00.toc"
 for required in sigma.backends.elasticsearch.elasticsearch_esql sigma.backends.splunk.splunk sigma.backends.kusto.kusto; do
   /usr/bin/grep -Fq "'${required}'" "${module_toc}" || { echo "Required backend module is absent: ${required}" >&2; exit 68; }
 done
-if /usr/bin/grep -E "'sigma[.]plugins'|'sigma[.]processing[.]resolver'" "${module_toc}" >/dev/null; then
-  echo "Artifact contains a forbidden ambient module" >&2
+forbidden_modules="$(/usr/bin/grep -Eo "'sigma[.]plugins[^']*'|'sigma[.]processing[.]resolver[^']*'|'sigma[.]data[.]mitre_[^']*'|'diskcache[^']*'" "${module_toc}" | LC_ALL=C /usr/bin/sort -u || true)"
+if [[ -n "${forbidden_modules}" ]]; then
+  echo "Artifact contains a forbidden ambient module: ${forbidden_modules}" >&2
   exit 68
 fi
 artifact_sha="$(/usr/bin/shasum -a 256 "${artifact}" | /usr/bin/awk '{print $1}')"

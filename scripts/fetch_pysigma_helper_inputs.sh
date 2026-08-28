@@ -28,7 +28,7 @@ temporary="$(/usr/bin/mktemp -d "${toolchain}/pysigma-helper/fetch/${rid}.XXXXXX
 trap '/bin/rm -rf -- "${temporary}"' EXIT HUP INT TERM
 "${python}" -m venv "${temporary}/venv"
 "${temporary}/venv/bin/python" -m pip download \
-  --require-hashes --only-binary=:all: --dest "${temporary}/wheelhouse" -r "${requirements}"
+  --no-deps --require-hashes --only-binary=:all: --dest "${temporary}/wheelhouse" -r "${requirements}"
 (cd "${temporary}/wheelhouse" && /usr/bin/find . -type f -name '*.whl' -print0 | LC_ALL=C /usr/bin/sort -z | \
   /usr/bin/xargs -0 /usr/bin/shasum -a 256 > SHA256SUMS)
 /bin/mv "${temporary}/wheelhouse" "${destination}"

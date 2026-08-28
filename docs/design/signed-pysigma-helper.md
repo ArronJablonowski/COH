@@ -218,10 +218,14 @@ wheelhouse with dependency resolution disabled.
 
 The exact closure includes pySigma, the three candidate backend packages,
 PyYAML, Jinja2, Requests, jq bindings, packaging, pyparsing, typing extensions,
-diskcache, PyInstaller and its hooks/bootloader dependencies, plus all
-transitives actually selected by the lock. Packages merely present on the build
-host are not importable. The build fails on an extra, missing, floating,
-prerelease, yanked, incompatible, unhashed, unlicensed, or vulnerable input.
+PyInstaller and its hooks/bootloader dependencies, plus all transitives used by
+the closed import graph. `diskcache` and its stubs are deliberately excluded
+from the runtime lock: pySigma declares them for optional remote MITRE data
+modules, which this helper never imports or exposes. The build TOC fails if a
+MITRE data or `diskcache` module enters the artifact. Packages merely present on
+the build host are not importable. The build fails on an extra, missing,
+floating, prerelease, yanked, incompatible, unhashed, unlicensed, or vulnerable
+runtime input.
 
 Each RID is built natively as a self-contained executable with closed helper
 import roots. The exact Elastic package initializer eagerly imports its Lucene,
