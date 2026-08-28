@@ -223,10 +223,14 @@ transitives actually selected by the lock. Packages merely present on the build
 host are not importable. The build fails on an extra, missing, floating,
 prerelease, yanked, incompatible, unhashed, unlicensed, or vulnerable input.
 
-Each RID is built natively as a self-contained executable with a closed hidden
-import list. It is scanned to prove that only the allowlisted backend modules
-are bundled. Two clean builds with normalized source date, paths, locale, and
-toolchain must produce the same executable digest. If PyInstaller cannot meet
+Each RID is built natively as a self-contained executable with closed helper
+import roots. The exact Elastic package initializer eagerly imports its Lucene,
+EQL, and Elastalert siblings, so those dependency-closure modules may be
+present but have no selectable protocol value, constructor, option, or output
+format. Build analysis proves that the three allowlisted backend classes are
+present and that plugin discovery and pipeline resolution modules are absent.
+Two clean builds with normalized source date, paths, locale, and toolchain must
+produce the same executable digest. If PyInstaller cannot meet
 that reproducibility gate on a RID, that RID remains unavailable; switching
 packagers requires a design revision.
 

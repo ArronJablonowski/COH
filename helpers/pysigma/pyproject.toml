@@ -1,0 +1,14 @@
+[project]
+name = "coh-pysigma-helper"
+version = "1.0.0"
+requires-python = "==3.13.15"
+dependencies = [
+  "pysigma==1.5.0",
+  "pysigma-backend-elasticsearch==2.1.0",
+  "pysigma-backend-kusto==1.0.1",
+  "pysigma-backend-splunk==2.1.0",
+  "pyinstaller==6.22.2",
+]
+
+[tool.uv]
+package = false

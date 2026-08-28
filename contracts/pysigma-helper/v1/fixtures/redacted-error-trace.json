@@ -3,8 +3,8 @@
   "contract_version": "1.0.0",
   "trace_id": "018f0000-0000-7000-8000-000000000004",
   "events": [
-    {"sequence":1,"phase":"preflight","outcome":"accepted","reason_codes":[],"request_digest":"sha256:cca8dd9d0fb3f6bdc5143f0d01f5aab8f136896e8ab9d2a0e96077c3585457b8"},
-    {"sequence":2,"phase":"mapping","outcome":"denied","reason_codes":["mapping_ambiguous"],"request_digest":"sha256:cca8dd9d0fb3f6bdc5143f0d01f5aab8f136896e8ab9d2a0e96077c3585457b8"}
+    {"sequence":1,"phase":"preflight","outcome":"accepted","reason_codes":[],"request_digest":"sha256:90c7530b5c8518e13396433dffff4dbb73afbe76c729693970caae11d406f25a"},
+    {"sequence":2,"phase":"mapping","outcome":"denied","reason_codes":["mapping_ambiguous"],"request_digest":"sha256:90c7530b5c8518e13396433dffff4dbb73afbe76c729693970caae11d406f25a"}
   ],
   "native_text_exposed": false,
   "sigma_text_exposed": false,

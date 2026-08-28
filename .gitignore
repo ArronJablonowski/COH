@@ -9,6 +9,8 @@
 /tmp/
 *.out
 *.test
+__pycache__/
+*.py[cod]
 
 # Local operator state and generated working data
 /work/

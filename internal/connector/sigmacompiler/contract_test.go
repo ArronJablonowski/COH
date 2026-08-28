@@ -168,7 +168,7 @@ func testRequest() CompileRequest {
 			{Source: "Image", Target: "process.executable", DataType: "keyword"}},
 		SourceSchemaDigest: repeatDigest("1"), TargetSchemaDigest: repeatDigest("2")}
 	mapping.MappingDigest = MappingDigest(mapping)
-	sigma := "title: Suspicious Tool Execution\nid: 018f0000-0000-7000-8000-000000000010\nstatus: test\nlogsource:\n  category: process_creation\n  product: windows\n  service: sysmon\ndetection:\n  selection:\n    Image|endswith: '/example-tool'\n    CommandLine|contains: '--safe-fixture'\n  condition: selection\n"
+	sigma := "title: Suspicious Tool Execution\nid: 018f0000-0000-7000-8000-000000000010\nstatus: test\nlogsource:\n  category: process_creation\n  product: windows\n  service: sysmon\n  definition: sanitized fixture\ndetection:\n  selection:\n    Image|endswith: '/example-tool'\n    CommandLine|contains: '--safe-fixture'\n  condition: selection\n"
 	value := CompileRequest{SchemaVersion: RequestVersion, ContractVersion: ContractVersion,
 		RequestID: "018f0000-0000-7000-8000-000000000002", Operation: "sigma.compile", SigmaYAML: sigma,
 		SigmaDigest: SigmaDigest(sigma), SigmaProfile: SigmaProfile, Target: targetMatrix[0], Mapping: mapping,
