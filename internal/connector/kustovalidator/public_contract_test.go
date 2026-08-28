@@ -59,8 +59,8 @@ func TestPublicSchemasAreClosedJSONObjects(t *testing.T) {
 		}
 		assertClosedObjects(t, entry.Name(), schema)
 	}
-	if count != 8 {
-		t.Fatalf("schema count = %d, want 8", count)
+	if count != 9 {
+		t.Fatalf("schema count = %d, want 9", count)
 	}
 }
 

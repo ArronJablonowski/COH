@@ -7,8 +7,10 @@ deadline, and expected helper identity. Actor, authorization, audit, credential,
 endpoint, executable, environment, and evidence state remain in the Go control
 plane.
 
-`helper-request.schema.json` and `helper-response.schema.json` are the only
-process wire messages. The helper response is never trusted by decoding alone;
+`transport-envelope.schema.json` is the native-executor input and contains only
+eight bounded, contiguous request chunks. Their concatenation is exactly one
+`helper-request.schema.json` document; `helper-response.schema.json` is the only
+process output. The helper response is never trusted by decoding alone;
 the Go validator recomputes all digests, verifies the signed attestation and
 current authority, and commits fail-closed audit before returning an accepted
 common query-validation result.
