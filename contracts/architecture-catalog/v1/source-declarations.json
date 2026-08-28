@@ -1,0 +1,46 @@
+{
+  "schema_version": "coh.architecture-catalog-sources/v1",
+  "contract_version": "1.0.0",
+  "catalogs": [
+    {
+      "catalog_type": "capability_graph",
+      "sources": [
+        {"path": "contracts/capability-seam/v1/fixtures/graph.valid.json", "version": "coh.resolved-capability-graph/v1"},
+        {"path": "internal/domain/capabilityseam/authority_catalog.go", "version": "1.0.0"}
+      ]
+    },
+    {
+      "catalog_type": "configuration",
+      "sources": [
+        {"path": "contracts/profile-composition/v1/fixtures/layer.signed.valid.json", "version": "coh.signed-profile-layer/v1"},
+        {"path": "contracts/deployment/v1/deployment-profile.schema.json", "version": "1.0.0"}
+      ]
+    },
+    {
+      "catalog_type": "event_routes",
+      "sources": [
+        {"path": "contracts/model-surface/v1/fixtures/event-vocabulary.valid.json", "version": "coh.model-surface-event-vocabulary/v1"}
+      ]
+    },
+    {
+      "catalog_type": "model_surface_events",
+      "sources": [
+        {"path": "contracts/model-surface/v1/fixtures/event-vocabulary.valid.json", "version": "coh.model-surface-event-vocabulary/v1"},
+        {"path": "internal/domain/modelsurface/projection.go", "version": "1.0.0"}
+      ]
+    },
+    {
+      "catalog_type": "module_dependencies",
+      "sources": [
+        {"path": "go.mod", "version": "go1.26.7"},
+        {"path": "contracts/architecture/v1/workspace-contract.json", "version": "1.0.0"}
+      ]
+    },
+    {
+      "catalog_type": "application_entrypoints",
+      "sources": [
+        {"path": "contracts/architecture/v1/workspace-contract.json", "version": "1.0.0"}
+      ]
+    }
+  ]
+}

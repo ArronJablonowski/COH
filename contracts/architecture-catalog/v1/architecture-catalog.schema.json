@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/architecture-catalog/v1/architecture-catalog.schema.json",
+  "title": "COH architecture catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "catalog_type", "requirements", "sources", "records", "catalog_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.architecture-catalog/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "catalog_type": {"enum": ["capability_graph", "configuration", "event_routes", "model_surface_events", "module_dependencies", "application_entrypoints"]},
+    "requirements": {
+      "type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true,
+      "prefixItems": [{"const": "COH-E25-05"}, {"const": "EVAL-004"}, {"const": "EVAL-029"}, {"const": "NFR-019"}, {"const": "NFR-026"}],
+      "items": false
+    },
+    "sources": {
+      "type": "array", "minItems": 1, "maxItems": 64,
+      "items": {"type": "object", "additionalProperties": false, "required": ["path", "version", "digest"], "properties": {
+        "path": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,239}$"},
+        "version": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$"},
+        "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }}
+    },
+    "records": {
+      "type": "array", "maxItems": 131072,
+      "items": {"type": "object", "additionalProperties": false, "required": ["id", "kind", "attributes"], "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "kind": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+        "attributes": {"type": "array", "maxItems": 64, "items": {"type": "object", "additionalProperties": false, "required": ["name", "value"], "properties": {
+          "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "value": {"type": "string", "maxLength": 1024}
+        }}}
+      }}
+    },
+    "catalog_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

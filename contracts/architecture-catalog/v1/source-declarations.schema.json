@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/architecture-catalog/v1/source-declarations.schema.json",
+  "title": "COH architecture catalog source declarations v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "catalogs"],
+  "properties": {
+    "schema_version": {"const": "coh.architecture-catalog-sources/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "catalogs": {
+      "type": "array", "minItems": 6, "maxItems": 6,
+      "items": {"type": "object", "additionalProperties": false, "required": ["catalog_type", "sources"], "properties": {
+        "catalog_type": {"enum": ["capability_graph", "configuration", "event_routes", "model_surface_events", "module_dependencies", "application_entrypoints"]},
+        "sources": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "object", "additionalProperties": false, "required": ["path", "version"], "properties": {
+          "path": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,239}$"},
+          "version": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$"}
+        }}}
+      }}
+    }
+  }
+}
