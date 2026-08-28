@@ -1,0 +1,16 @@
+{
+  "schema_version": "coh.capability-seam-denial-corpus/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name": "duplicate_json_member", "reason": "document_decoding"},
+    {"name": "missing_required_member", "reason": "document_shape"},
+    {"name": "unknown_member", "reason": "document_decoding"},
+    {"name": "unsupported_contract", "reason": "unsupported_contract"},
+    {"name": "unsorted_permissions", "reason": "definition"},
+    {"name": "replaceable_authority", "reason": "authority_replaceable"},
+    {"name": "provider_artifact_drift", "reason": "qualification"},
+    {"name": "profile_drift", "reason": "qualification"},
+    {"name": "revoked_without_revision", "reason": "qualification"},
+    {"name": "graph_digest_tamper", "reason": "graph_digest"}
+  ]
+}

@@ -19,6 +19,9 @@ single immutable graph before startup or a quiescent maintenance transition.
 |---|---|
 | `capability-seam-bundle.schema.json` | Definitions, providers, consumers, scopes, permissions, lifecycle, dependencies, and qualification bindings |
 | `resolved-capability-graph.schema.json` | Digest-bound resolved nodes, edges, and deterministic dependency order |
+| `fixtures/bundle.valid.json` | Canonicalizable provider-inference declaration bundle |
+| `fixtures/graph.valid.json` | Digest-bound resolved graph for the valid bundle |
+| `fixtures/denial-corpus.json` | Executable strict-decoding, binding, authority, and tamper denial inventory |
 
 Both schemas use JSON Schema draft 2020-12, pin `schema_version` and
 `contract_version`, and reject unknown members. Decoders additionally reject

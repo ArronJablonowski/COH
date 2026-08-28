@@ -1,0 +1,72 @@
+{
+  "schema_version": "coh.capability-seam-bundle/v1",
+  "contract_version": "1.0.0",
+  "bundle_id": "native-workstation/default",
+  "revision": 1,
+  "profile_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "definitions": [
+    {
+      "capability": {"name": "model.inference", "version": "1.0.0"},
+      "owner": {
+        "module": "internal/domain/providercontract",
+        "artifact_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "authority_class": "data_plane",
+      "replaceability": "qualified_provider",
+      "multiplicity": "exactly_one",
+      "lifecycle": "restart_bound",
+      "permissions": ["model.infer"],
+      "dependencies": []
+    }
+  ],
+  "providers": [
+    {
+      "provider_id": "ollama.local",
+      "provider_version": "1.0.0",
+      "artifact_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "owner": {
+        "module": "internal/provider/ollama",
+        "artifact_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "capability": {"name": "model.inference", "version": "1.0.0"},
+      "scope": {
+        "organization_id": "018f0000-0000-7000-8000-000000000001",
+        "tenant_id": "018f0000-0000-7000-8000-000000000002",
+        "case_id": "018f0000-0000-7000-8000-000000000003",
+        "environment": "native_workstation"
+      },
+      "permissions": ["model.infer"],
+      "lifecycle": "restart_bound",
+      "qualification": {
+        "record_id": "018f0000-0000-7000-8000-000000000004",
+        "record_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "provider_artifact_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "profile_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "status": "qualified",
+        "issued_at": "2026-08-27T00:00:00Z",
+        "expires_at": "2026-09-27T00:00:00Z",
+        "authority_revision": 1,
+        "revocation_revision": 0
+      },
+      "broker_route": "not_applicable"
+    }
+  ],
+  "consumers": [
+    {
+      "consumer_id": "workflow.agentloop",
+      "owner": {
+        "module": "internal/workflow/agentloop",
+        "artifact_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      },
+      "capability": {"name": "model.inference", "version": "1.0.0"},
+      "scope": {
+        "organization_id": "018f0000-0000-7000-8000-000000000001",
+        "tenant_id": "018f0000-0000-7000-8000-000000000002",
+        "case_id": "018f0000-0000-7000-8000-000000000003",
+        "environment": "native_workstation"
+      },
+      "permissions": ["model.infer"],
+      "access_mode": "read_only_service"
+    }
+  ]
+}
