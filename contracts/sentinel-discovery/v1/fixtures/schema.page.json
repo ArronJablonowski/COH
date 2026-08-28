@@ -1,0 +1,3 @@
+{
+  "schema_version":"coh.query-schema/v1","contract_version":"1.0.0","request_id":"0198f4a0-9600-7000-8000-000000000197","schema_digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","entries":[{"resource_id":"security-events","name":"event.action","type":"string","nullable":false},{"resource_id":"security-events","name":"event.time","type":"timestamp","nullable":false},{"resource_id":"signin-events","name":"event.time","type":"timestamp","nullable":false},{"resource_id":"signin-events","name":"source.ip","type":"ip","nullable":true}],"next_cursor":null,"complete":true,"provenance_digest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

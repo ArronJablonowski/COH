@@ -1,0 +1,18 @@
+{
+  "schema_version":"coh.sentinel-denials/v1","contract_version":"1.0.0","cases":[
+    {"class":"alternate_audience","reason":"Only the Log Analytics data audience is admitted","covered_by":"TestSentinelAudienceDenied"},
+    {"class":"alternate_cloud","reason":"Sovereign and custom endpoints require a new contract","covered_by":"TestSentinelEndpointDenied"},
+    {"class":"credential_exposure","reason":"Bearer and tenant secrets are never evidence","covered_by":"TestSentinelCredentialRedaction"},
+    {"class":"cursor_theft","reason":"Opaque cursors bind exact request authority","covered_by":"TestSentinelCursorTheftDenied"},
+    {"class":"dynamic_column","reason":"Unreviewed nested dynamic shape is unsupported","covered_by":"TestSentinelDynamicColumnDenied"},
+    {"class":"management_api","reason":"ARM management is unreachable from the typed client","covered_by":"TestSentinelManagementDenied"},
+    {"class":"metadata_oversized","reason":"Metadata bytes tables and columns are bounded","covered_by":"TestSentinelMetadataBounds"},
+    {"class":"partial_inventory","reason":"Ambiguous or incomplete metadata releases no schema","covered_by":"TestSentinelPartialMetadataDenied"},
+    {"class":"redirect","reason":"Redirects cannot receive a credential","covered_by":"TestSentinelRedirectDenied"},
+    {"class":"table_drift","reason":"Configured tables must match live metadata","covered_by":"TestSentinelTableDriftDenied"},
+    {"class":"tls_substitution","reason":"TLS identity is verified before bearer release","covered_by":"TestSentinelTLSSubstitutionDenied"},
+    {"class":"type_drift","reason":"Configured logical types cannot be widened","covered_by":"TestSentinelTypeDriftDenied"},
+    {"class":"vendor_outage","reason":"Outage releases no stale schema as current","covered_by":"TestSentinelOutageRecovery"},
+    {"class":"workspace_substitution","reason":"Workspace UUID and ARM identity are exact","covered_by":"TestSentinelWorkspaceSubstitutionDenied"}
+  ]
+}

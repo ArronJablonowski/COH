@@ -1,0 +1,3 @@
+{
+  "schema_version":"coh.sentinel-redacted-error/v1","contract_version":"1.0.0","event":"sentinel_metadata_denied","reason_code":"workspace_identity_mismatch","source_id":"sentinel-prod","request_digest":"sha256:5555555555555555555555555555555555555555555555555555555555555555","response_digest":"sha256:6666666666666666666666666666666666666666666666666666666666666666","lease_decision_digest":"sha256:7777777777777777777777777777777777777777777777777777777777777777","transport_identity_digest":"sha256:2222222222222222222222222222222222222222222222222222222222222222","credential_exposed":false,"bearer_exposed":false,"tenant_secret_exposed":false,"workspace_url_exposed":false,"native_text_exposed":false,"result_row_exposed":false,"vendor_body_exposed":false
+}

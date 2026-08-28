@@ -1,0 +1,5 @@
+{
+  "schema_version":"coh.sentinel-metadata/v1","contract_version":"1.0.0","workspace_id":"22222222-2222-2222-2222-222222222222","workspace_resource_id":"/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/coh-security/providers/Microsoft.OperationalInsights/workspaces/coh-sentinel","region":"westus2","api_version":"v1",
+  "tables":[{"name":"AzureActivity","timespan_column":"TimeGenerated","columns":[{"name":"Category","type":"string"},{"name":"TimeGenerated","type":"datetime"}]},{"name":"SigninLogs","timespan_column":"TimeGenerated","columns":[{"name":"IpAddress","type":"string"},{"name":"TimeGenerated","type":"datetime"}]}],
+  "digest":"sha256:ba85b8da128cc4c1c4829e2eded2e8243db51c96fdacce844edf80282c4654e0"
+}

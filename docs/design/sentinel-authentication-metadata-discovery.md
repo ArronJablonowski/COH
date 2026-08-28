@@ -123,11 +123,12 @@ opaque digest-bound cursor that expires with the capability.
 
 ## Capability, errors, and recovery
 
-After live qualification, `Probe` advertises only read-only and schema
-discovery. Validation remains false until the CYB-98 Kusto.Language helper is
-qualified; polling, paging, cancellation, and statistics remain false until
-the later Sentinel execution leaf. The adapter cannot claim partial
-qualification or partial schema.
+After live qualification, `Probe` advertises read-only, schema discovery, and
+the common validation interface because the shared capability contract
+requires validation for every query source. Until the CYB-98 Kusto.Language
+helper is qualified, that interface is fail-closed and accepts no KQL. Polling,
+paging, cancellation, and statistics remain false until the later Sentinel
+execution leaf. The adapter cannot claim partial qualification or schema.
 
 Invalid local input is rejected before a lease or network call. Authentication
 or authorization denial, TLS/endpoint drift, workspace/resource/region drift,
