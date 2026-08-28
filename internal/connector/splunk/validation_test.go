@@ -35,7 +35,8 @@ func TestAdapterValidationCompilesPreflightsBindsAndReplays(t *testing.T) {
 	adapter.mu.Lock()
 	record := adapter.validations[query.Digest()]
 	adapter.mu.Unlock()
-	if record.plan.PlanDigest != validation.Value().ProvenanceDigest || record.plan.QueryDigest != validation.Value().CanonicalQueryDigest ||
+	if record.plan.PlanDigest != validation.Value().ProvenanceDigest || validation.Value().CanonicalQueryDigest != query.Digest() ||
+		!digestPattern.MatchString(record.plan.QueryDigest) ||
 		strings.HasSuffix(record.plan.ParserReceiptDigest, strings.Repeat("0", 64)) ||
 		record.plan.ScopeDigest == "" || !strings.Contains(record.plan.CanonicalSPL, "index=security") ||
 		strings.Contains(record.plan.CanonicalSPL, "resource=security-events") {

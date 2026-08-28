@@ -55,6 +55,9 @@ type Adapter struct {
 	validations  map[string]splunkValidationRecord
 	queryIDs     map[string]string
 	revoked      map[string]string
+	executions   map[string]*splunkExecutionFlight
+	jobs         map[string]splunkJobRecord
+	sidOwners    map[string]string
 }
 
 func NewAdapter(config Config, client Client, qualification ValidatedQualification, clock Clock) (*Adapter, error) {
@@ -69,7 +72,9 @@ func NewAdapter(config Config, client Client, qualification ValidatedQualificati
 	return &Adapter{config: cloneConfig(config), client: client, qualification: qualification, clock: clock,
 		capabilities: make(map[string]splunkCapabilityRecord), cursors: make(map[string]splunkCursorRecord),
 		schemas: make(map[string]splunkSchemaRecord), validations: make(map[string]splunkValidationRecord),
-		queryIDs: make(map[string]string), revoked: make(map[string]string)}, nil
+		queryIDs: make(map[string]string), revoked: make(map[string]string),
+		executions: make(map[string]*splunkExecutionFlight), jobs: make(map[string]splunkJobRecord),
+		sidOwners: make(map[string]string)}, nil
 }
 
 func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope,
@@ -314,7 +319,7 @@ func (adapter *Adapter) Validate(ctx context.Context, query queryconnector.Valid
 	if err != nil {
 		return queryconnector.ValidatedValidation{}, deniedCall("splunk_parser_receipt_invalid")
 	}
-	validation, err := adapter.validation(ctx, query, "accepted", "", plan.QueryDigest, plan.PlanDigest)
+	validation, err := adapter.validation(ctx, query, "accepted", "", query.Digest(), plan.PlanDigest)
 	if err != nil {
 		return queryconnector.ValidatedValidation{}, err
 	}
@@ -588,6 +593,19 @@ func (adapter *Adapter) removeExpiredLocked(now time.Time) {
 			delete(adapter.validations, key)
 			if adapter.queryIDs[value.queryID] == key {
 				delete(adapter.queryIDs, value.queryID)
+			}
+		}
+	}
+	for key, value := range adapter.executions {
+		if !now.Before(value.expiresAt) {
+			delete(adapter.executions, key)
+		}
+	}
+	for key, value := range adapter.jobs {
+		if !now.Before(value.expiresAt) {
+			delete(adapter.jobs, key)
+			if adapter.sidOwners[value.sidDigest] == value.queryDigest {
+				delete(adapter.sidOwners, value.sidDigest)
 			}
 		}
 	}

@@ -24,6 +24,11 @@ type qualificationClientStub struct {
 	indexes      IndexInventory
 	fields       RegisteredFieldInventory
 	parser       ParserResult
+	created      SearchCreateResult
+	status       JobStatus
+	results      ResultEnvelope
+	canceled     SearchCancelResult
+	createWait   <-chan struct{}
 	receipts     []CallReceipt
 	err          error
 	operations   []string
@@ -58,23 +63,28 @@ func (client *qualificationClientStub) ParserPreflight(_ context.Context, reques
 }
 
 func (client *qualificationClientStub) CreateSearch(_ context.Context, request SearchCreateRequest) (SearchCreateResult, CallReceipt, error) {
+	if client.createWait != nil {
+		<-client.createWait
+	}
+	client.mu.Lock()
+	defer client.mu.Unlock()
 	client.operations = append(client.operations, request.Binding.Operation)
-	return SearchCreateResult{}, client.nextReceipt(), client.err
+	return client.created, client.nextReceipt(), client.err
 }
 
 func (client *qualificationClientStub) SearchStatus(_ context.Context, request SearchStatusRequest) (JobStatus, CallReceipt, error) {
 	client.operations = append(client.operations, request.Binding.Operation)
-	return JobStatus{}, client.nextReceipt(), client.err
+	return client.status, client.nextReceipt(), client.err
 }
 
 func (client *qualificationClientStub) SearchResults(_ context.Context, request SearchResultsRequest) (ResultEnvelope, CallReceipt, error) {
 	client.operations = append(client.operations, request.Binding.Operation)
-	return ResultEnvelope{}, client.nextReceipt(), client.err
+	return client.results, client.nextReceipt(), client.err
 }
 
 func (client *qualificationClientStub) CancelSearch(_ context.Context, request SearchCancelRequest) (SearchCancelResult, CallReceipt, error) {
 	client.operations = append(client.operations, request.Binding.Operation)
-	return SearchCancelResult{}, client.nextReceipt(), client.err
+	return client.canceled, client.nextReceipt(), client.err
 }
 
 func (client *qualificationClientStub) nextReceipt() CallReceipt {
