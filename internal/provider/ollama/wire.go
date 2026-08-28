@@ -39,6 +39,7 @@ type showRequest struct {
 type showResponse struct {
 	Parameters    string                     `json:"parameters"`
 	License       json.RawMessage            `json:"license"`
+	System        string                     `json:"system,omitempty"`
 	ModifiedAt    string                     `json:"modified_at"`
 	Details       modelDetails               `json:"details"`
 	Template      string                     `json:"template"`

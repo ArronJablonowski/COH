@@ -75,6 +75,49 @@ func TestSparseTagCapabilitiesAreCompletedByBoundShowMetadata(t *testing.T) {
 	}
 }
 
+func TestDistinctTagAndShowTimestampsRemainIdentityBound(t *testing.T) {
+	var show showResponse
+	if err := decodeExact(readFixture(t, "show.json"), &show); err != nil {
+		t.Fatal(err)
+	}
+	record := modelRecord{Name: "qwen3:8b", Model: "qwen3:8b", ModifiedAt: "2026-08-25T10:00:00Z", Size: 1,
+		Digest: testDigest("a")[len("sha256:"):], Details: show.Details}
+	_, first, err := validateShow(show, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.ModifiedAt = "2026-08-26T10:00:00Z"
+	_, second, err := validateShow(show, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second {
+		t.Fatal("tag timestamp was not bound to model metadata identity")
+	}
+}
+
+func TestSystemAndParametersAreIdentityBound(t *testing.T) {
+	var show showResponse
+	if err := decodeExact(readFixture(t, "show.json"), &show); err != nil {
+		t.Fatal(err)
+	}
+	record := modelRecord{Name: "qwen3:8b", Model: "qwen3:8b", ModifiedAt: show.ModifiedAt, Size: 1,
+		Digest: testDigest("a")[len("sha256:"):], Details: show.Details}
+	_, first, err := validateShow(show, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	show.System = "Answer defensive cyber questions precisely."
+	show.Parameters += "\nseed 42"
+	_, second, err := validateShow(show, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second {
+		t.Fatal("model-visible system and parameter metadata were not identity bound")
+	}
+}
+
 func TestCurrentOllamaMetadataDriftFailsClosed(t *testing.T) {
 	base := func(t *testing.T) (showResponse, modelRecord) {
 		t.Helper()

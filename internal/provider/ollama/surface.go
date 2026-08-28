@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	AdapterVersion       = "1.1.0"
-	VendorSurfaceVersion = "ollama.native.chat/v2"
+	AdapterVersion       = "1.2.0"
+	VendorSurfaceVersion = "ollama.native.chat/v3"
 	OllamaEndpoint       = "http://127.0.0.1:11434"
 	VersionPath          = "/api/version"
 	TagsPath             = "/api/tags"

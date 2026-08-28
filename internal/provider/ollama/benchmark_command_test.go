@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -28,7 +27,7 @@ import (
 	"github.com/ArronJablonowski/COH/internal/provider/ollama"
 )
 
-const benchmarkVersion = "0.1.0"
+const benchmarkVersion = "0.2.0"
 
 type surfaceStore struct {
 	vocabulary []byte
@@ -187,7 +186,10 @@ func invoke(ctx context.Context, model, prompt string, timeout time.Duration,
 		Qualifications: registry, Schemas: schemaResolver{}, Reasoning: reasoning, Tokens: conservativeTokenCounter{},
 		Route: exactRoute{provider: observation.Provider}, HTTP: httpClient,
 		Clock: func() time.Time { return time.Now().UTC() },
-		DisableReasoning: !slices.Contains(observation.Capabilities, "thinking")})
+		// The core-text benchmark grades the visible answer. Disabling native
+		// reasoning prevents capable models from exhausting the output budget
+		// in a reasoning-only response while leaving production policy explicit.
+		DisableReasoning: true})
 	if err != nil {
 		return "", provenance{}, err
 	}

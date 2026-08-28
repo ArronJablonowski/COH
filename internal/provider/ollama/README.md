@@ -9,13 +9,15 @@ objects never cross the adapter boundary; callers provide and receive validated
 - Exact loopback origin: `http://127.0.0.1:11434`.
 - Allowed operations: `GET /api/version`, `GET /api/tags`,
   `POST /api/show`, and `POST /api/chat`.
-- Adapter version: `1.1.0`; vendor surface: `ollama.native.chat/v2`.
+- Adapter version: `1.2.0`; vendor surface: `ollama.native.chat/v3`.
 - `/api/version`, `/api/tags`, and `/api/show` must bind the runtime version,
   served model name and digest, chat template, advertised capabilities, model
   metadata, and context limit to the qualified provider tuple before chat.
-- Current Ollama runtimes may publish sparse tag details for MLX/safetensors
-  models. Absent tag fields are completed from `/api/show`; every tag field
-  that is present must match, and the combined metadata remains digest-bound.
+- Current Ollama runtimes may publish sparse tag details or capability subsets
+  for MLX/safetensors models. Absent tag fields are completed from `/api/show`;
+  every tag field or capability that is present must match. Tag and show
+  timestamps may differ, but both remain digest-bound with the effective
+  system prompt, parameters, license, model information, and tensor metadata.
 - Chat uses native messages, strict function tools, a JSON schema in `format`,
   bounded generation options, `keep_alive:0`, and explicit streaming mode.
 - Streaming uses newline-delimited JSON. Chunks must retain the exact model and
@@ -35,4 +37,6 @@ translation, denial tests, and signed qualification are reviewed.
 `benchmark_command_test.go` can be compiled with `go test -c` as a test-only
 local invocation surface for reproducible benchmarks. Its ephemeral signed
 qualification is not a production qualification or a substitute for
-independent security review.
+independent security review. The core-text profile disables native reasoning
+so its output budget measures the visible answer instead of a hidden reasoning
+trace; production callers continue to select reasoning policy explicitly.

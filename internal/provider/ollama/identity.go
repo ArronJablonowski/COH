@@ -13,13 +13,18 @@ import (
 )
 
 type modelMetadataWire struct {
-	Capabilities    []string                   `json:"capabilities"`
-	ModelInfo       map[string]json.RawMessage `json:"model_info"`
-	ModelfileDigest string                     `json:"modelfile_digest"`
-	ProjectorInfo   map[string]json.RawMessage `json:"projector_info"`
-	Requires        string                     `json:"requires"`
-	Tensors         []tensorRecord             `json:"tensors"`
-	TagDetails      modelDetails               `json:"tag_details"`
+	Capabilities     []string                   `json:"capabilities"`
+	LicenseDigest    string                     `json:"license_digest"`
+	ModelInfo        map[string]json.RawMessage `json:"model_info"`
+	ModelfileDigest  string                     `json:"modelfile_digest"`
+	ParametersDigest string                     `json:"parameters_digest"`
+	ProjectorInfo    map[string]json.RawMessage `json:"projector_info"`
+	Requires         string                     `json:"requires"`
+	ShowModifiedAt   string                     `json:"show_modified_at"`
+	SystemDigest     string                     `json:"system_digest"`
+	Tensors          []tensorRecord             `json:"tensors"`
+	TagDetails       modelDetails               `json:"tag_details"`
+	TagModifiedAt    string                     `json:"tag_modified_at"`
 }
 
 const (
@@ -144,7 +149,7 @@ func exactModelRecord(models []modelRecord, wanted string) (modelRecord, error) 
 }
 
 func validateShow(show showResponse, record modelRecord) (uint64, string, error) {
-	if show.Template == "" || len(show.Template) > 1<<20 || show.ModifiedAt != record.ModifiedAt ||
+	if show.Template == "" || len(show.Template) > 1<<20 || !validText(show.ModifiedAt, 128) ||
 		!validShowDetails(show.Details) || !compatibleDetails(show.Details, record.Details) ||
 		len(show.Capabilities) == 0 || len(show.ModelInfo) == 0 {
 		return 0, "", newError(providercontract.Denied, "model_metadata_invalid", false)
@@ -156,8 +161,18 @@ func validateShow(show showResponse, record modelRecord) (uint64, string, error)
 		return 0, "", newError(providercontract.Denied, "model_capability_drift", false)
 	}
 	if len(show.Modelfile) > 1<<20 || !utf8.ValidString(show.Modelfile) ||
+		len(show.Parameters) > 1<<20 || !utf8.ValidString(show.Parameters) ||
+		len(show.System) > 1<<20 || !utf8.ValidString(show.System) || len(show.License) > 1<<20 ||
 		show.Requires != "" && !validText(show.Requires, 64) || len(show.ProjectorInfo) > 4096 || len(show.Tensors) > 16384 {
 		return 0, "", newError(providercontract.InvalidInput, "model_metadata_invalid", false)
+	}
+	license := []byte("null")
+	if len(show.License) > 0 {
+		var err error
+		license, err = canonicalJSON(show.License)
+		if err != nil {
+			return 0, "", newError(providercontract.InvalidInput, "model_metadata_invalid", false)
+		}
 	}
 	for _, tensor := range show.Tensors {
 		if !validText(tensor.Name, 512) || !validText(tensor.Type, 64) || len(tensor.Shape) == 0 || len(tensor.Shape) > 8 {
@@ -185,9 +200,13 @@ func validateShow(show showResponse, record modelRecord) (uint64, string, error)
 	}
 	capabilities := append([]string(nil), show.Capabilities...)
 	sort.Strings(capabilities)
-	metadata := modelMetadataWire{Capabilities: capabilities, ModelInfo: show.ModelInfo,
-		ModelfileDigest: digest("COH-OLLAMA-MODELFILE-V1\x00", []byte(show.Modelfile)),
-		ProjectorInfo:   show.ProjectorInfo, Requires: show.Requires, Tensors: show.Tensors, TagDetails: record.Details}
+	metadata := modelMetadataWire{Capabilities: capabilities,
+		LicenseDigest: digest("COH-OLLAMA-LICENSE-V1\x00", license), ModelInfo: show.ModelInfo,
+		ModelfileDigest:  digest("COH-OLLAMA-MODELFILE-V1\x00", []byte(show.Modelfile)),
+		ParametersDigest: digest("COH-OLLAMA-PARAMETERS-V1\x00", []byte(show.Parameters)),
+		ProjectorInfo:    show.ProjectorInfo, Requires: show.Requires, ShowModifiedAt: show.ModifiedAt,
+		SystemDigest: digest("COH-OLLAMA-SYSTEM-V1\x00", []byte(show.System)), Tensors: show.Tensors,
+		TagDetails: record.Details, TagModifiedAt: record.ModifiedAt}
 	if record.Details.ContextLength != 0 && record.Details.ContextLength != contextLimit {
 		return 0, "", newError(providercontract.Denied, "model_context_drift", false)
 	}
@@ -211,14 +230,6 @@ func validStringSet(values []string, maximum int) bool {
 		seen[value] = struct{}{}
 	}
 	return len(seen) == len(values)
-}
-
-func equalStringSet(left, right []string) bool {
-	left = append([]string(nil), left...)
-	right = append([]string(nil), right...)
-	sort.Strings(left)
-	sort.Strings(right)
-	return slices.Equal(left, right)
 }
 
 func subsetStringSet(subset, superset []string) bool {

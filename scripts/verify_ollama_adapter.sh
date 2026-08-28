@@ -26,7 +26,7 @@ done
   .schema_version == "coh.provider-capability/v1"
   and .contract_version == "1.0.0"
   and .provider.provider_kind == "ollama"
-  and .provider.adapter_version == "1.1.0"
+  and .provider.adapter_version == "1.2.0"
   and .provider.data_route == "local"
   and .provider.state_mode == "stateless"
   and .provider.model_revision == "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
