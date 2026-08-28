@@ -45,3 +45,4 @@ fi
 "${temporary}" -root "${repo_root}" -go "${go_binary}" -format json > "${report}"
 cat "${report}"
 "${repo_root}/scripts/check_model_surface_boundary.sh" "${repo_root}"
+"${repo_root}/scripts/check_architecture_catalogs.sh"
