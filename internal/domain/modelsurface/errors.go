@@ -8,6 +8,7 @@ const (
 	InvalidInput ErrorCode = "invalid_input"
 	Denied       ErrorCode = "denied"
 	Unsupported  ErrorCode = "unsupported"
+	Unavailable  ErrorCode = "unavailable"
 	Canceled     ErrorCode = "canceled"
 	Timeout      ErrorCode = "timeout"
 )
