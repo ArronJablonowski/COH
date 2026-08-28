@@ -2,6 +2,8 @@
 ./internal/connector/splunkparser FuzzParseNeverPanics
 ./internal/domain/capabilityseam FuzzCapabilitySeamDecodersRecoverAcceptedDocuments
 ./internal/domain/normalizedevent FuzzDecodeNeverAcceptsChangedCanonicalFixture
+./internal/domain/profileactivation FuzzProfileActivationDecodersRecoverAcceptedRecords
+./internal/domain/profilecomposition FuzzProfileLayerDecoderAndVerifierRecoverAcceptedDocuments
 ./internal/domain/queryconnector FuzzQueryDecoderRecoversAcceptedDocuments
 ./internal/domain/temporaltime FuzzDecodeCommandRoundTrip
 ./internal/helper/architecture FuzzDecodeContract
