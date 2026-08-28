@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -184,7 +185,9 @@ func invoke(ctx context.Context, model, prompt string, timeout time.Duration,
 	reasoning := &reasoningStore{records: make(map[string][]byte)}
 	adapter, err := ollama.New(ollama.Config{Endpoint: ollama.OllamaEndpoint, Capability: capability,
 		Qualifications: registry, Schemas: schemaResolver{}, Reasoning: reasoning, Tokens: conservativeTokenCounter{},
-		Route: exactRoute{provider: observation.Provider}, HTTP: httpClient, Clock: func() time.Time { return time.Now().UTC() }})
+		Route: exactRoute{provider: observation.Provider}, HTTP: httpClient,
+		Clock: func() time.Time { return time.Now().UTC() },
+		DisableReasoning: !slices.Contains(observation.Capabilities, "thinking")})
 	if err != nil {
 		return "", provenance{}, err
 	}

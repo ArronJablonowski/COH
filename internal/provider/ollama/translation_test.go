@@ -55,6 +55,18 @@ func TestRequestUsesQualifiedContextEnvelope(t *testing.T) {
 	}
 }
 
+func TestRequestDisablesThinkingForModelsWithoutNativeReasoning(t *testing.T) {
+	rig := newTestRig(t)
+	rig.adapter.config.DisableReasoning = true
+	translation, err := rig.adapter.translateRequest(context.Background(), rig.request.Value())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if translation.wire.Think {
+		t.Fatal("thinking remained enabled for a model without native reasoning")
+	}
+}
+
 func TestReasoningReferenceCanBeResolvedForLaterTurn(t *testing.T) {
 	rig := newTestRig(t)
 	response, err := rig.adapter.Invoke(context.Background(), rig.request)

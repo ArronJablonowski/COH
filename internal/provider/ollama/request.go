@@ -30,7 +30,8 @@ func (adapter *Adapter) translateRequest(ctx context.Context, request providerco
 	if contextLength > request.Provider.ContextLimit {
 		contextLength = request.Provider.ContextLimit
 	}
-	translation.wire = chatRequest{Model: request.Provider.RequestedModel, Stream: false, Think: true, KeepAlive: 0,
+	translation.wire = chatRequest{Model: request.Provider.RequestedModel, Stream: false,
+		Think: !adapter.config.DisableReasoning, KeepAlive: 0,
 		Options: chatOptions{ContextLength: contextLength, MaximumPredict: request.MaximumOutputTokens,
 			Temperature: float64(request.Sampling.TemperatureMilli) / 1000,
 			TopP:        float64(request.Sampling.TopPMillionths) / 1000000, Seed: request.Sampling.Seed}}

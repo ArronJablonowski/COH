@@ -34,6 +34,9 @@ type Config struct {
 	Route          LocalRouteVerifier
 	HTTP           HTTPDoer
 	Clock          func() time.Time
+	// DisableReasoning is set only when the bound model does not advertise
+	// Ollama's native thinking capability. The default remains enabled.
+	DisableReasoning bool
 }
 
 type HTTPDoer interface {
