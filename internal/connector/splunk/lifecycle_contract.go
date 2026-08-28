@@ -53,7 +53,7 @@ func DecodeJobStatus(input []byte) (JobStatus, error) {
 	}
 	if value.SchemaVersion != JobStatusVersion || value.ContractVersion != ContractVersion ||
 		!slices.Contains(lifecycleStates, value.State) || !progressPattern.MatchString(value.DoneProgress) ||
-		value.RealTime || value.Zombie || value.EventCount > value.ScanCount || value.ResultCount > value.EventCount ||
+		value.Finalized || value.RealTime || value.Zombie || value.EventCount > value.ScanCount || value.ResultCount > value.EventCount ||
 		!consistentJobFlags(value) {
 		return JobStatus{}, denied("job status invalid")
 	}
@@ -154,7 +154,7 @@ func consistentJobFlags(value JobStatus) bool {
 	terminalCancel := slices.Contains([]string{"BAD_INPUT_CANCEL", "INTERNAL_CANCEL", "USER_CANCEL", "QUIT"}, value.State)
 	switch value.State {
 	case "DONE":
-		return value.Done && !value.Failed && value.Finalized && value.DoneProgress == "1.00000"
+		return value.Done && !value.Failed && value.DoneProgress == "1.00000"
 	case "FAILED":
 		return value.Done && value.Failed && !value.Finalized
 	default:

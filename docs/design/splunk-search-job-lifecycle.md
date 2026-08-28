@@ -112,6 +112,10 @@ binds the job handle, query and attempt, authority, next offset, page number,
 cumulative counters, result-chain digest, and expiry. Offset, count, or SID is
 never caller controlled.
 
+Splunk's `isFinalized` property means the job was explicitly finalized, not
+that a naturally completed result set is ready. COH therefore requires `DONE`
+and rejects `isFinalized=true` as potentially partial.
+
 Each page is strict bounded JSON. Field names must be unique, admitted by the
 validated projection, and within configured limits. Rows, nesting, scalar
 types, encoded bytes, and response bytes are bounded before publication.

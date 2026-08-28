@@ -9,7 +9,7 @@
   "duration_millis": 125,
   "done": true,
   "failed": false,
-  "finalized": true,
+  "finalized": false,
   "real_time": false,
   "zombie": false
 }

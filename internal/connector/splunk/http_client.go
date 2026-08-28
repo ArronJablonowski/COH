@@ -290,6 +290,11 @@ func (client *HTTPClient) get(ctx context.Context, binding CallBinding, path str
 }
 
 func (client *HTTPClient) postForm(ctx context.Context, binding CallBinding, path string, form url.Values) ([]byte, CallReceipt, error) {
+	return client.postFormStatus(ctx, binding, path, form, "splunk_parser_rejected", http.StatusOK)
+}
+
+func (client *HTTPClient) postFormStatus(ctx context.Context, binding CallBinding, path string, form url.Values,
+	rejectionReason string, successCodes ...int) ([]byte, CallReceipt, error) {
 	if client == nil || client.client == nil || nilPort(client.credentials) {
 		return nil, CallReceipt{}, invalidInput("splunk_http_client_required")
 	}
@@ -337,12 +342,12 @@ func (client *HTTPClient) postForm(ctx context.Context, binding CallBinding, pat
 			Status int
 			Body   []byte
 		}{response.StatusCode, body})
-		if response.StatusCode != http.StatusOK {
+		if !slices.Contains(successCodes, response.StatusCode) {
 			if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
 				return deniedCall("splunk_authentication_or_privilege_denied")
 			}
 			if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
-				return deniedCall("splunk_parser_rejected")
+				return deniedCall(rejectionReason)
 			}
 			return queryconnector.NewError(queryconnector.Unavailable, "splunk_vendor_unavailable", nil)
 		}

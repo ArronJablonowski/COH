@@ -119,6 +119,10 @@ type Client interface {
 	Indexes(context.Context, InventoryRequest) (IndexInventory, CallReceipt, error)
 	RegisteredFields(context.Context, InventoryRequest) (RegisteredFieldInventory, CallReceipt, error)
 	ParserPreflight(context.Context, ParserRequest) (ParserResult, CallReceipt, error)
+	CreateSearch(context.Context, SearchCreateRequest) (SearchCreateResult, CallReceipt, error)
+	SearchStatus(context.Context, SearchStatusRequest) (JobStatus, CallReceipt, error)
+	SearchResults(context.Context, SearchResultsRequest) (ResultEnvelope, CallReceipt, error)
+	CancelSearch(context.Context, SearchCancelRequest) (SearchCancelResult, CallReceipt, error)
 }
 
 // CredentialSource lends one broker-owned authentication token to one bound

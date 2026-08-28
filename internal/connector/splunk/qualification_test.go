@@ -57,6 +57,26 @@ func (client *qualificationClientStub) ParserPreflight(_ context.Context, reques
 	return client.parser, client.nextReceipt(), client.err
 }
 
+func (client *qualificationClientStub) CreateSearch(_ context.Context, request SearchCreateRequest) (SearchCreateResult, CallReceipt, error) {
+	client.operations = append(client.operations, request.Binding.Operation)
+	return SearchCreateResult{}, client.nextReceipt(), client.err
+}
+
+func (client *qualificationClientStub) SearchStatus(_ context.Context, request SearchStatusRequest) (JobStatus, CallReceipt, error) {
+	client.operations = append(client.operations, request.Binding.Operation)
+	return JobStatus{}, client.nextReceipt(), client.err
+}
+
+func (client *qualificationClientStub) SearchResults(_ context.Context, request SearchResultsRequest) (ResultEnvelope, CallReceipt, error) {
+	client.operations = append(client.operations, request.Binding.Operation)
+	return ResultEnvelope{}, client.nextReceipt(), client.err
+}
+
+func (client *qualificationClientStub) CancelSearch(_ context.Context, request SearchCancelRequest) (SearchCancelResult, CallReceipt, error) {
+	client.operations = append(client.operations, request.Binding.Operation)
+	return SearchCancelResult{}, client.nextReceipt(), client.err
+}
+
 func (client *qualificationClientStub) nextReceipt() CallReceipt {
 	if len(client.receipts) == 0 {
 		return CallReceipt{}

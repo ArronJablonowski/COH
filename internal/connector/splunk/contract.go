@@ -24,6 +24,7 @@ var (
 	minorPattern       = regexp.MustCompile(`^[0-9]+\.[0-9]+$`)
 	versionPattern     = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 	buildPattern       = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,128}$`)
+	sidPattern         = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,255}$`)
 	testPattern        = regexp.MustCompile(`^Test[A-Za-z0-9]{3,127}$`)
 )
 
