@@ -92,7 +92,8 @@ func validatePage(value ResultPage) error {
 	if value.SchemaVersion != PageSchemaVersion || value.ContractVersion != ContractVersion ||
 		!uuidPattern.MatchString(value.QueryID) || !uuidPattern.MatchString(value.AttemptID) || value.PageNumber == 0 ||
 		len(value.Rows) > 100000 || !digestPattern.MatchString(value.ResultDigest) ||
-		!validCompleteness(value.Completeness) || !validStatistics(value.Statistics) || !digestPattern.MatchString(value.ProvenanceDigest) {
+		!validCompleteness(value.Completeness) || !validStatistics(value.Statistics) || value.Statistics.PagesReturned == 0 ||
+		value.Statistics.SlicesCompleted == 0 || !digestPattern.MatchString(value.ProvenanceDigest) {
 		return NewError(InvalidInput, "page_invalid", nil)
 	}
 	if value.NextPage != nil && !validHandle(*value.NextPage) {
@@ -142,7 +143,7 @@ func validCompleteness(value Completeness) bool {
 }
 
 func validStatistics(value Statistics) bool {
-	return value.RowsReturned <= value.RowsScanned && value.PagesReturned > 0 && value.SlicesCompleted > 0
+	return value.RowsReturned <= value.RowsScanned
 }
 
 func validReasons(values []string) bool {

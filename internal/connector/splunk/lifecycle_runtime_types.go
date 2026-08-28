@@ -26,4 +26,13 @@ type splunkJobRecord struct {
 	dispatchReceipt  CallReceipt
 	issuedAt         time.Time
 	expiresAt        time.Time
+	lastStatus       *JobStatus
+	lastPoll         *queryconnector.ValidatedPoll
+	lastPolledAt     time.Time
+}
+
+type splunkPollFlight struct {
+	done   chan struct{}
+	result queryconnector.ValidatedPoll
+	err    error
 }

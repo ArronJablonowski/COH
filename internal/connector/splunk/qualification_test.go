@@ -26,6 +26,9 @@ type qualificationClientStub struct {
 	parser       ParserResult
 	created      SearchCreateResult
 	status       JobStatus
+	statuses     []JobStatus
+	statusIndex  int
+	statusWait   <-chan struct{}
 	results      ResultEnvelope
 	canceled     SearchCancelResult
 	createWait   <-chan struct{}
@@ -73,8 +76,18 @@ func (client *qualificationClientStub) CreateSearch(_ context.Context, request S
 }
 
 func (client *qualificationClientStub) SearchStatus(_ context.Context, request SearchStatusRequest) (JobStatus, CallReceipt, error) {
+	if client.statusWait != nil {
+		<-client.statusWait
+	}
+	client.mu.Lock()
+	defer client.mu.Unlock()
 	client.operations = append(client.operations, request.Binding.Operation)
-	return client.status, client.nextReceipt(), client.err
+	status := client.status
+	if len(client.statuses) > 0 {
+		status = client.statuses[min(client.statusIndex, len(client.statuses)-1)]
+		client.statusIndex++
+	}
+	return status, client.nextReceipt(), client.err
 }
 
 func (client *qualificationClientStub) SearchResults(_ context.Context, request SearchResultsRequest) (ResultEnvelope, CallReceipt, error) {

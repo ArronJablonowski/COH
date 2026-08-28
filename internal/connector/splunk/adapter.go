@@ -58,6 +58,7 @@ type Adapter struct {
 	executions   map[string]*splunkExecutionFlight
 	jobs         map[string]splunkJobRecord
 	sidOwners    map[string]string
+	polls        map[string]*splunkPollFlight
 }
 
 func NewAdapter(config Config, client Client, qualification ValidatedQualification, clock Clock) (*Adapter, error) {
@@ -74,7 +75,7 @@ func NewAdapter(config Config, client Client, qualification ValidatedQualificati
 		schemas: make(map[string]splunkSchemaRecord), validations: make(map[string]splunkValidationRecord),
 		queryIDs: make(map[string]string), revoked: make(map[string]string),
 		executions: make(map[string]*splunkExecutionFlight), jobs: make(map[string]splunkJobRecord),
-		sidOwners: make(map[string]string)}, nil
+		sidOwners: make(map[string]string), polls: make(map[string]*splunkPollFlight)}, nil
 }
 
 func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope,
