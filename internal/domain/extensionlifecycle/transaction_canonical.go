@@ -98,9 +98,12 @@ func validateTransition(value Transition) error {
 	if !digestSetInOrder(value.RegistrationReceiptDigests) || value.NextApplyOrdinal != uint64(len(value.RegistrationReceiptDigests)) {
 		return newError(Denied, "transition_receipts")
 	}
-	if value.Phase == PreparedPhase && (value.NextApplyOrdinal != 0 || value.NextRevokeOrdinal != -1) ||
+	if value.Phase == PreparedPhase && value.Direction == ActivateDirection && (value.NextApplyOrdinal != 0 || value.NextRevokeOrdinal != -1) ||
+		value.Phase == PreparedPhase && value.Direction == DeactivateDirection && value.NextRevokeOrdinal != -1 ||
 		value.Phase == ActivePhase && (value.ActivationAuditDigest == "" || value.NextApplyOrdinal == 0) ||
-		value.Phase == UnwindingPhase && value.NextRevokeOrdinal >= int64(value.NextApplyOrdinal) {
+		value.Phase == UnwindingPhase && value.NextRevokeOrdinal >= int64(value.NextApplyOrdinal) ||
+		value.Direction == DeactivateDirection && value.Phase == InactivePhase &&
+			(!value.AdmissionClosed || value.ActiveWorkCount != 0 || value.TerminalWorkDigest == "" || value.TerminalAuditDigest == "") {
 		return newError(Denied, "transition_phase")
 	}
 	return nil

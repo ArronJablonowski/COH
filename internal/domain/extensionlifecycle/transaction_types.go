@@ -158,6 +158,28 @@ type ActivationResult struct {
 	Replayed   bool
 }
 
+type DeactivationResult struct {
+	Transition Transition
+	Replayed   bool
+}
+
+type DrainRequest struct {
+	TransitionID      string
+	ExtensionID       string
+	ManifestDigest    string
+	OrganizationID    string
+	TenantID          string
+	MaximumDurationMS uint64
+}
+
+type DrainAttestation struct {
+	TransitionID           string
+	AdmissionsClosed       bool
+	ActiveWork             uint64
+	Durable                bool
+	TerminalOutcomesDigest string
+}
+
 type ActivationStore interface {
 	LoadActive(context.Context, string, string, string) (ActiveExtension, bool, error)
 	LoadTransition(context.Context, string) (Transition, bool, error)
@@ -167,6 +189,7 @@ type ActivationStore interface {
 	CommitReceipt(context.Context, Transition, RegistrationReceipt, Transition) (Transition, error)
 	CommitRevocation(context.Context, Transition, RegistrationReceipt, RegistrationReceipt, Transition) (Transition, error)
 	PublishActive(context.Context, Transition, ActiveExtension, Transition) (Transition, error)
+	RemoveActive(context.Context, Transition, ActiveExtension, Transition) (Transition, error)
 }
 
 // EffectPort stages registrations behind the inactive transition. Stage and
@@ -179,4 +202,12 @@ type EffectPort interface {
 
 type ActivationAuditPort interface {
 	CommitActivation(context.Context, string, string, []string) (string, error)
+	CommitDeactivation(context.Context, string, string, string, []string) (string, error)
+}
+
+// DeactivationGate atomically closes extension admission before it waits for
+// work. It returns only after work drains or is boundedly canceled and every
+// terminal outcome is durable.
+type DeactivationGate interface {
+	CloseAdmissionsAndDrain(context.Context, DrainRequest) (DrainAttestation, error)
 }

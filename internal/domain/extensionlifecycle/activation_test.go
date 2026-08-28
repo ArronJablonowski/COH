@@ -107,6 +107,21 @@ func (store *memoryActivationStore) PublishActive(_ context.Context, current Tra
 	store.active[key] = active
 	return result, nil
 }
+func (store *memoryActivationStore) RemoveActive(_ context.Context, current Transition, active ActiveExtension, next Transition) (Transition, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	key := activeKey(active.ExtensionID, active.OrganizationID, active.TenantID)
+	existing, ok := store.active[key]
+	if !ok || existing.ActiveDigest != active.ActiveDigest || next.TerminalAuditDigest == "" {
+		return Transition{}, errors.New("active removal conflict")
+	}
+	result, err := store.advance(current, next)
+	if err != nil {
+		return Transition{}, err
+	}
+	delete(store.active, key)
+	return result, nil
+}
 
 type stagedEffects struct {
 	mu             sync.Mutex
@@ -161,8 +176,9 @@ func (effects *stagedEffects) Revoke(_ context.Context, request EffectRequest, h
 }
 
 type activationAuditStub struct {
-	fail  bool
-	calls int
+	fail              bool
+	calls             int
+	deactivationCalls int
 }
 
 func (audit *activationAuditStub) CommitActivation(_ context.Context, _, _ string, receipts []string) (string, error) {
@@ -174,6 +190,16 @@ func (audit *activationAuditStub) CommitActivation(_ context.Context, _, _ strin
 		return "", errors.New("empty")
 	}
 	return testDigest('f'), nil
+}
+func (audit *activationAuditStub) CommitDeactivation(_ context.Context, _, _, terminal string, receipts []string) (string, error) {
+	audit.deactivationCalls++
+	if audit.fail {
+		return "", errors.New("audit failed")
+	}
+	if !validDigest(terminal) || len(receipts) == 0 {
+		return "", errors.New("incomplete")
+	}
+	return testDigest('d'), nil
 }
 
 func TestTransactionalActivationPublishesOnlyAfterEveryStagedEffect(t *testing.T) {
