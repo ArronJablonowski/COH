@@ -38,7 +38,7 @@ func (service *Service) Validate(ctx context.Context, input ValidateRequest) (Va
 		return ValidationAdmission{}, err
 	}
 	now := service.clock.Now().UTC()
-	request, err := projectHelperRequest(ctx, input, now)
+	request, commonQueryDigest, err := projectHelperRequest(ctx, input, now)
 	if err != nil {
 		return ValidationAdmission{}, err
 	}
@@ -56,7 +56,7 @@ func (service *Service) Validate(ctx context.Context, input ValidateRequest) (Va
 		return ValidationAdmission{}, unavailable("replay_unavailable", err)
 	}
 	if replayed {
-		if err := validateRetained(record, request.RequestDigest); err != nil {
+		if err := validateRetained(record, request.RequestDigest, commonQueryDigest); err != nil {
 			return ValidationAdmission{}, err
 		}
 		check.Phase = "replay"
@@ -64,8 +64,9 @@ func (service *Service) Validate(ctx context.Context, input ValidateRequest) (Va
 		if err := service.verifyCurrent(ctx, input, check); err != nil {
 			return ValidationAdmission{}, err
 		}
-		record.Admission.Replayed = true
-		return record.Admission, nil
+		admission := cloneAdmission(record.Admission)
+		admission.Replayed = true
+		return admission, nil
 	}
 	completed := false
 	defer func() {
@@ -102,15 +103,17 @@ func (service *Service) Validate(ctx context.Context, input ValidateRequest) (Va
 	result := queryconnector.ValidationResult{SchemaVersion: queryconnector.ValidationSchemaVersion,
 		ContractVersion: queryconnector.ContractVersion, QueryID: input.Query.QueryID, Outcome: "accepted",
 		ReasonCodes: []string{}, ValidatorVersion: ValidatorVersion,
-		CanonicalQueryDigest: response.CanonicalKQLDigest,
+		CanonicalQueryDigest: commonQueryDigest,
 		ProvenanceDigest:     validationProvenance(request, response, attestationDigest)}
-	value := ValidationAdmission{Validation: result, CanonicalKQL: response.CanonicalKQL, Decision: decision, Audit: proof}
+	value := ValidationAdmission{Validation: result, CanonicalKQL: response.CanonicalKQL,
+		CanonicalKQLDigest: response.CanonicalKQLDigest, OutputColumns: slices.Clone(response.OutputColumns),
+		Decision: decision, Audit: proof}
 	if err := service.replay.CompleteKustoValidation(ctx, input.IdempotencyKey,
-		ReplayRecord{RequestDigest: request.RequestDigest, Admission: value}); err != nil {
+		ReplayRecord{RequestDigest: request.RequestDigest, Admission: cloneAdmission(value)}); err != nil {
 		return ValidationAdmission{}, unavailable("replay_commit_unavailable", err)
 	}
 	completed = true
-	return value, nil
+	return cloneAdmission(value), nil
 }
 
 func (service *Service) verifyCurrent(ctx context.Context, input ValidateRequest, check AdmissionCheck) error {
@@ -162,10 +165,12 @@ func contextFailure(ctx context.Context) error {
 	return nil
 }
 
-func validateRetained(record ReplayRecord, digest string) error {
+func validateRetained(record ReplayRecord, digest, commonQueryDigest string) error {
 	value := record.Admission
 	if record.RequestDigest != digest || value.CanonicalKQL == "" || value.Validation.Outcome != "accepted" ||
-		value.Validation.CanonicalQueryDigest != CanonicalKQLDigest(value.CanonicalKQL) || validateAudit(value.Audit) != nil ||
+		value.Validation.CanonicalQueryDigest != commonQueryDigest ||
+		value.CanonicalKQLDigest != CanonicalKQLDigest(value.CanonicalKQL) ||
+		validateOutputColumns(value.OutputColumns) != nil || validateAudit(value.Audit) != nil ||
 		value.Audit.AuditRecordDigest == "" || validateDecision(value.Decision) != nil ||
 		value.Decision.Outcome != "accepted" || value.Decision.RequestDigest != digest ||
 		value.Validation.QueryID != value.Decision.QueryID || value.Audit.QueryID != value.Decision.QueryID ||
@@ -196,4 +201,12 @@ func sortedReasons(values []string) []string {
 	result := slices.Clone(values)
 	slices.Sort(result)
 	return result
+}
+
+func cloneAdmission(value ValidationAdmission) ValidationAdmission {
+	value.Validation.ReasonCodes = slices.Clone(value.Validation.ReasonCodes)
+	value.OutputColumns = slices.Clone(value.OutputColumns)
+	value.Decision.ReasonCodes = slices.Clone(value.Decision.ReasonCodes)
+	value.Audit.ReasonCodes = slices.Clone(value.Audit.ReasonCodes)
+	return value
 }

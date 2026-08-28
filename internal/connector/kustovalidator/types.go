@@ -75,11 +75,13 @@ type RevocationCheck struct {
 // ValidationAdmission is the only object that can release canonical KQL.
 // A denied or unaudited operation always returns its zero value.
 type ValidationAdmission struct {
-	Validation   queryconnector.ValidationResult
-	CanonicalKQL string
-	Decision     PolicyDecision
-	Audit        AuditProof
-	Replayed     bool
+	Validation         queryconnector.ValidationResult
+	CanonicalKQL       string
+	CanonicalKQLDigest string
+	OutputColumns      []OutputColumn
+	Decision           PolicyDecision
+	Audit              AuditProof
+	Replayed           bool
 }
 
 type ReplayRecord struct {

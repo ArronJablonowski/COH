@@ -1,6 +1,10 @@
 package sentinel
 
-import "github.com/ArronJablonowski/COH/internal/domain/queryconnector"
+import (
+	"context"
+
+	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
+)
 
 const (
 	QueryRuntimeConfigVersion = "coh.sentinel-query-runtime-config/v1"
@@ -104,6 +108,17 @@ type QueryReceipt struct {
 	LeaseDecisionDigest     string `json:"lease_decision_digest"`
 	TransportDigest         string `json:"transport_digest"`
 	TransportIdentityDigest string `json:"transport_identity_digest"`
+}
+
+// QueryCall keeps authority and credential-lease binding out of the serialized
+// vendor request while still requiring the transport to verify it.
+type QueryCall struct {
+	Binding CallBinding
+	Request QueryTransportRequest
+}
+
+type QueryClient interface {
+	Query(context.Context, QueryCall) (QueryTransportResponse, error)
 }
 
 type SlicePlan struct {

@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/ArronJablonowski/COH/internal/connector/kustovalidator"
 )
 
 const maximumCanonicalKQLBytes = 131072
@@ -225,7 +227,7 @@ func queryRuntimeConfigDigest(value QueryRuntimeConfig) string {
 }
 
 func queryCanonicalKQLDigest(value string) string {
-	return hashValue("COH-SENTINEL-CANONICAL-KQL-V1\x00", value)
+	return kustovalidator.CanonicalKQLDigest(value)
 }
 
 func queryTransportRequestDigest(value QueryTransportRequest) string {

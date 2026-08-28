@@ -160,6 +160,14 @@ func TestServiceRechecksAuthorityAndAuditsBeforeReleasingKQL(t *testing.T) {
 	if admission.CanonicalKQL == "" || admission.Audit.AuditRecordDigest == "" || audit.calls != 1 {
 		t.Fatal("accepted KQL was not bound to a durable audit proof")
 	}
+	queryBytes, _ := json.Marshal(input.Query)
+	validatedQuery, queryErr := queryconnector.DecodeQuery(context.Background(), queryBytes)
+	validationBytes, _ := json.Marshal(admission.Validation)
+	validatedDecision, validationErr := queryconnector.DecodeValidation(context.Background(), validationBytes)
+	if queryErr != nil || validationErr != nil || queryconnector.AdmitExecution(context.Background(), validatedQuery, validatedDecision) != nil ||
+		admission.CanonicalKQLDigest != CanonicalKQLDigest(admission.CanonicalKQL) {
+		t.Fatal("common query and bounded KQL digests were not independently bound")
+	}
 	if want := []string{"pre_helper", "post_helper"}; !equalStrings(authority.phases, want) || !equalStrings(revocation.phases, want) {
 		t.Fatalf("gate phases authority=%v revocation=%v", authority.phases, revocation.phases)
 	}

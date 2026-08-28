@@ -8,37 +8,37 @@ import (
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
 
-func projectHelperRequest(ctx context.Context, input ValidateRequest, now time.Time) (HelperRequest, error) {
+func projectHelperRequest(ctx context.Context, input ValidateRequest, now time.Time) (HelperRequest, string, error) {
 	queryBytes, err := json.Marshal(input.Query)
 	if err != nil {
-		return HelperRequest{}, queryconnector.NewError(queryconnector.InvalidInput, "query_invalid", err)
+		return HelperRequest{}, "", queryconnector.NewError(queryconnector.InvalidInput, "query_invalid", err)
 	}
 	validatedQuery, err := queryconnector.DecodeQuery(ctx, queryBytes)
 	if err != nil {
-		return HelperRequest{}, err
+		return HelperRequest{}, "", err
 	}
 	capabilityBytes, err := json.Marshal(input.Capability)
 	if err != nil {
-		return HelperRequest{}, queryconnector.NewError(queryconnector.InvalidInput, "capability_invalid", err)
+		return HelperRequest{}, "", queryconnector.NewError(queryconnector.InvalidInput, "capability_invalid", err)
 	}
 	validatedCapability, err := queryconnector.DecodeCapability(ctx, capabilityBytes)
 	if err != nil {
-		return HelperRequest{}, err
+		return HelperRequest{}, "", err
 	}
 	if validatedCapability.Digest() != input.Query.CapabilityDigest || input.Capability.SourceID != input.Query.Scope.SourceID ||
 		!input.Capability.Features.Validation || input.Query.Language != "kql" {
-		return HelperRequest{}, queryconnector.NewError(queryconnector.Denied, "capability_binding_denied", nil)
+		return HelperRequest{}, "", queryconnector.NewError(queryconnector.Denied, "capability_binding_denied", nil)
 	}
 	capabilityExpiry, ok := parseBoundaryTimestamp(input.Capability.ValidUntil)
 	deadline, deadlineOK := parseBoundaryTimestamp(input.Query.Deadline)
 	if !ok || !deadlineOK || !capabilityExpiry.After(now) || !deadline.After(now) {
-		return HelperRequest{}, queryconnector.NewError(queryconnector.Denied, "validation_deadline_or_capability_stale", nil)
+		return HelperRequest{}, "", queryconnector.NewError(queryconnector.Denied, "validation_deadline_or_capability_stale", nil)
 	}
 	if validateSchema(input.Schema) != nil || !schemaFresh(input.Schema, now) || validateRegistry(input.Registry) != nil ||
 		validatePolicy(input.Policy) != nil || validateAttestation(input.Helper) != nil || input.Policy.RegistryDigest != input.Registry.Digest ||
 		input.Helper.Identity.RegistryDigest != input.Registry.Digest || !validDigests(input.WorkspaceIdentityDigest, input.QualificationDigest) ||
 		!tokenPattern.MatchString(input.IdempotencyKey) || validatedQuery.Digest() == "" {
-		return HelperRequest{}, queryconnector.NewError(queryconnector.InvalidInput, "validator_request_invalid", nil)
+		return HelperRequest{}, "", queryconnector.NewError(queryconnector.InvalidInput, "validator_request_invalid", nil)
 	}
 	rows := min(input.Query.Limits.MaximumRows, input.Policy.MaximumRows, input.Capability.HardLimits.MaximumRows)
 	request := HelperRequest{SchemaVersion: HelperRequestVersion, ContractVersion: ContractVersion,
@@ -51,9 +51,9 @@ func projectHelperRequest(ctx context.Context, input ValidateRequest, now time.T
 	request.Deadline = deadline.Format(time.RFC3339Nano)
 	request.RequestDigest = HelperRequestDigest(request)
 	if validateHelperRequest(request) != nil {
-		return HelperRequest{}, queryconnector.NewError(queryconnector.InvalidInput, "helper_projection_invalid", nil)
+		return HelperRequest{}, "", queryconnector.NewError(queryconnector.InvalidInput, "helper_projection_invalid", nil)
 	}
-	return request, nil
+	return request, validatedQuery.Digest(), nil
 }
 
 func schemaFresh(schema SchemaBinding, now time.Time) bool {
