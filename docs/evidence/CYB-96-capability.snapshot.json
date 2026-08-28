@@ -1,0 +1,29 @@
+{
+  "schema_version": "coh.query-capability/v1",
+  "contract_version": "1.0.0",
+  "snapshot_id": "0198f4a0-9600-7000-8000-000000000096",
+  "source_id": "splunk-prod",
+  "adapter_version": "splunk-1.0.0",
+  "observed_at": "2026-08-28T01:00:00.000000000Z",
+  "valid_until": "2026-08-28T01:10:00.000000000Z",
+  "query_languages": ["spl"],
+  "features": {
+    "read_only": true,
+    "schema_discovery": true,
+    "validation": true,
+    "polling": true,
+    "paging": true,
+    "cancellation": true,
+    "statistics": true
+  },
+  "hard_limits": {
+    "maximum_rows": 1000,
+    "maximum_bytes": 1048576,
+    "maximum_duration_millis": 60000,
+    "maximum_pages": 10,
+    "maximum_slices": 4,
+    "maximum_cost_millionths": 1000000,
+    "requests_per_minute": 12
+  },
+  "source_identity_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+}

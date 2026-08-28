@@ -144,7 +144,8 @@ func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope,
 		ContractVersion: queryconnector.ContractVersion, SnapshotID: splunkDeterministicUUID(now, identityDigest),
 		SourceID: adapter.config.SourceID, AdapterVersion: adapter.config.AdapterVersion,
 		ObservedAt: now.Format(splunkTimestampLayout), ValidUntil: expiresAt.Format(splunkTimestampLayout),
-		QueryLanguages: []string{"spl"}, Features: queryconnector.Features{ReadOnly: true, SchemaDiscovery: true, Validation: true},
+		QueryLanguages: []string{"spl"}, Features: queryconnector.Features{ReadOnly: true, SchemaDiscovery: true,
+			Validation: true, Polling: true, Paging: true, Cancellation: true, Statistics: true},
 		HardLimits: adapter.config.HardLimits, SourceIdentityDigest: identityDigest}
 	encoded, _ := json.Marshal(value)
 	validated, err := queryconnector.DecodeCapability(ctx, encoded)
@@ -764,3 +765,5 @@ func splunkDeterministicUUID(now time.Time, seed string) string {
 	return fmt.Sprintf("%08x-%04x-7%03x-%04x-%012x", uint32(millis>>16), uint16(millis),
 		uint16(sum[0])<<4|uint16(sum[1]>>4), uint16(0x8000)|(uint16(sum[2])<<6)|uint16(sum[3]>>2), sum[4:10])
 }
+
+var _ queryconnector.Connector = (*Adapter)(nil)

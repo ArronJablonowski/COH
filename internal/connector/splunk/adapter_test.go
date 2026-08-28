@@ -20,7 +20,8 @@ func TestAdapterProbeAndDiscoveryAreQualifiedScopedAndSecretFree(t *testing.T) {
 	}
 	capabilityValue := capability.Value()
 	if capabilityValue.SourceID != "splunk-prod" || !capabilityValue.Features.ReadOnly ||
-		!capabilityValue.Features.SchemaDiscovery || !capabilityValue.Features.Validation || capabilityValue.Features.Paging ||
+		!capabilityValue.Features.SchemaDiscovery || !capabilityValue.Features.Validation || !capabilityValue.Features.Polling ||
+		!capabilityValue.Features.Paging || !capabilityValue.Features.Cancellation || !capabilityValue.Features.Statistics ||
 		!slices.Equal(capabilityValue.QueryLanguages, []string{"spl"}) {
 		t.Fatalf("capability=%+v", capabilityValue)
 	}

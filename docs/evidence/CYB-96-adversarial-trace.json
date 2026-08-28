@@ -1,0 +1,32 @@
+{
+  "schema_version": "coh.splunk-lifecycle-conformance/v1",
+  "contract_version": "1.0.0",
+  "issue": "CYB-96",
+  "stable_key": "COH-E14-03",
+  "requirements": ["FR-051", "FR-054"],
+  "outcome": "passed",
+  "implementation_baseline": "749214911c1f00c483e24fddd630f447a623c681",
+  "compatibility": {
+    "splunk_enterprise_minors": ["9.4", "10.0"],
+    "splunk_cloud": "unsupported",
+    "live_qualification_required": true
+  },
+  "coverage": {
+    "typed_operations": 4,
+    "allowed_states": 11,
+    "denial_corpus_cases": 13,
+    "recorded_vendor_operations_per_minor": 4,
+    "maximum_page_rows": 1000,
+    "minimum_poll_interval_millis": 500,
+    "cancellation_wait_millis": 5000,
+    "concurrent_replay_callers": 32
+  },
+  "native_text_exposed": false,
+  "credential_exposed": false,
+  "bearer_exposed": false,
+  "sid_exposed": false,
+  "result_row_exposed": false,
+  "vendor_body_exposed": false,
+  "hidden_partial_success": false,
+  "blocking_findings": []
+}
