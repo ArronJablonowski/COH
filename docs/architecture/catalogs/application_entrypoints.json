@@ -2253,12 +2253,12 @@
     {
       "path": "internal/domain/modelsurface/admission.go",
       "version": "go1.26.7",
-      "digest": "sha256:efdd92b1c0eb1719fad016dd7f53e9d272aece1649f72f5f893bc3707a099102"
+      "digest": "sha256:e9f697f495c44f5a9e172f3135b2a93db34de7bc5e2201e8c94dd1b2fd70eec3"
     },
     {
       "path": "internal/domain/modelsurface/admission_test.go",
       "version": "go1.26.7",
-      "digest": "sha256:c7191ab6a6209773e1d557d202d2cfdd6a7f3bc66f85b620dc10e77a983e2d6c"
+      "digest": "sha256:8d717627e54a567ad90500aa99780832bb02142d654082a783a8d65308bcf566"
     },
     {
       "path": "internal/domain/modelsurface/adversarial_test.go",
@@ -4156,6 +4156,11 @@
       "digest": "sha256:285189957cce0f9ad8bf992c99e6ff63bb5a3b97849db898ae8a9876ae73ce4c"
     },
     {
+      "path": "internal/provider/ollama/benchmark_command_test.go",
+      "version": "go1.26.7",
+      "digest": "sha256:3edff97b890df4196ff220d7e8ddd9f7a525633eb36e5d48a69406b8c3013791"
+    },
+    {
       "path": "internal/provider/ollama/capability.go",
       "version": "go1.26.7",
       "digest": "sha256:6a5a57371acfe852e7dd13bd580c507cb465335b36da401740a91d5064786e9d"
@@ -4163,12 +4168,12 @@
     {
       "path": "internal/provider/ollama/conformance_test.go",
       "version": "go1.26.7",
-      "digest": "sha256:8a9ee63247ebbc312b54f7b6ebd643b571f11ff6615c1911c9b1744b31594d06"
+      "digest": "sha256:1313c006c0037de0e715ef0dbf85b3fbd9a76c4ac6076fa8af2244dc442bdfe2"
     },
     {
       "path": "internal/provider/ollama/denial_test.go",
       "version": "go1.26.7",
-      "digest": "sha256:56803d01086a5c2254403f06aa870da5f23b1a45c456d3f0bf05163e9929543b"
+      "digest": "sha256:4ebdea78781f49f005864173945ab4f96cd01b6993a09c5949104ed0e1b8b2d4"
     },
     {
       "path": "internal/provider/ollama/doc.go",
@@ -4193,7 +4198,12 @@
     {
       "path": "internal/provider/ollama/identity.go",
       "version": "go1.26.7",
-      "digest": "sha256:18ad037b91809da1458bb8a5235733f66e96757368da03d2407973d8fee88a7c"
+      "digest": "sha256:46db187db4695c9676210347118bb64b666512ddbda4515efc3000b4a521b6c5"
+    },
+    {
+      "path": "internal/provider/ollama/identity_compatibility_test.go",
+      "version": "go1.26.7",
+      "digest": "sha256:0f332b3575421952251cd1fba4e8665ce4c1e51d46372c87aecb17e7812f9d99"
     },
     {
       "path": "internal/provider/ollama/invoke_test.go",
@@ -4206,14 +4216,19 @@
       "digest": "sha256:57f0f88984cbe5537e761ae121a790570c5ca74468d69dcaab227c139d414bd8"
     },
     {
+      "path": "internal/provider/ollama/live_integration_test.go",
+      "version": "go1.26.7",
+      "digest": "sha256:dbe7903dbf2f8c4a908ce079bf0c273f431885b36beff274f66e2473d34c7f87"
+    },
+    {
       "path": "internal/provider/ollama/request.go",
       "version": "go1.26.7",
-      "digest": "sha256:851965eb035ab3e0d333f55b35689de0f4cbab3788b7e0ef6b28504747349a97"
+      "digest": "sha256:fc6fbb7b7446d02cbe374751c2769270378ea347a23d71fa161e87323d23fd86"
     },
     {
       "path": "internal/provider/ollama/response.go",
       "version": "go1.26.7",
-      "digest": "sha256:08ee88f50182d63d9a4a6a75bbf399519c1210d42d2cbde27362f3b0f10f7295"
+      "digest": "sha256:6d5bba7a119da4b7e26acfe7825f6c7a9335889a25525383917fa9b8049a940d"
     },
     {
       "path": "internal/provider/ollama/schema.go",
@@ -4238,22 +4253,22 @@
     {
       "path": "internal/provider/ollama/surface.go",
       "version": "go1.26.7",
-      "digest": "sha256:00970c5cb8202ecf2b92e9854b57b9fcbd47b6e03521ff0f08a170bc7149e5bd"
+      "digest": "sha256:bf0ff7ba66bed7f20bfe014ae1aeb77cd598a1ad6a47684ad950d5fca7503a9e"
     },
     {
       "path": "internal/provider/ollama/surface_test.go",
       "version": "go1.26.7",
-      "digest": "sha256:73126ed56bb85afbff0d73c8cb618df3c5f21cc956bb400c55f9c47171d53116"
+      "digest": "sha256:d046b037358e172adccc6e3c3956a0b3175039c2bbf28fc68ee02bee0e17f2e9"
     },
     {
       "path": "internal/provider/ollama/translation_test.go",
       "version": "go1.26.7",
-      "digest": "sha256:8987733d5e2762758ff7d8aa487fb6574b4b8613d56b649599077ff226cb6ed9"
+      "digest": "sha256:e717e9a763d9f0d23da744985624a756c06fae11d3b6198b5ffd0c27eecd680e"
     },
     {
       "path": "internal/provider/ollama/wire.go",
       "version": "go1.26.7",
-      "digest": "sha256:eb775888d0fdef0dc6e23664305fe4e62c7693eab3c1d67386c826a7604b77c7"
+      "digest": "sha256:a5baa59811bf5d7173fe6a777361a8d33a7ca4f284c9dda5f6b8599c838c60b4"
     },
     {
       "path": "internal/provider/openairesponses/adapter.go",
@@ -6678,5 +6693,5 @@
       ]
     }
   ],
-  "catalog_digest": "sha256:c18b70e667e03c9cba32f730d6d7321f1164e4aeaea2a390ca197b59f27f5b3e"
+  "catalog_digest": "sha256:77d2d6472c13c1ca5c885dd1f166d1e93581cda47a920ccc2ca6983d0c6171b6"
 }

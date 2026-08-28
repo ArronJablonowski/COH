@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	AdapterVersion       = "1.0.0"
-	VendorSurfaceVersion = "ollama.native.chat/v1"
+	AdapterVersion       = "1.1.0"
+	VendorSurfaceVersion = "ollama.native.chat/v2"
 	OllamaEndpoint       = "http://127.0.0.1:11434"
 	VersionPath          = "/api/version"
 	TagsPath             = "/api/tags"
@@ -58,6 +58,13 @@ type LocalRouteObservation struct {
 	RuntimeVersion string
 	Model          string
 	ModelRevision  string
+}
+
+// LocalIdentityObservation is an immutable runtime/model tuple discovered
+// from the loopback-native Ollama surface before capability qualification.
+type LocalIdentityObservation struct {
+	Provider     providercontract.ProviderIdentity
+	Capabilities []string
 }
 
 // LocalRouteVerifier is supplied by the managed deployment boundary. It must

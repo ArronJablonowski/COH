@@ -41,7 +41,7 @@ func AdmitInference(ctx context.Context, surface ProjectedSurface, template prov
 		ActorID: template.ActorID, ProviderID: providerID, ProjectionID: projection.ProjectionID,
 		ProjectionVersion: projection.ProjectionVersion, ProjectionDigest: projection.ProjectionDigest,
 		OrderedSourceRecordIDs: append([]string(nil), projection.OrderedSourceRecordIDs...),
-		ArtifactDigests:        append([]string(nil), projection.ArtifactDigests...), VocabularyDigest: projection.VocabularyDigest,
+		ArtifactDigests:        append([]string{}, projection.ArtifactDigests...), VocabularyDigest: projection.VocabularyDigest,
 		CompositionDigest: projection.CompositionDigest, SurfaceDigest: projection.SurfaceDigest,
 		AuthorizationDigest: template.AuthorizationDigest, PolicyDecisionDigest: template.PolicyDecisionDigest,
 		ApprovalDecisionDigest: template.ApprovalDecisionDigest, AuditReservationDigest: template.AuditReservationDigest,
@@ -81,7 +81,7 @@ func AdmitInference(ctx context.Context, surface ProjectedSurface, template prov
 	template.Tools = tools
 	template.ModelSurface = providercontract.ModelSurfaceBinding{RunID: binding.RunID, ProviderID: binding.ProviderID,
 		ProjectionID: binding.ProjectionID, ProjectionVersion: binding.ProjectionVersion, ProjectionDigest: binding.ProjectionDigest,
-		OrderedSourceRecordIDs: append([]string(nil), binding.OrderedSourceRecordIDs...), ArtifactDigests: append([]string(nil), binding.ArtifactDigests...),
+		OrderedSourceRecordIDs: append([]string(nil), binding.OrderedSourceRecordIDs...), ArtifactDigests: append([]string{}, binding.ArtifactDigests...),
 		VocabularyDigest: binding.VocabularyDigest, CompositionDigest: binding.CompositionDigest, SurfaceDigest: binding.SurfaceDigest,
 		BindingDigest: binding.BindingDigest}
 	encoded, err := json.Marshal(template)
@@ -169,6 +169,6 @@ func emptyProviderSurface(value providercontract.ModelSurfaceBinding) bool {
 
 func cloneBinding(value InferenceBinding) InferenceBinding {
 	value.OrderedSourceRecordIDs = append([]string(nil), value.OrderedSourceRecordIDs...)
-	value.ArtifactDigests = append([]string(nil), value.ArtifactDigests...)
+	value.ArtifactDigests = append([]string{}, value.ArtifactDigests...)
 	return value
 }

@@ -23,11 +23,11 @@ func TestPublishedCapabilityMatchesDiscovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	discovered := rig.adapter.Capability()
-	if published.Digest() != "sha256:6575d3610a3ae4b455513c50e8b803e7814c64937bde75ea6fd3e2fb36aa7968" {
+	if published.Digest() != "sha256:d4e74c3367e8defcbd8e129ce507fcb5074b0a53151818714c4ef3d0563a57c5" {
 		t.Fatalf("capability digest=%s", published.Digest())
 	}
 	if published.Digest() != discovered.Digest() || !bytes.Equal(published.CanonicalBytes(), discovered.CanonicalBytes()) {
-		t.Fatalf("published=%s discovered=%s", published.Digest(), discovered.Digest())
+		t.Fatalf("published=%s discovered=%s canonical=%s", published.Digest(), discovered.Digest(), discovered.CanonicalBytes())
 	}
 }
 

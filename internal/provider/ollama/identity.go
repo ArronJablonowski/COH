@@ -3,12 +3,24 @@ package ollama
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	providercontract "github.com/ArronJablonowski/COH/internal/domain/providercontract"
 )
+
+type modelMetadataWire struct {
+	Capabilities    []string                   `json:"capabilities"`
+	ModelInfo       map[string]json.RawMessage `json:"model_info"`
+	ModelfileDigest string                     `json:"modelfile_digest"`
+	ProjectorInfo   map[string]json.RawMessage `json:"projector_info"`
+	Requires        string                     `json:"requires"`
+	Tensors         []tensorRecord             `json:"tensors"`
+	TagDetails      modelDetails               `json:"tag_details"`
+}
 
 const (
 	runtimeDigestDomain  = "COH-OLLAMA-RUNTIME-V1\x00"
@@ -23,6 +35,7 @@ type observedIdentity struct {
 	ModelRevision   string
 	TemplateDigest  string
 	ModelInfoDigest string
+	TokenizerName   string
 	ContextLimit    uint64
 	Capabilities    []string
 }
@@ -56,7 +69,32 @@ func (adapter *Adapter) observeIdentity(ctx context.Context, model string) (obse
 	return observedIdentity{RuntimeVersion: version.Version, RuntimeDigest: digest(runtimeDigestDomain, []byte(version.Version)),
 		Model: record.Model, ModelRevision: "sha256:" + record.Digest,
 		TemplateDigest: digest(templateDigestDomain, []byte(show.Template)), ModelInfoDigest: infoDigest,
-		ContextLimit: contextLimit, Capabilities: capabilities}, nil
+		TokenizerName: show.Details.Family, ContextLimit: contextLimit, Capabilities: capabilities}, nil
+}
+
+// ObserveLocalIdentity discovers the exact loopback runtime, model revision,
+// tokenizer metadata, template, and parser tuple used to construct a
+// capability snapshot. It performs no model inference or qualification.
+func ObserveLocalIdentity(ctx context.Context, model string, client HTTPDoer,
+	hardwareProfileDigest string, policyRevision uint64) (LocalIdentityObservation, error) {
+	if ctx == nil || model == "" || client == nil {
+		return LocalIdentityObservation{}, newError(providercontract.InvalidInput, "identity_observation_input", false)
+	}
+	observed, err := (&Adapter{config: Config{Endpoint: OllamaEndpoint, HTTP: client}}).observeIdentity(ctx, model)
+	if err != nil {
+		return LocalIdentityObservation{}, err
+	}
+	identity := providercontract.ProviderIdentity{ProviderKind: "ollama", AdapterVersion: AdapterVersion,
+		EndpointIdentityDigest: EndpointIdentityDigest(OllamaEndpoint), DataRoute: "local", RequestedModel: model,
+		ActualModel: observed.Model, ModelRevision: observed.ModelRevision, RuntimeName: "ollama",
+		RuntimeVersion: observed.RuntimeVersion, RuntimeDigest: observed.RuntimeDigest, TokenizerName: observed.TokenizerName,
+		TokenizerVersion: observed.RuntimeVersion, TokenizerDigest: observed.ModelInfoDigest,
+		ChatTemplateDigest: observed.TemplateDigest, ToolParserDigest: ToolParserDigest(),
+		ReasoningParserDigest: ReasoningParserDigest(), ContextLimit: observed.ContextLimit,
+		SamplingProfileDigest: SamplingProfileDigest(), HardwareProfileDigest: hardwareProfileDigest,
+		StateMode: "stateless", PolicyRevision: policyRevision}
+	return LocalIdentityObservation{Provider: identity,
+		Capabilities: append([]string(nil), observed.Capabilities...)}, nil
 }
 
 func (adapter *Adapter) verifyIdentity(ctx context.Context, requested string) error {
@@ -96,26 +134,40 @@ func exactModelRecord(models []modelRecord, wanted string) (modelRecord, error) 
 			return modelRecord{}, newError(providercontract.InvalidInput, "model_digest_invalid", false)
 		}
 	}
-	if !validText(result.ModifiedAt, 128) || result.Size == 0 || !validDetails(result.Details) {
+	if !validText(result.ModifiedAt, 128) || result.Size == 0 || !validTagDetails(result.Details) {
 		return modelRecord{}, newError(providercontract.InvalidInput, "model_record_invalid", false)
+	}
+	if len(result.Capabilities) > 32 || !validStringSet(result.Capabilities, 64) {
+		return modelRecord{}, newError(providercontract.InvalidInput, "model_capability_invalid", false)
 	}
 	return result, nil
 }
 
 func validateShow(show showResponse, record modelRecord) (uint64, string, error) {
 	if show.Template == "" || len(show.Template) > 1<<20 || show.ModifiedAt != record.ModifiedAt ||
-		!equalDetails(show.Details, record.Details) || len(show.Capabilities) == 0 || len(show.ModelInfo) == 0 {
+		!validShowDetails(show.Details) || !compatibleDetails(show.Details, record.Details) ||
+		len(show.Capabilities) == 0 || len(show.ModelInfo) == 0 {
 		return 0, "", newError(providercontract.Denied, "model_metadata_invalid", false)
 	}
-	seen := make(map[string]struct{}, len(show.Capabilities))
-	for _, capability := range show.Capabilities {
-		if !validText(capability, 64) {
-			return 0, "", newError(providercontract.InvalidInput, "model_capability_invalid", false)
-		}
-		seen[capability] = struct{}{}
-	}
-	if len(seen) != len(show.Capabilities) {
+	if !validStringSet(show.Capabilities, 64) {
 		return 0, "", newError(providercontract.Conflict, "model_capability_duplicate", false)
+	}
+	if len(record.Capabilities) > 0 && !equalStringSet(record.Capabilities, show.Capabilities) {
+		return 0, "", newError(providercontract.Denied, "model_capability_drift", false)
+	}
+	if len(show.Modelfile) > 1<<20 || !utf8.ValidString(show.Modelfile) ||
+		show.Requires != "" && !validText(show.Requires, 64) || len(show.ProjectorInfo) > 4096 || len(show.Tensors) > 16384 {
+		return 0, "", newError(providercontract.InvalidInput, "model_metadata_invalid", false)
+	}
+	for _, tensor := range show.Tensors {
+		if !validText(tensor.Name, 512) || !validText(tensor.Type, 64) || len(tensor.Shape) == 0 || len(tensor.Shape) > 8 {
+			return 0, "", newError(providercontract.InvalidInput, "model_tensor_invalid", false)
+		}
+		for _, dimension := range tensor.Shape {
+			if dimension == 0 {
+				return 0, "", newError(providercontract.InvalidInput, "model_tensor_invalid", false)
+			}
+		}
 	}
 	contextLimit, matches := uint64(0), 0
 	for key, raw := range show.ModelInfo {
@@ -131,7 +183,15 @@ func validateShow(show showResponse, record modelRecord) (uint64, string, error)
 			contextLimit, matches = parsed, matches+1
 		}
 	}
-	canonical, err := json.Marshal(show.ModelInfo)
+	capabilities := append([]string(nil), show.Capabilities...)
+	sort.Strings(capabilities)
+	metadata := modelMetadataWire{Capabilities: capabilities, ModelInfo: show.ModelInfo,
+		ModelfileDigest: digest("COH-OLLAMA-MODELFILE-V1\x00", []byte(show.Modelfile)),
+		ProjectorInfo:   show.ProjectorInfo, Requires: show.Requires, Tensors: show.Tensors, TagDetails: record.Details}
+	if record.Details.ContextLength != 0 && record.Details.ContextLength != contextLimit {
+		return 0, "", newError(providercontract.Denied, "model_context_drift", false)
+	}
+	canonical, err := json.Marshal(metadata)
 	if err != nil || matches != 1 {
 		return 0, "", newError(providercontract.InvalidInput, "model_info_invalid", false)
 	}
@@ -142,15 +202,45 @@ func validateShow(show showResponse, record modelRecord) (uint64, string, error)
 	return contextLimit, digest(modelInfoDomain, canonical), nil
 }
 
-func validDetails(value modelDetails) bool {
-	return validText(value.Format, 64) && validText(value.Family, 128) && len(value.Families) > 0 &&
-		validText(value.ParameterSize, 64) && validText(value.QuantizationLevel, 64)
+func validStringSet(values []string, maximum int) bool {
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		if !validText(value, maximum) {
+			return false
+		}
+		seen[value] = struct{}{}
+	}
+	return len(seen) == len(values)
 }
 
-func equalDetails(left, right modelDetails) bool {
-	leftJSON, _ := json.Marshal(left)
-	rightJSON, _ := json.Marshal(right)
-	return string(leftJSON) == string(rightJSON)
+func equalStringSet(left, right []string) bool {
+	left = append([]string(nil), left...)
+	right = append([]string(nil), right...)
+	sort.Strings(left)
+	sort.Strings(right)
+	return slices.Equal(left, right)
+}
+
+func validTagDetails(value modelDetails) bool {
+	return validText(value.Format, 64) && validOptionalText(value.ParentModel, 128) &&
+		validOptionalText(value.Family, 128) && validStringSet(value.Families, 128) &&
+		validOptionalText(value.ParameterSize, 64) && validOptionalText(value.QuantizationLevel, 64)
+}
+
+func validShowDetails(value modelDetails) bool {
+	return validText(value.Format, 64) && validOptionalText(value.ParentModel, 128) && validText(value.Family, 128) &&
+		validStringSet(value.Families, 128) && validText(value.ParameterSize, 64) && validText(value.QuantizationLevel, 64)
+}
+
+func compatibleDetails(show, tag modelDetails) bool {
+	return show.Format == tag.Format && (tag.ParentModel == "" || show.ParentModel == tag.ParentModel) &&
+		(tag.Family == "" || show.Family == tag.Family) && (len(tag.Families) == 0 || slices.Equal(show.Families, tag.Families)) &&
+		(tag.ParameterSize == "" || show.ParameterSize == tag.ParameterSize) &&
+		(tag.QuantizationLevel == "" || show.QuantizationLevel == tag.QuantizationLevel)
+}
+
+func validOptionalText(value string, maximum int) bool {
+	return value == "" || validText(value, maximum)
 }
 
 func contains(values []string, wanted string) bool {

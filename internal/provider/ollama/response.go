@@ -125,6 +125,9 @@ func (adapter *Adapter) mapMessage(ctx context.Context, request providercontract
 		items = append(items, providercontract.ContentItem{Kind: "reasoning_ref", ReferenceID: referenceID, Digest: reasoningDigest})
 	}
 	for ordinal, call := range message.ToolCalls {
+		if call.ID != "" && !validText(call.ID, 128) {
+			return nil, 0, newError(providercontract.InvalidInput, "vendor_tool_id", false)
+		}
 		item, err := mapToolCall(request, tools, call, ordinal)
 		if err != nil {
 			return nil, 0, err

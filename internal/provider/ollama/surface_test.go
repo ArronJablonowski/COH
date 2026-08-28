@@ -6,7 +6,7 @@ import (
 )
 
 func TestFrozenNativeSurface(t *testing.T) {
-	if AdapterVersion != "1.0.0" || VendorSurfaceVersion != "ollama.native.chat/v1" ||
+	if AdapterVersion != "1.1.0" || VendorSurfaceVersion != "ollama.native.chat/v2" ||
 		OllamaEndpoint != "http://127.0.0.1:11434" || VersionPath != "/api/version" || TagsPath != "/api/tags" ||
 		ShowPath != "/api/show" || ChatPath != "/api/chat" {
 		t.Fatal("native Ollama surface drifted")

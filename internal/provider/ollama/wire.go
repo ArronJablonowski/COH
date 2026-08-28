@@ -11,12 +11,13 @@ type tagsResponse struct {
 }
 
 type modelRecord struct {
-	Name       string       `json:"name"`
-	Model      string       `json:"model"`
-	ModifiedAt string       `json:"modified_at"`
-	Size       uint64       `json:"size"`
-	Digest     string       `json:"digest"`
-	Details    modelDetails `json:"details"`
+	Name         string       `json:"name"`
+	Model        string       `json:"model"`
+	ModifiedAt   string       `json:"modified_at"`
+	Size         uint64       `json:"size"`
+	Digest       string       `json:"digest"`
+	Details      modelDetails `json:"details"`
+	Capabilities []string     `json:"capabilities,omitempty"`
 }
 
 type modelDetails struct {
@@ -26,6 +27,8 @@ type modelDetails struct {
 	Families          []string `json:"families"`
 	ParameterSize     string   `json:"parameter_size"`
 	QuantizationLevel string   `json:"quantization_level"`
+	ContextLength     uint64   `json:"context_length,omitempty"`
+	EmbeddingLength   uint64   `json:"embedding_length,omitempty"`
 }
 
 type showRequest struct {
@@ -34,13 +37,23 @@ type showRequest struct {
 }
 
 type showResponse struct {
-	Parameters   string                     `json:"parameters"`
-	License      json.RawMessage            `json:"license"`
-	ModifiedAt   string                     `json:"modified_at"`
-	Details      modelDetails               `json:"details"`
-	Template     string                     `json:"template"`
-	Capabilities []string                   `json:"capabilities"`
-	ModelInfo    map[string]json.RawMessage `json:"model_info"`
+	Parameters    string                     `json:"parameters"`
+	License       json.RawMessage            `json:"license"`
+	ModifiedAt    string                     `json:"modified_at"`
+	Details       modelDetails               `json:"details"`
+	Template      string                     `json:"template"`
+	Capabilities  []string                   `json:"capabilities"`
+	ModelInfo     map[string]json.RawMessage `json:"model_info"`
+	Modelfile     string                     `json:"modelfile,omitempty"`
+	ProjectorInfo map[string]json.RawMessage `json:"projector_info,omitempty"`
+	Requires      string                     `json:"requires,omitempty"`
+	Tensors       []tensorRecord             `json:"tensors,omitempty"`
+}
+
+type tensorRecord struct {
+	Name  string   `json:"name"`
+	Type  string   `json:"type"`
+	Shape []uint64 `json:"shape"`
 }
 
 type chatRequest struct {
@@ -83,6 +96,7 @@ type toolDefinition struct {
 }
 
 type nativeToolCall struct {
+	ID       string             `json:"id,omitempty"`
 	Type     string             `json:"type,omitempty"`
 	Function nativeFunctionCall `json:"function"`
 }

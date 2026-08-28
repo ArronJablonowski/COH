@@ -44,6 +44,33 @@ func TestAdmitInferenceBindsExactSurfaceAndProviderRequest(t *testing.T) {
 	}
 }
 
+func TestAdmitInferenceAcceptsArtifactFreeSurface(t *testing.T) {
+	fixture := newProjectionFixture(t)
+	for index := range fixture.sources {
+		if fixture.sources[index].Content.Kind == "immutable_artifact" {
+			snapshot := fixture.contentStore.values[fixture.sources[index].Content.Digest]
+			snapshot.Kind = "durable_record"
+			fixture.contentStore.values[fixture.sources[index].Content.Digest] = snapshot
+			fixture.sources[index].Content.Kind = "durable_record"
+			fixture.replaceSource(t, index)
+		}
+	}
+	surface, err := fixture.projector.Project(context.Background(), fixture.request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(surface.Projection().ArtifactDigests) != 0 {
+		t.Fatalf("artifact digests=%v", surface.Projection().ArtifactDigests)
+	}
+	admitted, err := AdmitInference(context.Background(), surface, validProviderTemplate())
+	if err != nil {
+		t.Fatalf("AdmitInference() error = %v", err)
+	}
+	if admitted.Binding().ArtifactDigests == nil || admitted.Request().Value().ModelSurface.ArtifactDigests == nil {
+		t.Fatal("empty artifact set was not preserved canonically")
+	}
+}
+
 func TestAdmitInferenceDeniesAlternateOrDriftedSurface(t *testing.T) {
 	newSurface := func(t *testing.T) ProjectedSurface {
 		fixture := newProjectionFixture(t)

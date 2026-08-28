@@ -26,6 +26,9 @@ func TestResponseSurfaceFailsClosed(t *testing.T) {
 		{"unknown done reason", func(value string) string { return strings.Replace(value, `"stop"`, `"evicted"`, 1) }, providercontract.Unsupported},
 		{"usage over limit", func(value string) string { return strings.Replace(value, `"eval_count": 20`, `"eval_count": 9000`, 1) }, providercontract.Denied},
 		{"tool name tamper", func(value string) string { return strings.Replace(value, `"query_host"`, `"shell"`, 1) }, providercontract.Denied},
+		{"invalid vendor tool id", func(value string) string {
+			return strings.Replace(value, `"type": "function"`, `"id": "bad\nidentifier", "type": "function"`, 1)
+		}, providercontract.InvalidInput},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -26,8 +26,12 @@ type toolResultEnvelope struct {
 
 func (adapter *Adapter) translateRequest(ctx context.Context, request providercontract.InferenceRequest) (requestTranslation, error) {
 	translation := requestTranslation{tools: make(map[string]providercontract.Tool, len(request.Tools))}
+	contextLength := adapter.config.Capability.Value().Limits.MaximumInputTokens + adapter.config.Capability.Value().Limits.MaximumOutputTokens
+	if contextLength > request.Provider.ContextLimit {
+		contextLength = request.Provider.ContextLimit
+	}
 	translation.wire = chatRequest{Model: request.Provider.RequestedModel, Stream: false, Think: true, KeepAlive: 0,
-		Options: chatOptions{ContextLength: request.Provider.ContextLimit, MaximumPredict: request.MaximumOutputTokens,
+		Options: chatOptions{ContextLength: contextLength, MaximumPredict: request.MaximumOutputTokens,
 			Temperature: float64(request.Sampling.TemperatureMilli) / 1000,
 			TopP:        float64(request.Sampling.TopPMillionths) / 1000000, Seed: request.Sampling.Seed}}
 	for _, tool := range request.Tools {

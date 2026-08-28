@@ -32,6 +32,29 @@ func TestStructuredOutputUsesNativeFormatAndPreservesSchema(t *testing.T) {
 	}
 }
 
+func TestRequestUsesQualifiedContextEnvelope(t *testing.T) {
+	rig := newTestRig(t)
+	definition := rig.adapter.config.Capability.Value()
+	capability, err := DiscoverCapability(context.Background(), CapabilityDefinition{
+		SnapshotID: definition.SnapshotID, ObservedAt: mustTime(t, definition.ObservedAt),
+		ValidUntil: mustTime(t, definition.ValidUntil), Provider: definition.Provider,
+		Limits: providercontract.Limits{MaximumInputTokens: 2048, MaximumOutputTokens: 1024,
+			MaximumMessages: definition.Limits.MaximumMessages, MaximumTools: definition.Limits.MaximumTools,
+			MaximumParallelToolCalls: definition.Limits.MaximumParallelToolCalls,
+			MaximumStreamSeconds:     definition.Limits.MaximumStreamSeconds}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rig.adapter.config.Capability = capability
+	translation, err := rig.adapter.translateRequest(context.Background(), rig.request.Value())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if translation.wire.Options.ContextLength != 3072 {
+		t.Fatalf("num_ctx=%d", translation.wire.Options.ContextLength)
+	}
+}
+
 func TestReasoningReferenceCanBeResolvedForLaterTurn(t *testing.T) {
 	rig := newTestRig(t)
 	response, err := rig.adapter.Invoke(context.Background(), rig.request)
