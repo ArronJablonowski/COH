@@ -87,7 +87,8 @@ func Verify(ctx context.Context, input []byte, snapshot TrustSnapshot, clock Clo
 func validateTrustSnapshot(snapshot TrustSnapshot, now time.Time) error {
 	if !validUUID7(snapshot.ScopeOrganizationID) ||
 		!oneOf(snapshot.Environment, "compose", "native_server", "native_workstation", "test") ||
-		snapshot.TrustRevision == 0 || len(snapshot.Records) == 0 || len(snapshot.Records) > 256 ||
+		snapshot.TrustRevision == 0 || snapshot.TrustRevision > MaximumRevision ||
+		len(snapshot.Records) == 0 || len(snapshot.Records) > 256 ||
 		snapshot.CreatedAt.Location() != time.UTC || snapshot.ExpiresAt.Location() != time.UTC ||
 		snapshot.CreatedAt.After(now) || !now.Before(snapshot.ExpiresAt) ||
 		snapshot.ExpiresAt.Sub(snapshot.CreatedAt) > MaximumTrustAge {
@@ -96,11 +97,11 @@ func validateTrustSnapshot(snapshot TrustSnapshot, now time.Time) error {
 	identities := make([]string, len(snapshot.Records))
 	for index, authority := range snapshot.Records {
 		if !oneOf(authority.Role, "publisher", "reviewer") || !validUUID7(authority.SignerID) ||
-			!validToken(authority.KeyID) || authority.KeyRevision == 0 ||
+			!validToken(authority.KeyID) || authority.KeyRevision == 0 || authority.KeyRevision > MaximumRevision ||
 			authority.TrustRevision != snapshot.TrustRevision || authority.ValidFrom.Location() != time.UTC ||
 			authority.ValidUntil.Location() != time.UTC || !authority.ValidUntil.After(authority.ValidFrom) ||
 			len(authority.PublicKey) != ed25519.PublicKeySize ||
-			authority.Revoked && authority.RevocationRevision == 0 {
+			authority.RevocationRevision > MaximumRevision || authority.Revoked && authority.RevocationRevision == 0 {
 			return newError(Denied, "trust_record")
 		}
 		identities[index] = authority.Role + "\x00" + authority.SignerID + "\x00" + authority.KeyID

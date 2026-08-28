@@ -19,9 +19,20 @@ type ExactTarget struct {
 }
 
 type Request struct {
-	ProfileID string
-	Revision  uint64
-	Target    ExactTarget
+	ProfileID                   string
+	Revision                    uint64
+	Target                      ExactTarget
+	PreviousCompositionDigest   string
+	RollbackAuthorizationDigest string
+}
+
+type RevisionAuthority struct {
+	ProfileID                   string
+	Target                      ExactTarget
+	CurrentRevision             uint64
+	CurrentCompositionDigest    string
+	RollbackAuthorizationDigest string
+	Active                      bool
 }
 
 type LayerBinding struct {
@@ -63,6 +74,7 @@ type Candidate struct{ state *candidateState }
 
 type candidateState struct {
 	request              Request
+	authority            RevisionAuthority
 	ordered              []VerifiedLayer
 	bindings             []LayerBinding
 	deployment           ArtifactRef

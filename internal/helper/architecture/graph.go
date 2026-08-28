@@ -79,6 +79,14 @@ func Evaluate(ctx context.Context, contract Contract, packages []Package, proven
 				})
 				continue
 			}
+			if isProtectedProfileCompositionImport(contract.Module, imported) && source != "command" {
+				report.Violations = append(report.Violations, Violation{
+					Rule: "ARCH-004", Package: pkg.ImportPath, Boundary: source,
+					Import: imported, ImportBoundary: target,
+					Detail: "profile composition is restricted to the command root",
+				})
+				continue
+			}
 			if _, ok := allowed[source][target]; !ok {
 				report.Violations = append(report.Violations, Violation{
 					Rule: "ARCH-002", Package: pkg.ImportPath, Boundary: source,
@@ -105,6 +113,11 @@ func Evaluate(ctx context.Context, contract Contract, packages []Package, proven
 
 func isProtectedCompositionImport(module, imported string) bool {
 	root := module + "/internal/domain/capabilityseam"
+	return imported == root || strings.HasPrefix(imported, root+"/")
+}
+
+func isProtectedProfileCompositionImport(module, imported string) bool {
+	root := module + "/internal/domain/profilecomposition"
 	return imported == root || strings.HasPrefix(imported, root+"/")
 }
 

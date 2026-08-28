@@ -19,11 +19,11 @@ func TestPrepareDeterministicallyOrdersAndNarrowsLayers(t *testing.T) {
 	overlayValue := overlayLayer(baseline)
 	overlay := verifiedTestLayer(t, overlayValue)
 	request := testRequest()
-	left, err := Prepare(context.Background(), request, []VerifiedLayer{overlay, baseline})
+	left, err := Prepare(context.Background(), request, testRevisionAuthority(request), []VerifiedLayer{overlay, baseline})
 	if err != nil {
 		t.Fatal(err)
 	}
-	right, err := Prepare(context.Background(), request, []VerifiedLayer{baseline, overlay})
+	right, err := Prepare(context.Background(), request, testRevisionAuthority(request), []VerifiedLayer{baseline, overlay})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,20 +58,108 @@ func TestPrepareRejectsLayerCycleAndWidening(t *testing.T) {
 	secondValue.Parents = append(secondValue.Parents, Parent{LayerID: firstValue.LayerID, Revision: 1, LayerDigest: firstDigest})
 	first := internalVerifiedLayer(t, firstValue, firstDigest)
 	second := internalVerifiedLayer(t, secondValue, secondDigest)
-	if _, err := Prepare(context.Background(), testRequest(), []VerifiedLayer{baseline, first, second}); Code(err) != Denied || Reason(err) != "layer_cycle" {
+	request := testRequest()
+	if _, err := Prepare(context.Background(), request, testRevisionAuthority(request), []VerifiedLayer{baseline, first, second}); Code(err) != Denied || Reason(err) != "layer_cycle" {
 		t.Fatalf("cycle err=%v", err)
 	}
 	widened := overlayLayer(baseline)
 	widened.Contribution.Permissions = append(widened.Contribution.Permissions, "tool.intent.submit", "unknown.permission")
 	slices.Sort(widened.Contribution.Permissions)
-	if _, err := Prepare(context.Background(), testRequest(), []VerifiedLayer{baseline, verifiedTestLayer(t, widened)}); Code(err) != Denied || Reason(err) != "permission_widening" {
+	if _, err := Prepare(context.Background(), request, testRevisionAuthority(request), []VerifiedLayer{baseline, verifiedTestLayer(t, widened)}); Code(err) != Denied || Reason(err) != "permission_widening" {
 		t.Fatalf("widen err=%v", err)
+	}
+	for _, test := range []struct {
+		name   string
+		reason string
+		mutate func(*Layer)
+	}{
+		{"endpoint", "endpoint_widening", func(layer *Layer) {
+			layer.Contribution.EndpointReferences = append(layer.Contribution.EndpointReferences, "provider.secondary")
+			slices.Sort(layer.Contribution.EndpointReferences)
+		}},
+		{"limit", "limit_widening", func(layer *Layer) {
+			layer.Contribution.Limits.MaxConcurrency = 9
+		}},
+		{"feature", "feature_widening", func(layer *Layer) {
+			layer.Contribution.Features.ExtensionLifecycle = true
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			layer := overlayLayer(baseline)
+			test.mutate(&layer)
+			_, err := Prepare(context.Background(), request, testRevisionAuthority(request),
+				[]VerifiedLayer{baseline, verifiedTestLayer(t, layer)})
+			if Code(err) != Denied || Reason(err) != test.reason {
+				t.Fatalf("code=%s reason=%s err=%v", Code(err), Reason(err), err)
+			}
+		})
+	}
+}
+
+func TestRevisionAuthorityDeniesGapReplayDriftAndUnauthorizedRollback(t *testing.T) {
+	currentDigest := "sha256:" + repeatHex("c")
+	rollbackDigest := "sha256:" + repeatHex("d")
+	base := baseLayer()
+	verified := verifiedTestLayer(t, base)
+	request := testRequest()
+	request.Revision = 3
+	request.PreviousCompositionDigest = currentDigest
+	authority := RevisionAuthority{ProfileID: request.ProfileID, Target: request.Target,
+		CurrentRevision: 1, CurrentCompositionDigest: currentDigest, Active: true}
+	if _, err := Prepare(context.Background(), request, authority, []VerifiedLayer{verified}); Code(err) != Denied || Reason(err) != "revision_gap" {
+		t.Fatalf("gap err=%v", err)
+	}
+
+	request.Revision = 1
+	candidate, err := Prepare(context.Background(), request, authority, []VerifiedLayer{verified})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := candidate.Finalize(context.Background(), "sha256:"+repeatHex("e")); Code(err) != Denied || Reason(err) != "replay_drift" {
+		t.Fatalf("replay err=%v", err)
+	}
+
+	request.Revision = 1
+	request.RollbackAuthorizationDigest = rollbackDigest
+	authority.CurrentRevision = 3
+	authority.RollbackAuthorizationDigest = rollbackDigest
+	if _, err := Prepare(context.Background(), request, authority, []VerifiedLayer{verified}); Code(err) != Denied || Reason(err) != "rollback_layer_binding" {
+		t.Fatalf("unbound rollback err=%v", err)
+	}
+	base.RollbackAuthorizationDigest = rollbackDigest
+	if _, err := Prepare(context.Background(), request, authority,
+		[]VerifiedLayer{verifiedTestLayer(t, base)}); err != nil {
+		t.Fatalf("authorized rollback denied: %v", err)
+	}
+	request.RollbackAuthorizationDigest = "sha256:" + repeatHex("f")
+	if _, err := Prepare(context.Background(), request, authority,
+		[]VerifiedLayer{verifiedTestLayer(t, base)}); Code(err) != Denied || Reason(err) != "rollback_unauthorized" {
+		t.Fatalf("wrong rollback err=%v", err)
+	}
+}
+
+func TestRevisionAuthorityHandlesMaximumRevisionWithoutOverflow(t *testing.T) {
+	request := testRequest()
+	request.Revision = MaximumRevision
+	request.PreviousCompositionDigest = "sha256:" + repeatHex("c")
+	authority := RevisionAuthority{ProfileID: request.ProfileID, Target: request.Target,
+		CurrentRevision: MaximumRevision, CurrentCompositionDigest: request.PreviousCompositionDigest, Active: true}
+	candidate, err := Prepare(context.Background(), request, authority, []VerifiedLayer{verifiedTestLayer(t, baseLayer())})
+	if err != nil {
+		t.Fatalf("maximum-revision replay denied before digest comparison: %v", err)
+	}
+	if _, err := candidate.Finalize(context.Background(), "sha256:"+repeatHex("e")); Code(err) != Denied || Reason(err) != "replay_drift" {
+		t.Fatalf("maximum-revision replay err=%v", err)
 	}
 }
 
 func testRequest() Request {
 	return Request{ProfileID: "018f0000-0000-7000-8000-000000000900", Revision: 1,
 		Target: ExactTarget{DeploymentKind: "native_workstation", ConnectivityMode: "connected", Platform: "darwin_arm64", Surface: "web"}}
+}
+
+func testRevisionAuthority(request Request) RevisionAuthority {
+	return RevisionAuthority{ProfileID: request.ProfileID, Target: request.Target, Active: true}
 }
 
 func baseLayer() Layer {

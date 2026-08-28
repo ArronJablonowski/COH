@@ -30,6 +30,9 @@ func (prepared PreparedProfileCapabilities) ProfileBindingDigest() string {
 // graph or activating a provider.
 func PrepareProfileCapabilities(ctx context.Context, candidate profilecomposition.Candidate,
 	artifacts []ProfileCapabilityArtifact) (PreparedProfileCapabilities, error) {
+	if err := profileCompositionContextError(ctx); err != nil {
+		return PreparedProfileCapabilities{}, err
+	}
 	request := candidate.Request()
 	references := candidate.CapabilityReferences()
 	if request.ProfileID == "" || candidate.ProfileBindingDigest() == "" {
@@ -85,6 +88,21 @@ func PrepareProfileCapabilities(ctx context.Context, candidate profilecompositio
 		return PreparedProfileCapabilities{}, mapProfileCapabilityError(err)
 	}
 	return PreparedProfileCapabilities{candidate: candidate, bundle: bundle}, nil
+}
+
+func profileCompositionContextError(ctx context.Context) error {
+	if ctx == nil {
+		return profilecomposition.NewError(profilecomposition.InvalidInput, "context_missing")
+	}
+	select {
+	case <-ctx.Done():
+		if ctx.Err() == context.DeadlineExceeded {
+			return profilecomposition.NewError(profilecomposition.Timeout, "deadline_exceeded")
+		}
+		return profilecomposition.NewError(profilecomposition.Canceled, "context_canceled")
+	default:
+		return nil
+	}
 }
 
 // Resolve verifies current qualification authority, publishes one closed graph,

@@ -29,7 +29,7 @@ func validateEnvelope(value Envelope) error {
 	publishers, reviewers := 0, 0
 	for index, signature := range value.Signatures {
 		if !oneOf(signature.Role, "publisher", "reviewer") || !validUUID7(signature.SignerID) ||
-			!validToken(signature.KeyID) || signature.KeyRevision == 0 ||
+			!validToken(signature.KeyID) || signature.KeyRevision == 0 || signature.KeyRevision > MaximumRevision ||
 			signature.Algorithm != SignatureAlgorithm || !validTimestamp(signature.SignedAt) ||
 			len(signature.Signature) != 86 {
 			return newError(InvalidInput, "signature")
@@ -53,7 +53,7 @@ func validateLayer(value Layer) error {
 	expires, expiresOK := parseTimestamp(value.ExpiresAt)
 	if !validUUID7(value.LayerID) || !validToken(value.Name) ||
 		!oneOf(value.Kind, "baseline", "connectivity", "deployment", "overlay", "site", "surface") ||
-		value.Revision == 0 || value.Precedence > 1000000 ||
+		value.Revision == 0 || value.Revision > MaximumRevision || value.Precedence > 1000000 ||
 		!validOptionalDigest(value.PredecessorDigest) || !validOptionalDigest(value.RollbackAuthorizationDigest) ||
 		!issuedOK || !notBeforeOK || !expiresOK || notBefore.Before(issued) || !expires.After(notBefore) {
 		return newError(InvalidInput, "layer")
@@ -69,7 +69,8 @@ func validateLayer(value Layer) error {
 	}
 	parentIDs := make([]string, len(value.Parents))
 	for index, parent := range value.Parents {
-		if !validUUID7(parent.LayerID) || parent.Revision == 0 || !validDigest(parent.LayerDigest) || parent.LayerID == value.LayerID {
+		if !validUUID7(parent.LayerID) || parent.Revision == 0 || parent.Revision > MaximumRevision ||
+			!validDigest(parent.LayerDigest) || parent.LayerID == value.LayerID {
 			return newError(InvalidInput, "parent")
 		}
 		parentIDs[index] = parent.LayerID + "\x00" + parent.LayerDigest
@@ -114,7 +115,7 @@ func validLimits(value Limits) bool {
 }
 
 func validArtifact(value ArtifactRef) bool {
-	return validToken(value.ID) && value.Revision > 0 && validDigest(value.Digest)
+	return validToken(value.ID) && value.Revision > 0 && value.Revision <= MaximumRevision && validDigest(value.Digest)
 }
 func validArtifacts(values []ArtifactRef) bool {
 	identities := make([]string, len(values))

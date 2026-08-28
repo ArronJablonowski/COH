@@ -1,0 +1,8 @@
+{
+  "packages": [
+    {"ImportPath": "github.com/ArronJablonowski/COH/internal/domain/providercontract", "Imports": ["github.com/ArronJablonowski/COH/internal/domain/profilecomposition"]},
+    {"ImportPath": "github.com/ArronJablonowski/COH/internal/provider/ollama", "Imports": ["github.com/ArronJablonowski/COH/internal/domain/profilecomposition"]},
+    {"ImportPath": "github.com/ArronJablonowski/COH/internal/transport/localauth", "Imports": ["github.com/ArronJablonowski/COH/internal/domain/profilecomposition"]},
+    {"ImportPath": "github.com/ArronJablonowski/COH/internal/workflow/agentloop", "Imports": ["github.com/ArronJablonowski/COH/internal/domain/profilecomposition"]}
+  ]
+}

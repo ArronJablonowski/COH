@@ -15,6 +15,7 @@ const (
 	SignatureAlgorithm    = "ed25519"
 	MaximumInputBytes     = 4 << 20
 	MaximumTrustAge       = 5 * time.Minute
+	MaximumRevision       = uint64(1<<63 - 1)
 
 	layerDigestDomain = "COH-PROFILE-LAYER-V1\x00"
 	signatureDomain   = "COH-SIGNED-PROFILE-LAYER-V1\x00"
@@ -134,4 +135,12 @@ func (TrustSnapshot) MarshalJSON() ([]byte, error) {
 
 func (*TrustSnapshot) UnmarshalJSON([]byte) error {
 	return errors.New("profile composition trust snapshot is not accepted from JSON")
+}
+
+func (RevisionAuthority) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("profile composition revision authority is not serializable")
+}
+
+func (*RevisionAuthority) UnmarshalJSON([]byte) error {
+	return errors.New("profile composition revision authority is not accepted from JSON")
 }

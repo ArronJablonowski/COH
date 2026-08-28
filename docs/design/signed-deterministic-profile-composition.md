@@ -27,13 +27,20 @@ references. It loads immutable bytes from a trusted artifact reader, strictly
 decodes them, recomputes layer digests, and checks domain-separated Ed25519
 signatures against a fresh trust/revocation snapshot. Provider, workflow,
 transport, Web, CLI, and API packages cannot construct trusted snapshots or call
-the low-level resolver directly.
+the low-level resolver directly. The compiled `ARCH-004` architecture rule also
+denies direct profile-composition imports outside the command root, including
+imports hidden behind inactive build tags.
 
-The trust snapshot is not JSON and contains verification metadata only. It is
-bounded to five minutes, exact organization/environment scope, required signer
-roles, key purposes/revisions/validity, current revocation revisions, active
-composition revision, and optional rollback authority. It contains no private
-key, credential, activation callback, policy evaluator, or execution authority.
+The trust snapshot and revision authority are not JSON and contain verification
+metadata only. The trust snapshot is bounded to five minutes, exact
+organization/environment scope, required signer roles, key purposes/revisions/
+validity, and current revocation revisions. The revision authority binds the
+exact profile and target to the currently published revision and composition
+digest. Initial publication must be revision 1, forward publication must advance
+exactly one revision, same-revision replay must reproduce the exact composition
+digest, and downgrade requires one current authorization digest bound by exactly
+one selected signed layer. Neither object contains a private key, credential,
+activation callback, policy evaluator, or execution authority.
 
 ## Resolution pipeline
 

@@ -31,6 +31,10 @@ func (candidate Candidate) Finalize(ctx context.Context, capabilityGraphDigest s
 	if err != nil {
 		return ValidatedResolvedProfile{}, err
 	}
+	if state.request.Revision == state.authority.CurrentRevision &&
+		digest != state.authority.CurrentCompositionDigest {
+		return ValidatedResolvedProfile{}, newError(Denied, "replay_drift")
+	}
 	profile.CompositionDigest = digest
 	encoded, err := json.Marshal(profile)
 	if err != nil {

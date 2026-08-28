@@ -21,22 +21,42 @@ type profileBinding struct {
 	OfflineBundleDigest string        `json:"offline_bundle_digest"`
 }
 
-func Prepare(ctx context.Context, request Request, layers []VerifiedLayer) (Candidate, error) {
+func Prepare(ctx context.Context, request Request, authority RevisionAuthority, layers []VerifiedLayer) (Candidate, error) {
 	if err := contextError(ctx); err != nil {
 		return Candidate{}, err
 	}
-	if !validUUID7(request.ProfileID) || request.Revision == 0 || !validExactTarget(request.Target) ||
+	if !validUUID7(request.ProfileID) || request.Revision == 0 || request.Revision > MaximumRevision ||
+		!validExactTarget(request.Target) ||
 		len(layers) == 0 || len(layers) > 128 {
 		return Candidate{}, newError(InvalidInput, "composition_request")
+	}
+	if err := validateRevisionAuthority(request, authority); err != nil {
+		return Candidate{}, err
 	}
 	ordered, err := orderLayers(ctx, request.Target, layers)
 	if err != nil {
 		return Candidate{}, err
 	}
+	if request.Revision < authority.CurrentRevision {
+		rollbackBindings := 0
+		for _, verified := range ordered {
+			binding := verified.Layer().RollbackAuthorizationDigest
+			if binding == request.RollbackAuthorizationDigest {
+				rollbackBindings++
+			}
+			if binding != "" && binding != request.RollbackAuthorizationDigest {
+				return Candidate{}, newError(Denied, "rollback_authorization_drift")
+			}
+		}
+		if rollbackBindings != 1 {
+			return Candidate{}, newError(Denied, "rollback_layer_binding")
+		}
+	}
 	state, err := mergeOrdered(ctx, request, ordered)
 	if err != nil {
 		return Candidate{}, err
 	}
+	state.authority = authority
 	binding := profileBinding{SchemaVersion: "coh.profile-binding/v1", ContractVersion: ContractVersion,
 		Target: request.Target, DeploymentProfile: state.deployment, PolicyBundles: state.policies,
 		EndpointReferences: state.endpoints, Permissions: state.permissions, Limits: state.limits,
@@ -51,6 +71,47 @@ func Prepare(ctx context.Context, request Request, layers []VerifiedLayer) (Cand
 	}
 	state.profileBindingDigest = digestBytes(profileBindingDomain, canonical)
 	return Candidate{state: state}, nil
+}
+
+func validateRevisionAuthority(request Request, authority RevisionAuthority) error {
+	if !validUUID7(authority.ProfileID) || authority.ProfileID != request.ProfileID ||
+		!validExactTarget(authority.Target) || authority.Target != request.Target || !authority.Active ||
+		authority.CurrentRevision > MaximumRevision ||
+		authority.CurrentRevision == 0 && authority.CurrentCompositionDigest != "" ||
+		authority.CurrentRevision > 0 && !validDigest(authority.CurrentCompositionDigest) ||
+		!validOptionalDigest(authority.RollbackAuthorizationDigest) ||
+		!validOptionalDigest(request.PreviousCompositionDigest) ||
+		!validOptionalDigest(request.RollbackAuthorizationDigest) {
+		return newError(Denied, "revision_authority")
+	}
+	if authority.CurrentRevision == 0 {
+		if request.Revision != 1 || request.PreviousCompositionDigest != "" || request.RollbackAuthorizationDigest != "" {
+			return newError(Denied, "initial_revision")
+		}
+		return nil
+	}
+	if request.PreviousCompositionDigest != authority.CurrentCompositionDigest {
+		return newError(Denied, "composition_lineage")
+	}
+	switch {
+	case request.Revision > authority.CurrentRevision:
+		if authority.CurrentRevision == MaximumRevision || request.Revision != authority.CurrentRevision+1 {
+			return newError(Denied, "revision_gap")
+		}
+		if request.RollbackAuthorizationDigest != "" {
+			return newError(Denied, "unexpected_rollback_authorization")
+		}
+	case request.Revision == authority.CurrentRevision:
+		if request.RollbackAuthorizationDigest != "" {
+			return newError(Denied, "unexpected_rollback_authorization")
+		}
+	case request.Revision < authority.CurrentRevision:
+		if request.RollbackAuthorizationDigest == "" ||
+			request.RollbackAuthorizationDigest != authority.RollbackAuthorizationDigest {
+			return newError(Denied, "rollback_unauthorized")
+		}
+	}
+	return nil
 }
 
 func orderLayers(ctx context.Context, target ExactTarget, layers []VerifiedLayer) ([]VerifiedLayer, error) {

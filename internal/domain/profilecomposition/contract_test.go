@@ -62,6 +62,13 @@ func TestTrustSnapshotCannotBeSerialized(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{}`), &snapshot); err == nil {
 		t.Fatal("trust snapshot accepted JSON")
 	}
+	revision := RevisionAuthority{}
+	if _, err := json.Marshal(revision); err == nil {
+		t.Fatal("revision authority serialized")
+	}
+	if err := json.Unmarshal([]byte(`{}`), &revision); err == nil {
+		t.Fatal("revision authority accepted JSON")
+	}
 }
 
 func TestSignedLayerDenialCorpus(t *testing.T) {

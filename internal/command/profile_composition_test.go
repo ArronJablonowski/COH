@@ -29,14 +29,14 @@ func TestProfileCompositionClosesCapabilityGraphDeterministically(t *testing.T) 
 		Target: profilecomposition.ExactTarget{DeploymentKind: "native_workstation", ConnectivityMode: "connected",
 			Platform: "darwin_arm64", Surface: "web"}}
 	layer := commandTestLayer("sha256:" + strings.Repeat("a", 64))
-	draft, err := profilecomposition.Prepare(context.Background(), request,
+	draft, err := profilecomposition.Prepare(context.Background(), request, commandRevisionAuthority(request),
 		[]profilecomposition.VerifiedLayer{verifyCommandTestLayer(t, layer)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	bundle := commandCapabilityBundle(t, draft.ProfileBindingDigest())
 	layer.Contribution.CapabilityBundles[0].Digest = bundle.Digest()
-	candidate, err := profilecomposition.Prepare(context.Background(), request,
+	candidate, err := profilecomposition.Prepare(context.Background(), request, commandRevisionAuthority(request),
 		[]profilecomposition.VerifiedLayer{verifyCommandTestLayer(t, layer)})
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestProfileCompositionRejectsMissingCapabilityArtifact(t *testing.T) {
 	request := profilecomposition.Request{ProfileID: "018f0000-0000-7000-8000-000000000900", Revision: 1,
 		Target: profilecomposition.ExactTarget{DeploymentKind: "native_workstation", ConnectivityMode: "connected",
 			Platform: "darwin_arm64", Surface: "web"}}
-	candidate, err := profilecomposition.Prepare(context.Background(), request,
+	candidate, err := profilecomposition.Prepare(context.Background(), request, commandRevisionAuthority(request),
 		[]profilecomposition.VerifiedLayer{verifyCommandTestLayer(t, commandTestLayer("sha256:"+strings.Repeat("a", 64)))})
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +79,59 @@ func TestProfileCompositionRejectsMissingCapabilityArtifact(t *testing.T) {
 	if _, err := PrepareProfileCapabilities(context.Background(), candidate, nil); profilecomposition.Code(err) != profilecomposition.Denied || profilecomposition.Reason(err) != "capability_artifacts_incomplete" {
 		t.Fatalf("err=%v", err)
 	}
+}
+
+func TestProfileCompositionRejectsAmbiguousCapabilityProviders(t *testing.T) {
+	request := profilecomposition.Request{ProfileID: "018f0000-0000-7000-8000-000000000900", Revision: 1,
+		Target: profilecomposition.ExactTarget{DeploymentKind: "native_workstation", ConnectivityMode: "connected",
+			Platform: "darwin_arm64", Surface: "web"}}
+	layer := commandTestLayer("sha256:" + strings.Repeat("a", 64))
+	draft, err := profilecomposition.Prepare(context.Background(), request, commandRevisionAuthority(request),
+		[]profilecomposition.VerifiedLayer{verifyCommandTestLayer(t, layer)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundleValue := commandCapabilityBundle(t, draft.ProfileBindingDigest()).Value()
+	secondary := bundleValue.Providers[0]
+	secondary.ProviderID = "ollama.secondary"
+	secondary.Qualification.RecordID = "018f0000-0000-7000-8000-000000000006"
+	secondary.Qualification.RecordDigest = "sha256:" + strings.Repeat("9", 64)
+	bundleValue.Providers = append(bundleValue.Providers, secondary)
+	encoded, _ := json.Marshal(bundleValue)
+	bundle, err := capabilityseam.DecodeBundle(context.Background(), encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	layer.Contribution.CapabilityBundles[0].Digest = bundle.Digest()
+	candidate, err := profilecomposition.Prepare(context.Background(), request, commandRevisionAuthority(request),
+		[]profilecomposition.VerifiedLayer{verifyCommandTestLayer(t, layer)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := PrepareProfileCapabilities(context.Background(), candidate, []ProfileCapabilityArtifact{{
+		Reference: layer.Contribution.CapabilityBundles[0], Bundle: bundle,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = prepared.Resolve(context.Background(), compositionClock{compositionTestTime},
+		commandQualificationAuthority(prepared, bundle.Value()))
+	if profilecomposition.Code(err) != profilecomposition.Denied || profilecomposition.Reason(err) != "capability_provider_ambiguous" {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestPrepareProfileCapabilitiesHonorsCanceledContextFirst(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := PrepareProfileCapabilities(ctx, profilecomposition.Candidate{}, nil)
+	if profilecomposition.Code(err) != profilecomposition.Canceled || profilecomposition.Reason(err) != "context_canceled" {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func commandRevisionAuthority(request profilecomposition.Request) profilecomposition.RevisionAuthority {
+	return profilecomposition.RevisionAuthority{ProfileID: request.ProfileID, Target: request.Target, Active: true}
 }
 
 func commandTestLayer(capabilityDigest string) profilecomposition.Layer {

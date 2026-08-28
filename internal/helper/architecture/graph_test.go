@@ -97,6 +97,27 @@ func TestCapabilityCompositionImportsAreControlPlaneOnly(t *testing.T) {
 	}
 }
 
+func TestProfileCompositionImportsAreCommandOnly(t *testing.T) {
+	contract := loadContractFixture(t)
+	target := ModulePath + "/internal/domain/profilecomposition"
+	denied := loadGraphFixture(t, "invalid", "profile-composition-bypass.json")
+	report, err := Evaluate(context.Background(), contract, denied.Packages, testProvenance())
+	assertErrorCode(t, err, CodeDenied)
+	if report.ViolationCount != 4 {
+		t.Fatalf("profile composition bypass report = %#v", report)
+	}
+	for _, violation := range report.Violations {
+		if violation.Rule != "ARCH-004" || violation.Import != target {
+			t.Fatalf("profile composition violation = %#v", violation)
+		}
+	}
+	report, err = Evaluate(context.Background(), contract,
+		[]Package{{ImportPath: ModulePath + "/internal/command", Imports: []string{target}}}, testProvenance())
+	if err != nil || report.ViolationCount != 0 {
+		t.Fatalf("command profile import denied: report=%#v err=%v", report, err)
+	}
+}
+
 func TestEvaluateCancellationAndRecovery(t *testing.T) {
 	contract := loadContractFixture(t)
 	graph := loadGraphFixture(t, "valid", "allowed-graph.json")
