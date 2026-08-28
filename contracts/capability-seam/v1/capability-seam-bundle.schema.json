@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/capability-seam/v1/capability-seam-bundle.schema.json",
+  "title": "COH capability seam declaration bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "contract_version", "bundle_id", "revision",
+    "profile_digest", "definitions", "providers", "consumers"
+  ],
+  "properties": {
+    "schema_version": {"const": "coh.capability-seam-bundle/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "bundle_id": {"$ref": "#/$defs/token"},
+    "revision": {"type": "integer", "minimum": 1},
+    "profile_digest": {"$ref": "#/$defs/digest"},
+    "definitions": {
+      "type": "array", "minItems": 1, "maxItems": 1024,
+      "items": {"$ref": "#/$defs/definition"}
+    },
+    "providers": {
+      "type": "array", "minItems": 1, "maxItems": 1024,
+      "items": {"$ref": "#/$defs/provider"}
+    },
+    "consumers": {
+      "type": "array", "minItems": 1, "maxItems": 4096,
+      "items": {"$ref": "#/$defs/consumer"}
+    }
+  },
+  "$defs": {
+    "token": {
+      "type": "string", "minLength": 1, "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._:/+-]*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?([+][0-9A-Za-z.-]+)?$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "uuid7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "capability_ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"$ref": "#/$defs/token"},
+        "version": {"$ref": "#/$defs/semver"}
+      }
+    },
+    "owner": {
+      "type": "object", "additionalProperties": false,
+      "required": ["module", "artifact_digest"],
+      "properties": {
+        "module": {"$ref": "#/$defs/token"},
+        "artifact_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["organization_id", "tenant_id", "case_id", "environment"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid7"},
+        "tenant_id": {"$ref": "#/$defs/uuid7"},
+        "case_id": {
+          "oneOf": [{"$ref": "#/$defs/uuid7"}, {"type": "null"}]
+        },
+        "environment": {
+          "enum": ["native_workstation", "native_server", "compose", "test"]
+        }
+      }
+    },
+    "permission_set": {
+      "type": "array", "maxItems": 128, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/token"}
+    },
+    "dependency": {
+      "type": "object", "additionalProperties": false,
+      "required": ["capability", "kind"],
+      "properties": {
+        "capability": {"$ref": "#/$defs/capability_ref"},
+        "kind": {"enum": ["required", "optional"]}
+      }
+    },
+    "qualification": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "record_id", "record_digest", "provider_artifact_digest",
+        "profile_digest", "status", "issued_at", "expires_at",
+        "authority_revision", "revocation_revision"
+      ],
+      "properties": {
+        "record_id": {"$ref": "#/$defs/uuid7"},
+        "record_digest": {"$ref": "#/$defs/digest"},
+        "provider_artifact_digest": {"$ref": "#/$defs/digest"},
+        "profile_digest": {"$ref": "#/$defs/digest"},
+        "status": {"enum": ["qualified", "revoked"]},
+        "issued_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": "string", "format": "date-time"},
+        "authority_revision": {"type": "integer", "minimum": 1},
+        "revocation_revision": {"type": "integer", "minimum": 0}
+      }
+    },
+    "definition": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "capability", "owner", "authority_class", "replaceability",
+        "multiplicity", "lifecycle", "permissions", "dependencies"
+      ],
+      "properties": {
+        "capability": {"$ref": "#/$defs/capability_ref"},
+        "owner": {"$ref": "#/$defs/owner"},
+        "authority_class": {"enum": ["authority", "data_plane"]},
+        "replaceability": {"enum": ["non_replaceable", "qualified_provider"]},
+        "multiplicity": {"enum": ["exactly_one", "zero_or_one"]},
+        "lifecycle": {"enum": ["static", "restart_bound", "transactional"]},
+        "permissions": {"$ref": "#/$defs/permission_set"},
+        "dependencies": {
+          "type": "array", "maxItems": 128,
+          "items": {"$ref": "#/$defs/dependency"}
+        }
+      }
+    },
+    "provider": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "provider_id", "provider_version", "artifact_digest", "owner",
+        "capability", "scope", "permissions", "lifecycle",
+        "qualification", "broker_route"
+      ],
+      "properties": {
+        "provider_id": {"$ref": "#/$defs/token"},
+        "provider_version": {"$ref": "#/$defs/semver"},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "owner": {"$ref": "#/$defs/owner"},
+        "capability": {"$ref": "#/$defs/capability_ref"},
+        "scope": {"$ref": "#/$defs/scope"},
+        "permissions": {"$ref": "#/$defs/permission_set"},
+        "lifecycle": {"enum": ["static", "restart_bound", "transactional"]},
+        "qualification": {"$ref": "#/$defs/qualification"},
+        "broker_route": {"enum": ["not_applicable", "typed_intent"]}
+      }
+    },
+    "consumer": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "consumer_id", "owner", "capability", "scope",
+        "permissions", "access_mode"
+      ],
+      "properties": {
+        "consumer_id": {"$ref": "#/$defs/token"},
+        "owner": {"$ref": "#/$defs/owner"},
+        "capability": {"$ref": "#/$defs/capability_ref"},
+        "scope": {"$ref": "#/$defs/scope"},
+        "permissions": {"$ref": "#/$defs/permission_set"},
+        "access_mode": {"enum": ["broker_intent", "read_only_service"]}
+      }
+    }
+  }
+}

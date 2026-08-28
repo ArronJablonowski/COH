@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/capability-seam/v1/resolved-capability-graph.schema.json",
+  "title": "COH resolved capability graph v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "contract_version", "bundle_digest", "profile_digest",
+    "revision", "definition_nodes", "provider_nodes", "consumer_nodes",
+    "dependency_edges", "consumer_edges", "resolution_order", "graph_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "coh.resolved-capability-graph/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "bundle_digest": {"$ref": "#/$defs/digest"},
+    "profile_digest": {"$ref": "#/$defs/digest"},
+    "revision": {"type": "integer", "minimum": 1},
+    "definition_nodes": {
+      "type": "array", "minItems": 1, "maxItems": 1024, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/capability_node"}
+    },
+    "provider_nodes": {
+      "type": "array", "minItems": 1, "maxItems": 1024, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/provider_node"}
+    },
+    "consumer_nodes": {
+      "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/consumer_node"}
+    },
+    "dependency_edges": {
+      "type": "array", "maxItems": 131072, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/dependency_edge"}
+    },
+    "consumer_edges": {
+      "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/consumer_edge"}
+    },
+    "resolution_order": {
+      "type": "array", "minItems": 1, "maxItems": 1024, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/token"}
+    },
+    "graph_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "token": {
+      "type": "string", "minLength": 1, "maxLength": 256,
+      "pattern": "^[a-z0-9][a-z0-9._:/+@-]*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "capability_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_id", "declaration_digest", "non_replaceable"],
+      "properties": {
+        "node_id": {"$ref": "#/$defs/token"},
+        "declaration_digest": {"$ref": "#/$defs/digest"},
+        "non_replaceable": {"type": "boolean"}
+      }
+    },
+    "provider_node": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "node_id", "capability_node_id", "declaration_digest",
+        "qualification_digest", "scope_digest", "permission_digest"
+      ],
+      "properties": {
+        "node_id": {"$ref": "#/$defs/token"},
+        "capability_node_id": {"$ref": "#/$defs/token"},
+        "declaration_digest": {"$ref": "#/$defs/digest"},
+        "qualification_digest": {"$ref": "#/$defs/digest"},
+        "scope_digest": {"$ref": "#/$defs/digest"},
+        "permission_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "consumer_node": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "node_id", "declaration_digest", "scope_digest", "permission_digest"
+      ],
+      "properties": {
+        "node_id": {"$ref": "#/$defs/token"},
+        "declaration_digest": {"$ref": "#/$defs/digest"},
+        "scope_digest": {"$ref": "#/$defs/digest"},
+        "permission_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "dependency_edge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["from", "to", "kind"],
+      "properties": {
+        "from": {"$ref": "#/$defs/token"},
+        "to": {"$ref": "#/$defs/token"},
+        "kind": {"enum": ["required", "optional"]}
+      }
+    },
+    "consumer_edge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["consumer", "capability", "provider", "access_mode"],
+      "properties": {
+        "consumer": {"$ref": "#/$defs/token"},
+        "capability": {"$ref": "#/$defs/token"},
+        "provider": {"$ref": "#/$defs/token"},
+        "access_mode": {"enum": ["broker_intent", "read_only_service"]}
+      }
+    }
+  }
+}
