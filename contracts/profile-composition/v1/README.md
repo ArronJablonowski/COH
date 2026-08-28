@@ -22,6 +22,8 @@ policy authority, or action authority.
 | `signed-profile-layer.schema.json` | Canonical layer payload, exact targets, bounded contributions, lineage, rollback binding, and publisher/reviewer signatures |
 | `resolved-profile.schema.json` | Exact target, ordered qualified layer bindings, effective narrowed settings, capability-graph digest, and composition digest |
 | `profile-inspection.schema.json` | One redacted Web/CLI/API-safe projection of lineage, graph nodes/edges, qualifications, limits, feature states, and digests |
+| `fixtures/layer.signed.valid.json` | Deterministically signed native-workstation baseline layer |
+| `fixtures/denial-corpus.json` | Executable strict-decoding, signature, trust, revocation, secret-field, ordering, and cancellation denials |
 
 All objects are schema-closed. Readers also reject duplicate JSON names,
 trailing values, invalid UTF-8, excessive size/depth, unsorted set-like arrays,

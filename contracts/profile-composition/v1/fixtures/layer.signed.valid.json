@@ -1,0 +1,69 @@
+{
+  "schema_version": "coh.signed-profile-layer/v1",
+  "contract_version": "1.0.0",
+  "layer": {
+    "schema_version": "coh.profile-layer/v1",
+    "contract_version": "1.0.0",
+    "layer_id": "018f0000-0000-7000-8000-000000000100",
+    "name": "baseline.native-workstation",
+    "kind": "baseline",
+    "revision": 1,
+    "precedence": 0,
+    "predecessor_digest": "",
+    "rollback_authorization_digest": "",
+    "target": {
+      "deployment_kinds": ["native_workstation"],
+      "connectivity_modes": ["connected"],
+      "platforms": ["darwin_arm64"],
+      "surfaces": ["api", "cli", "headless", "test", "web"]
+    },
+    "parents": [],
+    "contribution": {
+      "deployment_profile": {"id": "deployment.native-workstation-connected", "revision": 1, "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"},
+      "capability_bundles": [{"id": "capabilities.core", "revision": 1, "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"}],
+      "policy_bundles": [{"id": "policy.core", "revision": 1, "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"}],
+      "endpoint_references": ["provider.primary"],
+      "permissions": ["evidence.read", "model.infer", "tool.intent.submit"],
+      "limits": {
+        "max_concurrency": 8,
+        "max_context_bytes": 1048576,
+        "max_duration_ms": 300000,
+        "max_evidence_bytes": 16777216,
+        "max_model_tokens": 131072,
+        "max_tool_calls": 64
+      },
+      "features": {
+        "external_connectivity": true,
+        "extension_lifecycle": false,
+        "model_inference": true,
+        "retrieval": true,
+        "tool_dispatch": true
+      },
+      "offline_bundle_digest": ""
+    },
+    "issued_at": "2026-08-28T00:00:00Z",
+    "not_before": "2026-08-28T00:00:00Z",
+    "expires_at": "2027-08-28T00:00:00Z"
+  },
+  "layer_digest": "sha256:33dcf281e69b68327019404a0b3fcd6bf4be7c4729ce4040db50faa66c2bd0b1",
+  "signatures": [
+    {
+      "role": "publisher",
+      "signer_id": "018f0000-0000-7000-8000-000000000001",
+      "key_id": "profile.publisher",
+      "key_revision": 1,
+      "algorithm": "ed25519",
+      "signed_at": "2026-08-28T00:00:00Z",
+      "signature": "-I8f_yMFsvkRHNL9ZZMczrHCrnMeFpezvKSgto4NBHqNMWGC4sTnThDO267gMTkSsG69uIItLms_DSMvB-aDBA"
+    },
+    {
+      "role": "reviewer",
+      "signer_id": "018f0000-0000-7000-8000-000000000002",
+      "key_id": "profile.reviewer",
+      "key_revision": 1,
+      "algorithm": "ed25519",
+      "signed_at": "2026-08-28T00:00:00Z",
+      "signature": "JbqjbWWUpJjGF7d7Cmj8TCZuqZai6RZh1_CzTsAjeMgYIeiOUZK7m9GutZ2whkBBnje0DdtrIvKBjzxhI1RwCg"
+    }
+  ]
+}

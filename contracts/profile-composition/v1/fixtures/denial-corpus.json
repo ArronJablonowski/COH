@@ -1,0 +1,21 @@
+{
+  "schema_version": "coh.profile-composition-denial-corpus/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"name": "duplicate_json_member", "mutation": "duplicate-root-schema-version", "expected_code": "invalid_input", "reason": "document_decoding"},
+    {"name": "unknown_member", "mutation": "add-root-member", "expected_code": "invalid_input", "reason": "document_decoding"},
+    {"name": "missing_member", "mutation": "remove-layer-name", "expected_code": "invalid_input", "reason": "document_shape"},
+    {"name": "unsupported_contract", "mutation": "change-contract-version", "expected_code": "unsupported", "reason": "unsupported_contract"},
+    {"name": "layer_digest_tamper", "mutation": "change-layer-name", "expected_code": "denied", "reason": "layer_digest_mismatch"},
+    {"name": "signature_tamper", "mutation": "change-signature-byte", "expected_code": "denied", "reason": "signature_invalid"},
+    {"name": "unsigned_layer", "mutation": "remove-signatures", "expected_code": "invalid_input", "reason": "document_shape"},
+    {"name": "reviewer_missing", "mutation": "remove-reviewer", "expected_code": "denied", "reason": "signature_set"},
+    {"name": "untrusted_signer", "mutation": "remove-trust-record", "expected_code": "denied", "reason": "signer_untrusted"},
+    {"name": "revoked_signer", "mutation": "revoke-reviewer", "expected_code": "denied", "reason": "signer_revoked"},
+    {"name": "stale_trust_snapshot", "mutation": "expire-trust-snapshot", "expected_code": "denied", "reason": "trust_snapshot"},
+    {"name": "unsorted_target", "mutation": "reverse-surfaces", "expected_code": "invalid_input", "reason": "target"},
+    {"name": "duplicate_artifact", "mutation": "duplicate-capability-ref", "expected_code": "invalid_input", "reason": "contribution"},
+    {"name": "secret_bearing_member", "mutation": "add-secret-value", "expected_code": "invalid_input", "reason": "document_decoding"},
+    {"name": "canceled_context", "mutation": "cancel-before-decode", "expected_code": "canceled", "reason": "context_canceled"}
+  ]
+}
