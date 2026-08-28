@@ -1,6 +1,8 @@
 # package target
 ./internal/connector/splunkparser FuzzParseNeverPanics
 ./internal/domain/capabilityseam FuzzCapabilitySeamDecodersRecoverAcceptedDocuments
+./internal/domain/extensionlifecycle FuzzDecodeLifecycleDocumentsNeverPanic
+./internal/domain/extensionlifecycle FuzzDecodeLifecycleTransitionRoundTrip
 ./internal/domain/normalizedevent FuzzDecodeNeverAcceptsChangedCanonicalFixture
 ./internal/domain/profileactivation FuzzProfileActivationDecodersRecoverAcceptedRecords
 ./internal/domain/profilecomposition FuzzProfileLayerDecoderAndVerifierRecoverAcceptedDocuments
