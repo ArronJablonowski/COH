@@ -65,6 +65,35 @@ func TestProfileCompositionClosesCapabilityGraphDeterministically(t *testing.T) 
 		!slices.Equal(replay.CanonicalBytes(), resolved.CanonicalBytes()) {
 		t.Fatalf("replay=%s graph=%s err=%v", replay.Digest(), replayGraph.Digest(), err)
 	}
+	inspection, err := prepared.Inspect(context.Background(), resolved, graph)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayedInspection, err := prepared.Inspect(context.Background(), replay, replayGraph)
+	if err != nil || inspection.Digest() != replayedInspection.Digest() ||
+		!slices.Equal(inspection.CanonicalBytes(), replayedInspection.CanonicalBytes()) {
+		t.Fatalf("inspection replay digest=%s err=%v", replayedInspection.Digest(), err)
+	}
+	inspectionValue := inspection.Value()
+	if inspectionValue.CompositionDigest != resolved.Digest() ||
+		inspectionValue.CapabilityGraphDigest != graph.Digest() ||
+		len(inspectionValue.Definitions) != len(bundle.Value().Definitions) ||
+		len(inspectionValue.Providers) != len(bundle.Value().Providers) ||
+		len(inspectionValue.Consumers) != len(bundle.Value().Consumers) ||
+		len(inspectionValue.Limits) != 6 || len(inspectionValue.FeatureStates) != 5 {
+		t.Fatalf("inspection=%+v", inspectionValue)
+	}
+	output := string(inspection.CanonicalBytes())
+	for _, forbidden := range []string{
+		"provider.primary", "018f0000-0000-7000-8000-000000000001",
+		"018f0000-0000-7000-8000-000000000002", "018f0000-0000-7000-8000-000000000003",
+		`"endpoint_references"`, `"permissions"`, `"issued_at"`, `"expires_at"`,
+		`"broker_route"`, `"prompt"`, `"raw_evidence"`, `"private_path"`,
+	} {
+		if strings.Contains(output, forbidden) {
+			t.Fatalf("inspection exposed forbidden value %q: %s", forbidden, output)
+		}
+	}
 }
 
 func TestProfileCompositionRejectsMissingCapabilityArtifact(t *testing.T) {

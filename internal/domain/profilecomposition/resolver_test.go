@@ -37,6 +37,11 @@ func TestPrepareDeterministicallyOrdersAndNarrowsLayers(t *testing.T) {
 		!slices.Equal(left.state.permissions, []string{"evidence.read", "model.infer"}) {
 		t.Fatalf("narrowed state=%+v", left.state)
 	}
+	sources := left.ValueSourceDigests()
+	if sources.Limits[0] != overlay.LayerDigest() || sources.Limits[1] != baseline.LayerDigest() ||
+		sources.Features[4] != overlay.LayerDigest() || sources.Features[0] != baseline.LayerDigest() {
+		t.Fatalf("value source digests=%+v", sources)
+	}
 	copyRefs := left.CapabilityReferences()
 	copyRefs[0].ID = "changed"
 	if left.CapabilityReferences()[0].ID != "capabilities.core" {

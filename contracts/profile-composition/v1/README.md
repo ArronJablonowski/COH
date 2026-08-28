@@ -112,6 +112,8 @@ The inspection digest uses the same rule with domain
 derived view, never an input. It lists stable IDs, versions, owner module names,
 qualification state, graph edges, effective limits/feature states, layer and
 signature-set digests, trust/revocation revisions, profile binding, and final digests.
+Graph node IDs, module paths, access modes, and full SemVer values are preserved
+exactly; the projection never rewrites an identifier to make it displayable.
 
 There is no field for credentials, secret values, raw evidence, prompt content,
 private paths, endpoints, raw configuration, signatures, public keys, executable

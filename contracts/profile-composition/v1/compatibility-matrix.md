@@ -15,6 +15,7 @@
 | Unknown schema, contract version, member, layer kind, target, feature, limit, or merge row | Deny | Readers never guess semantics |
 | Duplicate JSON member, logical identity, signer, bundle ref, permission, endpoint, or ordering identity | Deny | Ambiguity cannot gain identity |
 | Same logical layers in a different input order | Emit byte-identical resolved and inspection records | Total order is data-derived |
+| Valid graph IDs, module paths, access modes, and SemVer prerelease/build values | Preserve exact values in inspection | Redaction never aliases or rewrites identity |
 | Missing baseline, multiple baselines, missing parent, parent mismatch, or cycle | Deny with no partial profile | Layer graph must be closed and acyclic |
 | Unsigned, invalid, expired, untrusted, or revoked signer | Deny | Provenance must be current |
 | Added endpoint/permission, raised limit, or false-to-true feature | Deny | Overlays only narrow |
