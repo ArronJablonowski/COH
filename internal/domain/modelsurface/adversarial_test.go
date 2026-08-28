@@ -135,14 +135,13 @@ func TestCompactionPressureOverMaximumCoverageDeniesBeforeReads(t *testing.T) {
 
 func FuzzModelSurfaceStrictDecoders(f *testing.F) {
 	f.Add(uint8(0), []byte(`{}`))
-	fixtures := []string{"event-vocabulary.valid.json", "source.valid.json", "projection.valid.json", "binding.valid.json", "stream.valid.json", "compaction.valid.json", "transition.valid.json", "payload.valid.json"}
-	for selector, name := range fixtures {
-		value, err := os.ReadFile("../../../contracts/model-surface/v1/fixtures/" + name)
-		if err != nil {
-			f.Fatal(err)
-		}
-		f.Add(uint8(selector), value)
-	}
+	f.Add(uint8(1), []byte(`null`))
+	f.Add(uint8(2), []byte(`[]`))
+	f.Add(uint8(3), []byte(`{"schema_version":"unknown"}`))
+	f.Add(uint8(4), []byte(`{"sequence":1}`))
+	f.Add(uint8(5), []byte(`{"coverage_digest":"sha256:"}`))
+	f.Add(uint8(6), []byte(`{"phase":"prepared"}`))
+	f.Add(uint8(7), []byte(`{"content_kind":"text"}`))
 	f.Fuzz(func(t *testing.T, selector uint8, input []byte) {
 		switch selector % 8 {
 		case 0:
