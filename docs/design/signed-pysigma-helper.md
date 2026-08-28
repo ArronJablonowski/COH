@@ -263,6 +263,16 @@ artifact, qualification, mapping/schema freshness, policy, revocation, E-stop,
 and prior audit proof. Changed reuse conflicts. Revocation or expiry prevents
 retained results from progressing to native validation without restart.
 
+The native adapter re-verifies the signed manifest and qualified runtime
+attestation before every invocation. Its trust port must resolve current
+production publisher and qualification authority; deterministic keys used by
+tests are fixtures only and cannot authorize a release. The broker-owned runner
+must echo the manifest, artifact, operation, action tier, exact backend, mapping
+identifier, and mapping revision. Any drift, stderr, truncation, oversized
+output, malformed response, timeout, or cancellation withholds the result and
+returns only a typed error. A later independent request may recover after a
+cancellation; the adapter retains no guessed completion state.
+
 ## Native-validation handoff
 
 Every `compiled_untrusted` result carries the exact native language and the

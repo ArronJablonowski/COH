@@ -12,6 +12,9 @@ for path in \
   "${package}/canonical.go" \
   "${package}/contract.go" \
   "${package}/contract_test.go" \
+  "${package}/native_helper.go" \
+  "${package}/native_helper_test.go" \
+  "${package}/native_tool.go" \
   "${package}/public_contract_test.go" \
   "${contract}/README.md" \
   "${contract}/compatibility-matrix.md" \
@@ -132,4 +135,4 @@ cd "${root}"
 "${root}/scripts/check_markdown_links.sh" "${design}" "${contract}/README.md" "${contract}/compatibility-matrix.md"
 /usr/bin/git diff --check
 
-echo "pySigma-contract summary: issue=CYB-105 contract=v1 profile=sigma-2.1-basic mapping=explicit-one-to-one targets=three-candidate+security-onion-unavailable output=compiled-untrusted identity=exact attestation=closed provenance=digest-bound traces=redacted denials=machine-checkable failures=0"
+echo "pySigma-contract summary: issue=CYB-105 contract=v1 profile=sigma-2.1-basic mapping=explicit-one-to-one targets=three-candidate+security-onion-unavailable output=compiled-untrusted identity=exact attestation=closed signed-manifest=per-use runtime-qualification=per-use native-provenance=echo-bound cancellation=typed provenance=digest-bound traces=redacted denials=machine-checkable failures=0"
