@@ -28,6 +28,8 @@ const (
 	projectionDigestDomain  = "COH-MODEL-SURFACE-PROJECTION-V1\x00"
 	bindingDigestDomain     = "COH-INFERENCE-SURFACE-BINDING-V1\x00"
 	streamDigestDomain      = "COH-MODEL-SURFACE-STREAM-V1\x00"
+	streamChunkDigestDomain = "COH-MODEL-SURFACE-CHUNK-V1\x00"
+	assembledDigestDomain   = "COH-MODEL-SURFACE-ASSEMBLED-V1\x00"
 	coverageDigestDomain    = "COH-MODEL-SURFACE-COVERAGE-V1\x00"
 	replacementDigestDomain = "COH-MODEL-SURFACE-COMPACTION-V1\x00"
 	transitionDigestDomain  = "COH-MODEL-SURFACE-TRANSITION-V1\x00"

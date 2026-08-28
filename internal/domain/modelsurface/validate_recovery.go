@@ -7,15 +7,14 @@ func validateStream(value StreamEvent) error {
 	if !validUUID7(value.RequestID) || !validUUID7(value.AttemptID) || !validDigest(value.BindingDigest) ||
 		!validDigest(value.ProjectionDigest) || !validDigest(value.InputSurfaceDigest) || value.Sequence == 0 ||
 		value.Sequence > MaximumRevision || !oneOf(value.Kind, "started", "chunk", "item", "terminal") ||
-		!sortedUniqueStrings(value.SourceRecordIDs, MaximumItems, validUUID7) || !validOptionalDigest(value.ChunkDigest) ||
+		len(value.SourceRecordIDs) == 0 || !sortedUniqueStrings(value.SourceRecordIDs, MaximumItems, validUUID7) || !validOptionalDigest(value.ChunkDigest) ||
 		!validOptionalDigest(value.AssembledDigest) ||
 		!oneOf(value.Outcome, "pending", "succeeded", "empty", "interrupted", "canceled", "timeout", "failed", "uncertain") ||
 		!validTimestamp(value.ObservedAt) {
 		return newError(InvalidInput, "stream_event")
 	}
 	if value.Kind != "terminal" && (value.Outcome != "pending" || value.AssembledDigest != "") ||
-		value.Kind == "terminal" && value.Outcome == "pending" ||
-		value.Kind == "terminal" && oneOf(value.Outcome, "succeeded", "empty") && value.AssembledDigest == "" {
+		value.Kind == "terminal" && (value.Outcome == "pending" || value.AssembledDigest == "") {
 		return newError(Denied, "stream_outcome")
 	}
 	if value.Kind == "started" && value.ChunkDigest != "" ||

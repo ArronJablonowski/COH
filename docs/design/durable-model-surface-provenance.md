@@ -59,6 +59,19 @@ binding, and then runs the provider contract decoder. Production dispatch uses
 `provider.SurfaceGateway`, whose input type is the opaque admitted inference;
 vendor adapters remain low-level translation boundaries.
 
+Each provider attempt owns a serialized stream session. The session starts with
+the complete input source set; every chunk or typed item carries a nonempty
+subset, a domain-separated content digest, and a contiguous sequence. A
+terminal record always names an explicit outcome and seals the exact assembled
+bytes—including the empty byte sequence or partial bytes from an interrupted
+attempt. State advances only after the durable event writer succeeds.
+
+Fallback is a new attempt and a new provider binding. It is permitted only from
+an explicitly failed primary terminal record, with the same request, scope,
+run, actor, projection, ordered sources, artifact set, composition, vocabulary,
+and input-surface digest. Cancellation, timeout, interruption, uncertainty, and
+denial therefore cannot silently become fallback.
+
 ## Invariants
 
 1. Every visible item has exactly one durable source record and immutable
