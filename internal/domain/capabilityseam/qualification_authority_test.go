@@ -34,7 +34,7 @@ func TestQualificationAuthorityFailsClosed(t *testing.T) {
 			value := authorityFor(bundle)
 			value.ProfileDigest = digestOf("9")
 			return value
-		}, "qualification_authority_stale"},
+		}, "composition_authority_stale"},
 		{"record_missing", decodeFixtureBundle, func(bundle ValidatedBundle) QualificationAuthoritySnapshot {
 			value := authorityFor(bundle)
 			value.Records = nil

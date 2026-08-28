@@ -156,6 +156,7 @@ func authorityFor(bundle ValidatedBundle) QualificationAuthoritySnapshot {
 			RevocationRevision: provider.Qualification.RevocationRevision, Active: provider.Qualification.Status == "qualified",
 		}
 	}
-	return QualificationAuthoritySnapshot{ProfileDigest: value.ProfileDigest, Revision: 1,
+	return QualificationAuthoritySnapshot{BundleDigest: bundle.Digest(), CompositionRevision: value.Revision,
+		ProfileDigest: value.ProfileDigest, Revision: 1,
 		ObservedAt: qualificationTestTime.Add(-time.Minute), ValidUntil: qualificationTestTime.Add(time.Minute), Records: records}
 }

@@ -73,6 +73,7 @@ the graph.
 
 Resolution also requires a live, maximum-five-minute trusted registry snapshot
 from the composition root. For every selected provider it binds the exact
+bundle digest and composition revision, plus the exact
 provider identity/version/artifact, capability identity/version, qualification
 record ID/digest and validity interval, profile digest, registry revision,
 qualification-authority revision, current revocation revision, and active
@@ -80,6 +81,11 @@ state. The snapshot contains no executable authority and is not accepted from
 JSON, a profile, a provider, an extension, or model-visible data. Missing,
 extra, duplicate, reordered, expired, inactive, revoked, or drifted records
 deny the complete graph.
+
+A prior bundle cannot be replayed under a newer composition snapshot. Rollback
+requires the trusted control plane to make the exact prior bundle digest and
+revision current again through its separately signed rollback process; the
+resolver then repeats every current qualification and revocation check.
 
 A consumer names one capability, scope, permission subset, and access mode.
 The consumer scope and permissions must be no wider than both the definition

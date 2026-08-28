@@ -65,7 +65,8 @@ revision, but it is resolved again under current revocation and policy state.
 
 Qualification admission uses a trusted composition-root clock and a bounded
 live registry snapshot. The snapshot is exact, ordered, maximum five minutes
-old, and binds each selected provider and qualification tuple to current
+old, binds the exact bundle digest and composition revision, and binds each
+selected provider and qualification tuple to current
 registry and revocation revisions. It is an ephemeral metadata input to graph
 resolution, not a serializable capability, approval, execution lease, or
 action authority. The resulting graph therefore proves composition only; all

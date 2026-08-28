@@ -17,7 +17,7 @@
 | Data-plane provider requests direct execution access | Deny | Submit a typed broker intent |
 | Live security-critical composition change | Deny | Enter a quiescent maintenance transition and fully revalidate |
 | Restart with only a serialized resolved graph | Deny | Rebuild from signed durable declarations and profile |
-| Rollback to an older but trusted revision | Deny by default | Explicit signed rollback lineage, current policy, revocation checks, audit, and re-resolution |
+| Rollback to an older but trusted revision | Newer live composition snapshot denies the old digest/revision | Explicit signed rollback lineage makes the exact old digest/revision current, then repeats policy, revocation, audit, and resolution |
 
 No row permits an old reader to reinterpret unknown data, an input document to
 widen compiled authority, or a provider registration to grant action authority.

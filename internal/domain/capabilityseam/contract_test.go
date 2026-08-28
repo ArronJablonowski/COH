@@ -129,7 +129,7 @@ func TestDecodeHonorsContext(t *testing.T) {
 	}
 }
 
-func readFixture(t *testing.T, name string) []byte {
+func readFixture(t testing.TB, name string) []byte {
 	t.Helper()
 	value, err := os.ReadFile(fixtureRoot + name)
 	if err != nil {

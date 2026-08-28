@@ -61,7 +61,7 @@ func (resolver *Resolver) Resolve(ctx context.Context, bundle ValidatedBundle,
 	if err := validateResolutionBindings(value, definitions, selected); err != nil {
 		return ValidatedGraph{}, err
 	}
-	if err := validateQualificationAuthority(resolver.clock.Now(), value, selected, authority); err != nil {
+	if err := validateQualificationAuthority(resolver.clock.Now(), value, bundle.Digest(), selected, authority); err != nil {
 		return ValidatedGraph{}, err
 	}
 

@@ -1,5 +1,6 @@
 # package target
 ./internal/connector/splunkparser FuzzParseNeverPanics
+./internal/domain/capabilityseam FuzzCapabilitySeamDecodersRecoverAcceptedDocuments
 ./internal/domain/normalizedevent FuzzDecodeNeverAcceptsChangedCanonicalFixture
 ./internal/domain/queryconnector FuzzQueryDecoderRecoversAcceptedDocuments
 ./internal/domain/temporaltime FuzzDecodeCommandRoundTrip

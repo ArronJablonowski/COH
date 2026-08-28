@@ -27,11 +27,13 @@ func NewResolver(clock Clock) (*Resolver, error) {
 // QualificationAuthoritySnapshot is trusted live registry state, not a public
 // JSON contract. It contains identity and digest metadata only.
 type QualificationAuthoritySnapshot struct {
-	ProfileDigest string
-	Revision      uint64
-	ObservedAt    time.Time
-	ValidUntil    time.Time
-	Records       []QualificationAuthorityRecord
+	BundleDigest        string
+	CompositionRevision uint64
+	ProfileDigest       string
+	Revision            uint64
+	ObservedAt          time.Time
+	ValidUntil          time.Time
+	Records             []QualificationAuthorityRecord
 }
 
 type QualificationAuthorityRecord struct {
@@ -50,11 +52,15 @@ type QualificationAuthorityRecord struct {
 	Active                 bool
 }
 
-func validateQualificationAuthority(now time.Time, bundle Bundle, selected map[string]Provider,
+func validateQualificationAuthority(now time.Time, bundle Bundle, bundleDigest string, selected map[string]Provider,
 	authority QualificationAuthoritySnapshot) error {
 	now = now.UTC()
-	if now.IsZero() || !validDigest(authority.ProfileDigest) || authority.ProfileDigest != bundle.ProfileDigest ||
-		authority.Revision == 0 || authority.ObservedAt.IsZero() || authority.ValidUntil.IsZero() ||
+	if !validDigest(authority.BundleDigest) || authority.BundleDigest != bundleDigest ||
+		authority.CompositionRevision != bundle.Revision || !validDigest(authority.ProfileDigest) ||
+		authority.ProfileDigest != bundle.ProfileDigest {
+		return newError(Denied, "composition_authority_stale")
+	}
+	if now.IsZero() || authority.Revision == 0 || authority.ObservedAt.IsZero() || authority.ValidUntil.IsZero() ||
 		authority.ObservedAt.Location() != time.UTC || authority.ValidUntil.Location() != time.UTC ||
 		authority.ValidUntil.Sub(authority.ObservedAt) <= 0 ||
 		authority.ValidUntil.Sub(authority.ObservedAt) > maximumAuthorityValidity ||

@@ -42,6 +42,26 @@ import _ "github.com/ArronJablonowski/COH/internal/connector"
 	}
 }
 
+func TestSourceScanCatchesInactiveCapabilityCompositionBypass(t *testing.T) {
+	root := newWorkspace(t)
+	writeTestFile(t, root, "internal/workflow/workflow.go", "package workflow\n")
+	writeTestFile(t, root, "internal/workflow/bypass_windows.go", `//go:build windows
+
+package workflow
+
+import _ "github.com/ArronJablonowski/COH/internal/domain/capabilityseam"
+`)
+	packages, err := ScanSourcePackages(context.Background(), root, ModulePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := Evaluate(context.Background(), loadContractFixture(t), packages, testProvenance())
+	assertErrorCode(t, err, CodeDenied)
+	if report.ViolationCount != 1 || report.Violations[0].Rule != "ARCH-003" {
+		t.Fatalf("inactive composition bypass report = %#v", report)
+	}
+}
+
 func TestSourceDigestBindsFileContent(t *testing.T) {
 	root := newWorkspace(t)
 	path := "internal/domain/domain.go"
