@@ -327,6 +327,25 @@ func (projector *Projector) Project(ctx context.Context, request ProjectionReque
 	return ProjectedSurface{projection: validated.Value(), projectionBytes: validated.CanonicalBytes(), items: cloneVisibleItems(visible)}, nil
 }
 
+// Reproject re-resolves every immutable input named by a durable projection
+// and requires byte-identical projection and surface digests.
+func (projector *Projector) Reproject(ctx context.Context, expected Projection) (ProjectedSurface, error) {
+	references := make([]SourceReference, len(expected.OrderedItems))
+	for index, item := range expected.OrderedItems {
+		references[index] = SourceReference{SourceRecordID: item.SourceRecordID, RecordRevision: item.SourceRevision, SourceDigest: item.SourceDigest}
+	}
+	actual, err := projector.Project(ctx, ProjectionRequest{ProjectionID: expected.ProjectionID, Scope: expected.Scope,
+		RunID: expected.RunID, VocabularyDigest: expected.VocabularyDigest, CompositionDigest: expected.CompositionDigest,
+		Sources: references, CreatedAt: expected.CreatedAt})
+	if err != nil {
+		return ProjectedSurface{}, err
+	}
+	if actual.Projection().ProjectionDigest != expected.ProjectionDigest || actual.Projection().SurfaceDigest != expected.SurfaceDigest {
+		return ProjectedSurface{}, newError(Denied, "reprojection_drift")
+	}
+	return actual, nil
+}
+
 func projectionTrustAllowed(source Source, payload SurfacePayload) bool {
 	switch source.InstructionDisposition {
 	case "untrusted_data_only":

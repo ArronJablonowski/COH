@@ -82,6 +82,17 @@ artifact must be immutable and decode as a data-role
 `compaction_replacement` surface payload before the coverage and replacement
 digests are sealed.
 
+Recovery is an append-only, digest-linked transition chain updated with atomic
+compare-and-swap. Exact prepare replay is idempotent; changed replay and stale
+writers are denied. Before any transition is persisted or resumed, COH reloads
+the sealed projection, binding, and stream cursor and reprojects every source
+and artifact through the normal resolver. A crash in `prepared` resumes
+verification, `verified` may dispatch, `dispatched` becomes uncertain rather
+than being invoked twice, `streaming` resumes from the durable cursor, and a
+terminal state is complete. Forks require a distinct request and attempt with
+an explicit terminal parent. Provider fallback requires a failed terminal
+parent, a distinct provider/attempt, and identical input lineage.
+
 ## Invariants
 
 1. Every visible item has exactly one durable source record and immutable

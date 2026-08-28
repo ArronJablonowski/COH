@@ -75,6 +75,25 @@ func TestProjectorCoversAllRulesAndProducesOneDeterministicSurface(t *testing.T)
 	}
 }
 
+func TestProjectorReplaysExactImmutableInputsAndDeniesDrift(t *testing.T) {
+	fixture := newProjectionFixture(t)
+	original, err := fixture.projector.Project(context.Background(), fixture.request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayed, err := fixture.projector.Reproject(context.Background(), original.Projection())
+	if err != nil || !bytes.Equal(replayed.ProjectionBytes(), original.ProjectionBytes()) {
+		t.Fatalf("replay err=%v", err)
+	}
+	value := fixture.contentStore.values[fixture.sources[2].Content.Digest]
+	value.Bytes = append([]byte(nil), value.Bytes...)
+	value.Bytes[len(value.Bytes)-2] ^= 1
+	fixture.contentStore.values[fixture.sources[2].Content.Digest] = value
+	if _, err := fixture.projector.Reproject(context.Background(), original.Projection()); err == nil {
+		t.Fatal("changed replay was admitted")
+	}
+}
+
 func TestProjectorDeniesNoncanonicalOrderPayloadDriftAndUntrustedInstructions(t *testing.T) {
 	tests := []struct {
 		name   string
