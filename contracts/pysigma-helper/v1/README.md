@@ -21,6 +21,15 @@ digest-only authority chain. `denial-corpus.schema.json` and
 `redacted-trace.schema.json` publish machine-checkable failure coverage without
 revealing source YAML, native queries, field names, paths, or credentials.
 
+The Go handoff keeps every successful helper response in
+`compiled_untrusted`. It rebinds the exact mapping to the current discovered
+schema before routing query text to exactly one validator identity:
+`elastic-esql-1.0.0`, `splunk-parser-1.0.0+native-preflight`, or
+`kusto-language-12.4.1-coh-1.0.0`. Only a self-digested, query-free
+`native_validated` receipt may cross back. CYB-102 owns the concrete adapters
+to those parsers; schema drift or an unsupported conversion invokes none of
+them and releases no native query.
+
 All schemas are JSON Schema 2020-12 and closed at every object boundary. The Go
 decoder additionally rejects duplicate keys, trailing documents, noncanonical
 timestamps, unsorted sets, ambiguous field maps, self-digest mismatch, backend
