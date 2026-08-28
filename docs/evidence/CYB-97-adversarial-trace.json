@@ -1,0 +1,46 @@
+{
+  "schema_version": "coh.sentinel-discovery-conformance/v1",
+  "contract_version": "1.0.0",
+  "issue": "CYB-97",
+  "stable_key": "COH-E14-04",
+  "requirements": ["FR-045", "FR-046", "SEC-013"],
+  "outcome": "passed",
+  "implementation_baseline": "8633fa0350fa25ee1e6e910504e8023c61a17980",
+  "compatibility": {
+    "deployment": "azure_public",
+    "endpoint": "https://api.loganalytics.azure.com",
+    "api_version": "v1",
+    "oauth_audience": "https://api.loganalytics.io/.default",
+    "sovereign_private_custom_endpoints": "unsupported",
+    "live_qualification_required": true
+  },
+  "coverage": {
+    "typed_vendor_operations": 1,
+    "denial_corpus_cases": 14,
+    "recorded_vendor_cases": 4,
+    "concurrent_discovery_callers": 16,
+    "maximum_metadata_bytes": 1048576,
+    "maximum_metadata_tables": 1000,
+    "maximum_metadata_columns": 10000,
+    "maximum_schema_entries_per_page": 256,
+    "qualification_lifetime_seconds": 600
+  },
+  "capability": {
+    "read_only": true,
+    "schema_discovery": true,
+    "validation_fail_closed": true,
+    "polling": false,
+    "paging": false,
+    "cancellation": false,
+    "statistics": false
+  },
+  "credential_exposed": false,
+  "bearer_exposed": false,
+  "tenant_secret_exposed": false,
+  "workspace_url_exposed": false,
+  "native_text_exposed": false,
+  "result_row_exposed": false,
+  "vendor_body_exposed": false,
+  "hidden_partial_success": false,
+  "blocking_findings": []
+}

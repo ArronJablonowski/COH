@@ -119,6 +119,30 @@ func TestContractFilesAreBoundedStrictAndSecretFree(t *testing.T) {
 	}
 }
 
+func TestDenialCorpusReferencesExecutableTests(t *testing.T) {
+	corpus, err := DecodeDenialCorpus(readFixture(t, "denial-corpus.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths, err := filepath.Glob("*_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var source strings.Builder
+	for _, path := range paths {
+		input, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		source.Write(input)
+	}
+	for _, item := range corpus.Cases {
+		if !strings.Contains(source.String(), "func "+item.CoveredBy+"(") {
+			t.Errorf("denial %s references missing %s", item.Class, item.CoveredBy)
+		}
+	}
+}
+
 func readFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	input, err := os.ReadFile(filepath.Join(contractRoot, "fixtures", name))
