@@ -4,6 +4,7 @@ package kustovalidator
 
 import (
 	"context"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
@@ -34,13 +35,56 @@ const (
 // credentialless projection may cross into the helper process.
 type ValidateRequest struct {
 	Query                   queryconnector.Query
-	Schema                  []queryconnector.SchemaEntry
+	Capability              queryconnector.CapabilitySnapshot
+	Schema                  SchemaBinding
 	WorkspaceIdentityDigest string
 	QualificationDigest     string
 	Registry                SemanticRegistry
 	Policy                  Policy
 	Helper                  HelperAttestation
 	IdempotencyKey          string
+}
+
+// AdmissionCheck is the complete non-secret binding presented to current
+// authority, capability, schema, policy, E-stop, and audit-reservation gates.
+// The post_helper phase prevents a result from crossing a revocation race.
+type AdmissionCheck struct {
+	Phase                   string
+	Query                   queryconnector.Query
+	Capability              queryconnector.CapabilitySnapshot
+	HelperRequestDigest     string
+	HelperResponseDigest    string
+	SchemaDigest            string
+	RegistryDigest          string
+	HelperAttestationDigest string
+	QualificationDigest     string
+	EvaluatedAt             time.Time
+}
+
+type RevocationCheck struct {
+	Phase                   string
+	QueryID                 string
+	ActorID                 string
+	RequestDigest           string
+	ResponseDigest          string
+	HelperAttestationDigest string
+	PolicyDecisionDigest    string
+	AuditReservationDigest  string
+}
+
+// ValidationAdmission is the only object that can release canonical KQL.
+// A denied or unaudited operation always returns its zero value.
+type ValidationAdmission struct {
+	Validation   queryconnector.ValidationResult
+	CanonicalKQL string
+	Decision     PolicyDecision
+	Audit        AuditProof
+	Replayed     bool
+}
+
+type ReplayRecord struct {
+	RequestDigest string
+	Admission     ValidationAdmission
 }
 
 type Policy struct {
@@ -259,7 +303,33 @@ type Helper interface {
 	Validate(context.Context, HelperRequest) (HelperResponse, error)
 }
 
+type AdmissionControl interface {
+	CheckKustoValidation(context.Context, AdmissionCheck) error
+}
+
+type HelperTrust interface {
+	VerifyKustoHelper(context.Context, HelperAttestation) error
+}
+
+type RevocationControl interface {
+	CheckKustoRevocation(context.Context, RevocationCheck) error
+}
+
+type AuditCommitter interface {
+	CommitKustoValidation(context.Context, AuditProof) (AuditProof, error)
+}
+
+// ReplayStore atomically reserves an idempotency key. Implementations coalesce
+// an exact concurrent request and return ErrChangedReplay for changed reuse.
+type ReplayStore interface {
+	BeginKustoValidation(context.Context, string, string) (ReplayRecord, bool, error)
+	CompleteKustoValidation(context.Context, string, ReplayRecord) error
+	AbandonKustoValidation(context.Context, string, string)
+}
+
+type Clock interface{ Now() time.Time }
+
 // Validator is the authority-bearing public Go boundary.
 type Validator interface {
-	Validate(context.Context, ValidateRequest) (queryconnector.ValidationResult, error)
+	Validate(context.Context, ValidateRequest) (ValidationAdmission, error)
 }
