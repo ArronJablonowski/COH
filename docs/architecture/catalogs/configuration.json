@@ -1,0 +1,208 @@
+{
+  "schema_version": "coh.architecture-catalog/v1",
+  "contract_version": "1.0.0",
+  "catalog_type": "configuration",
+  "requirements": [
+    "COH-E25-05",
+    "EVAL-004",
+    "EVAL-029",
+    "NFR-019",
+    "NFR-026"
+  ],
+  "sources": [
+    {
+      "path": "contracts/architecture-catalog/v1/architecture-catalog.schema.json",
+      "version": "1.0.0",
+      "digest": "sha256:7c401b7de0947729b9731bbc87a6bef2fad1d7eff0451d5cfd6de4de92d3d579"
+    },
+    {
+      "path": "contracts/architecture-catalog/v1/source-declarations.json",
+      "version": "1.0.0",
+      "digest": "sha256:5ab4c3b4f8f9d7453c59f934df75a3e715a56d2cdd27d08ea39511d0f688770d"
+    },
+    {
+      "path": "contracts/architecture-catalog/v1/source-declarations.schema.json",
+      "version": "1.0.0",
+      "digest": "sha256:1cca62228ab68c0d1da71b49876690a3109fa6ca4de17926db4f0fe365781dfe"
+    },
+    {
+      "path": "contracts/deployment/v1/deployment-profile.schema.json",
+      "version": "1.0.0",
+      "digest": "sha256:b989c923cce7717bde388e1e11cc7738bb64b97681c32393a70470caf311322b"
+    },
+    {
+      "path": "contracts/profile-composition/v1/fixtures/layer.signed.valid.json",
+      "version": "coh.signed-profile-layer/v1",
+      "digest": "sha256:a543384e84f0e14b7ab94175e398c5f0d2079107404c3779857e129d0d2cb02e"
+    }
+  ],
+  "records": [
+    {
+      "id": "deployment.native-workstation-connected",
+      "kind": "deployment_profile",
+      "attributes": [
+        {
+          "name": "profile_digest",
+          "value": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "name": "revision",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "id": "provider.primary",
+      "kind": "endpoint_reference",
+      "attributes": []
+    },
+    {
+      "id": "extension_lifecycle",
+      "kind": "feature",
+      "attributes": [
+        {
+          "name": "enabled",
+          "value": "false"
+        }
+      ]
+    },
+    {
+      "id": "external_connectivity",
+      "kind": "feature",
+      "attributes": [
+        {
+          "name": "enabled",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "id": "model_inference",
+      "kind": "feature",
+      "attributes": [
+        {
+          "name": "enabled",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "id": "retrieval",
+      "kind": "feature",
+      "attributes": [
+        {
+          "name": "enabled",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "id": "tool_dispatch",
+      "kind": "feature",
+      "attributes": [
+        {
+          "name": "enabled",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "id": "max_concurrency",
+      "kind": "limit",
+      "attributes": [
+        {
+          "name": "value",
+          "value": "8"
+        }
+      ]
+    },
+    {
+      "id": "max_context_bytes",
+      "kind": "limit",
+      "attributes": [
+        {
+          "name": "value",
+          "value": "1048576"
+        }
+      ]
+    },
+    {
+      "id": "max_duration_ms",
+      "kind": "limit",
+      "attributes": [
+        {
+          "name": "value",
+          "value": "300000"
+        }
+      ]
+    },
+    {
+      "id": "max_evidence_bytes",
+      "kind": "limit",
+      "attributes": [
+        {
+          "name": "value",
+          "value": "16777216"
+        }
+      ]
+    },
+    {
+      "id": "max_model_tokens",
+      "kind": "limit",
+      "attributes": [
+        {
+          "name": "value",
+          "value": "131072"
+        }
+      ]
+    },
+    {
+      "id": "max_tool_calls",
+      "kind": "limit",
+      "attributes": [
+        {
+          "name": "value",
+          "value": "64"
+        }
+      ]
+    },
+    {
+      "id": "evidence.read",
+      "kind": "permission",
+      "attributes": []
+    },
+    {
+      "id": "model.infer",
+      "kind": "permission",
+      "attributes": []
+    },
+    {
+      "id": "tool.intent.submit",
+      "kind": "permission",
+      "attributes": []
+    },
+    {
+      "id": "baseline.native-workstation",
+      "kind": "profile_layer",
+      "attributes": [
+        {
+          "name": "kind",
+          "value": "baseline"
+        },
+        {
+          "name": "layer_digest",
+          "value": "sha256:33dcf281e69b68327019404a0b3fcd6bf4be7c4729ce4040db50faa66c2bd0b1"
+        },
+        {
+          "name": "precedence",
+          "value": "0"
+        },
+        {
+          "name": "revision",
+          "value": "1"
+        }
+      ]
+    }
+  ],
+  "catalog_digest": "sha256:79b828bb0e99d38b62f93aea930e7cf8bd7b5469a8667eccbe291f4d1164d72f"
+}

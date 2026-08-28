@@ -1,0 +1,131 @@
+{
+  "schema_version": "coh.architecture-catalog/v1",
+  "contract_version": "1.0.0",
+  "catalog_type": "event_routes",
+  "requirements": [
+    "COH-E25-05",
+    "EVAL-004",
+    "EVAL-029",
+    "NFR-019",
+    "NFR-026"
+  ],
+  "sources": [
+    {
+      "path": "contracts/architecture-catalog/v1/architecture-catalog.schema.json",
+      "version": "1.0.0",
+      "digest": "sha256:7c401b7de0947729b9731bbc87a6bef2fad1d7eff0451d5cfd6de4de92d3d579"
+    },
+    {
+      "path": "contracts/architecture-catalog/v1/source-declarations.json",
+      "version": "1.0.0",
+      "digest": "sha256:5ab4c3b4f8f9d7453c59f934df75a3e715a56d2cdd27d08ea39511d0f688770d"
+    },
+    {
+      "path": "contracts/architecture-catalog/v1/source-declarations.schema.json",
+      "version": "1.0.0",
+      "digest": "sha256:1cca62228ab68c0d1da71b49876690a3109fa6ca4de17926db4f0fe365781dfe"
+    },
+    {
+      "path": "contracts/model-surface/v1/fixtures/event-vocabulary.valid.json",
+      "version": "coh.model-surface-event-vocabulary/v1",
+      "digest": "sha256:bccd8179a54da632f19e3ecb37fe7ddbbae7361aeef80a4d20f739ca4b59fe98"
+    }
+  ],
+  "records": [
+    {
+      "id": "agent.message@1",
+      "kind": "event",
+      "attributes": [
+        {
+          "name": "consumer_00",
+          "value": "model.projector"
+        },
+        {
+          "name": "consumer_01",
+          "value": "workflow.agent"
+        },
+        {
+          "name": "event_class",
+          "value": "model_surface"
+        },
+        {
+          "name": "payload_schema_digest",
+          "value": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "name": "persistence",
+          "value": "durable"
+        },
+        {
+          "name": "producer",
+          "value": "agent.phase"
+        },
+        {
+          "name": "projection_rule",
+          "value": "message"
+        }
+      ]
+    },
+    {
+      "id": "audit.record@1",
+      "kind": "event",
+      "attributes": [
+        {
+          "name": "consumer_00",
+          "value": "audit.reader"
+        },
+        {
+          "name": "event_class",
+          "value": "log_only"
+        },
+        {
+          "name": "payload_schema_digest",
+          "value": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        {
+          "name": "persistence",
+          "value": "durable"
+        },
+        {
+          "name": "producer",
+          "value": "audit.writer"
+        },
+        {
+          "name": "projection_rule",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "id": "workflow.signal@1",
+      "kind": "event",
+      "attributes": [
+        {
+          "name": "consumer_00",
+          "value": "workflow.agent"
+        },
+        {
+          "name": "event_class",
+          "value": "live_coordination"
+        },
+        {
+          "name": "payload_schema_digest",
+          "value": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        {
+          "name": "persistence",
+          "value": "ephemeral"
+        },
+        {
+          "name": "producer",
+          "value": "workflow.engine"
+        },
+        {
+          "name": "projection_rule",
+          "value": "none"
+        }
+      ]
+    }
+  ],
+  "catalog_digest": "sha256:b6eb5e51ff2710a4972d224fdcf9c9d40ebbe3cf0cc50131ffb564593ae00202"
+}
