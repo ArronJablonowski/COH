@@ -213,6 +213,33 @@ Observed version labels—including OCSF 1.8.0, ECS 9.4.0, CWE 4.20, CVE schema 
 
 ## 5. Agent and harness engineering
 
+### 5.0 DeepSeek Harness delta review (2026-08-27)
+
+DeepSeek Harness's developer-preview architecture contributes several useful
+mechanisms beyond the harnesses in the original research snapshot: explicit
+service-definition/provider/consumer capability seams; deterministic profiles
+assembled from ordered bundles and overlays; reversible lifecycle effects;
+separation of durable session facts from live coordination events; a rule that
+model-visible context must be reconstructable from the session log; and
+generated capability, event, persistence, configuration, and module catalogs.
+
+COH should adopt those mechanisms selectively. In COH they become closed typed
+capability graphs, signed deterministic deployment overlays, transactional and
+scoped extension activation, durable model-surface provenance, and CI-verified
+architecture catalogs. They do not replace the broker, workflow history,
+hash-chained audit, immutable evidence, policy engine, signed registries, or
+action-tier controls. Arbitrary runtime plugins, model-controlled installation,
+generic shell/HTTP surfaces, security-critical hot reload, and shared-context
+listeners capable of bypassing mandatory guards remain prohibited.
+
+The exact adoption decisions, integration map, rollout sequence, exclusions, and
+pinned upstream revision are recorded in
+[`docs/design/deepseek-harness-adoption.md`](../docs/design/deepseek-harness-adoption.md).
+This selective posture is necessary because the upstream project explicitly
+describes itself as rapidly changing developer-preview software that has not
+undergone a security audit and warns that commands, plugins, network, processes,
+credentials, and files made available to it may be exposed or damaged.
+
 ### 5.1 Control plane versus analysis plane
 
 OpenAI recommends explicit autonomy boundaries, typed tool use, guardrails, and human approval for consequential actions in its [latest-model guidance](https://developers.openai.com/api/docs/guides/latest-model), [agent guardrails guidance](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals), and [sandbox guidance](https://developers.openai.com/api/docs/guides/agents/sandboxes). Anthropic similarly describes a durable session outside a disposable harness and sandbox in [Building a C Compiler with a Team of Parallel Claudes](https://www.anthropic.com/engineering/building-c-compiler) and the more general [managed-agents architecture](https://www.anthropic.com/engineering/managed-agents).
