@@ -1,0 +1,13 @@
+{
+  "schema_version": "coh.splunk-parser-fixtures/v1",
+  "contract_version": "1.0.0",
+  "vendor": "splunk",
+  "product": "Splunk Enterprise",
+  "endpoint": "/services/search/v2/parser",
+  "origin": "Sanitized deterministic response shapes derived from the documented Splunk v2 parser API",
+  "sensitive_values": "none",
+  "fixtures": [
+    {"minor": "9.4", "file": "splunk-9.4/parser-response.json"},
+    {"minor": "10.0", "file": "splunk-10.0/parser-response.json"}
+  ]
+}

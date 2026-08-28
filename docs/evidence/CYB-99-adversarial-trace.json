@@ -1,0 +1,37 @@
+{
+  "schema_version": "coh.splunk-parser-adversarial-trace/v1",
+  "contract_version": "1.0.0",
+  "issue": "CYB-99",
+  "stable_key": "COH-E14-02",
+  "requirements": ["FR-046", "FR-051"],
+  "validator_version": "splunk-parser-1.0.0",
+  "outcome": "passed",
+  "coverage": {
+    "allowed_commands": 6,
+    "classified_prohibited_commands": 36,
+    "denial_corpus_cases": 24,
+    "prohibited_recursion_locations": ["outer", "subsearch"],
+    "supported_vendor_minors": ["9.4", "10.0"],
+    "concurrent_validators": 32,
+    "fuzz_seed_count": 6
+  },
+  "controls": [
+    "bounded_utf8_tokenizer",
+    "recursive_structural_parser",
+    "typed_schema_binding",
+    "default_deny_command_registry",
+    "mandatory_scope_and_authority_binding",
+    "v2_parser_expansion_disabled",
+    "semantic_command_conformance",
+    "parser_receipt_plan_binding",
+    "replay_and_query_id_conflict",
+    "stale_authority_and_revocation",
+    "redacted_common_validation"
+  ],
+  "sensitive_values": "none",
+  "native_text_exposed": false,
+  "literal_exposed": false,
+  "credential_exposed": false,
+  "vendor_body_exposed": false,
+  "sid_exposed": false
+}
