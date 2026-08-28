@@ -3,16 +3,20 @@ package modelsurface
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 )
 
 type transitionStoreStub struct {
+	mu       sync.Mutex
 	latest   map[string][]byte
 	byDigest map[string][]byte
 	fail     bool
 }
 
 func (store *transitionStoreStub) CreateTransition(_ context.Context, key string, value ValidatedTransition) ([]byte, bool, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	if store.fail {
 		return nil, false, errors.New("unavailable")
 	}
@@ -25,6 +29,8 @@ func (store *transitionStoreStub) CreateTransition(_ context.Context, key string
 	return append([]byte(nil), raw...), true, nil
 }
 func (store *transitionStoreStub) CompareAndSwapTransition(_ context.Context, key, expected string, value ValidatedTransition) ([]byte, bool, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	if store.fail {
 		return nil, false, errors.New("unavailable")
 	}
@@ -42,10 +48,14 @@ func (store *transitionStoreStub) CompareAndSwapTransition(_ context.Context, ke
 	return append([]byte(nil), raw...), true, nil
 }
 func (store *transitionStoreStub) ReadLatestTransition(_ context.Context, key string) ([]byte, bool, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	value, found := store.latest[key]
 	return append([]byte(nil), value...), found, nil
 }
 func (store *transitionStoreStub) ReadTransition(_ context.Context, digest string) ([]byte, bool, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	value, found := store.byDigest[digest]
 	return append([]byte(nil), value...), found, nil
 }

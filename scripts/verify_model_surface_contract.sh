@@ -165,6 +165,7 @@ cd "${root}"
 "${root}/scripts/check_markdown_links.sh" "${contract}/README.md" \
   "${contract}/compatibility-matrix.md" \
   "${root}/docs/design/durable-model-surface-provenance.md"
+"${root}/scripts/check_model_surface_boundary.sh" "${root}"
 /usr/bin/git -C "${root}" diff --check
 
 echo "model-surface contract summary: issue=CYB-186 contract=v1 events=model+log+live sources=durable projection=deterministic binding=inference stream=lineage compaction=source-covering recovery=durable failures=0"

@@ -44,7 +44,22 @@ func DecodeStreamEvent(ctx context.Context, input []byte) (ValidatedDocument[Str
 	return decodeValidated(ctx, input, SealStreamEvent, func(value StreamEvent) string { return value.EventDigest })
 }
 func DecodeCompaction(ctx context.Context, input []byte) (ValidatedDocument[CompactionReplacement], error) {
-	return decodeValidated(ctx, input, SealCompaction, func(value CompactionReplacement) string { return value.ReplacementDigest })
+	if err := contextError(ctx); err != nil {
+		return ValidatedDocument[CompactionReplacement]{}, err
+	}
+	canonical, value, err := decodeCanonical[CompactionReplacement](input)
+	if err != nil {
+		return ValidatedDocument[CompactionReplacement]{}, err
+	}
+	wantCoverage, wantReplacement := value.CoverageDigest, value.ReplacementDigest
+	sealed, err := SealCompaction(ctx, value)
+	if err != nil {
+		return ValidatedDocument[CompactionReplacement]{}, err
+	}
+	if wantCoverage == "" || wantReplacement == "" || sealed.CoverageDigest != wantCoverage || sealed.ReplacementDigest != wantReplacement {
+		return ValidatedDocument[CompactionReplacement]{}, newError(Denied, "record_digest_mismatch")
+	}
+	return ValidatedDocument[CompactionReplacement]{canonical: append([]byte(nil), canonical...), digest: wantReplacement}, nil
 }
 func DecodeTransition(ctx context.Context, input []byte) (ValidatedDocument[Transition], error) {
 	return decodeValidated(ctx, input, SealTransition, func(value Transition) string { return value.TransitionDigest })
