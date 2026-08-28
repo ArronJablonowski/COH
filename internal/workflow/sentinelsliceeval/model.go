@@ -146,3 +146,17 @@ type ArtifactManifest struct {
 	ReproductionCommand string     `json:"reproduction_command"`
 	Artifacts           []Artifact `json:"artifacts"`
 }
+
+type Suite struct {
+	Corpus            Corpus
+	Environment       Environment
+	CorpusDigest      string
+	EnvironmentDigest string
+	Recordings        map[string]Recording
+}
+
+type RunResult struct {
+	Traces    []Trace
+	Graders   GraderReport
+	Threshold ThresholdResult
+}

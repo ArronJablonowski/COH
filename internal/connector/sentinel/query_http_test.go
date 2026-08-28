@@ -1,6 +1,7 @@
 package sentinel
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
@@ -94,6 +96,76 @@ func TestHTTPQueryClientDeniesBindingAndHostileResponse(t *testing.T) {
 	if _, err := client.Query(context.Background(), call); queryconnector.Reason(err) != "sentinel_query_response_invalid" {
 		t.Fatalf("hostile response err=%v", err)
 	}
+}
+
+func TestHTTPQueryClientCancellationTimeoutOversizeAndRecovery(t *testing.T) {
+	t.Run("pre-canceled", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		defer server.Close()
+		config, roots := sentinelHTTPTestConfig(t, server)
+		credentials := &sentinelCredentialStub{token: []byte("token"), decision: sentinelTestDigest("8")}
+		client, _ := newHTTPClient(config, credentials, roots, server.URL)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		if _, err := client.Query(ctx, sentinelTestQueryCall(config)); queryconnector.Code(err) != queryconnector.Canceled || credentials.uses != 0 {
+			t.Fatalf("err=%v uses=%d", err, credentials.uses)
+		}
+	})
+
+	t.Run("deadline", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			time.Sleep(100 * time.Millisecond)
+			writer.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(writer).Encode(sentinelVendorQueryResult())
+		}))
+		defer server.Close()
+		config, roots := sentinelHTTPTestConfig(t, server)
+		client, _ := newHTTPClient(config, &sentinelCredentialStub{token: []byte("token"), decision: sentinelTestDigest("8")}, roots, server.URL)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+		defer cancel()
+		if _, err := client.Query(ctx, sentinelTestQueryCall(config)); queryconnector.Code(err) != queryconnector.Timeout {
+			t.Fatalf("err=%v", err)
+		}
+	})
+
+	t.Run("oversize", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			writer.Header().Set("Content-Type", "application/json")
+			_, _ = writer.Write(bytes.Repeat([]byte("x"), maximumContractBytes+1))
+		}))
+		defer server.Close()
+		config, roots := sentinelHTTPTestConfig(t, server)
+		client, _ := newHTTPClient(config, &sentinelCredentialStub{token: []byte("token"), decision: sentinelTestDigest("8")}, roots, server.URL)
+		call := sentinelTestQueryCall(config)
+		call.Request.MaximumBytes = maximumContractBytes
+		call.Request.RequestDigest = queryTransportRequestDigest(call.Request)
+		if _, err := client.Query(context.Background(), call); queryconnector.Reason(err) != "sentinel_response_oversized" {
+			t.Fatalf("err=%v", err)
+		}
+	})
+
+	t.Run("outage recovery", func(t *testing.T) {
+		var attempts atomic.Int32
+		server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			if attempts.Add(1) == 1 {
+				http.Error(writer, "private outage", http.StatusServiceUnavailable)
+				return
+			}
+			writer.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(writer).Encode(sentinelVendorQueryResult())
+		}))
+		defer server.Close()
+		config, roots := sentinelHTTPTestConfig(t, server)
+		client, _ := newHTTPClient(config, &sentinelCredentialStub{token: []byte("token"), decision: sentinelTestDigest("8")}, roots, server.URL)
+		call := sentinelTestQueryCall(config)
+		if _, err := client.Query(context.Background(), call); queryconnector.Code(err) != queryconnector.Unavailable || strings.Contains(err.Error(), "private") {
+			t.Fatalf("first err=%v", err)
+		}
+		response, err := client.Query(context.Background(), call)
+		if err != nil || len(response.Tables) != 1 || attempts.Load() != 2 {
+			t.Fatalf("response=%+v attempts=%d err=%v", response, attempts.Load(), err)
+		}
+	})
 }
 
 func sentinelTestQueryCall(config Config) QueryCall {

@@ -222,7 +222,7 @@ func normalizeQueryTable(value vendorQueryTable) (QueryTable, error) {
 			return QueryTable{}, deniedCall("sentinel_query_result_invalid")
 		}
 		seen[column.Name] = struct{}{}
-		columns[index] = QueryColumn{Name: column.Name, Type: column.Type}
+		columns[index] = QueryColumn(column)
 	}
 	rows := make([][]interface{}, len(value.Rows))
 	for rowIndex, source := range value.Rows {
