@@ -21,6 +21,14 @@ common query-validation result.
 identity and control evidence. `denial-corpus.schema.json` binds each prohibited
 class to a stable reason and executable test.
 
+The deterministic fixtures include an accepted KQL corpus, a hostile metadata
+corpus, and the denial corpus. The pinned managed-runtime test executes every
+accepted query and metadata mutation plus every denial case marked
+`TestSemanticDenialCorpus`; Go tests cover contract ambiguity, substitutions,
+stale state, signature/runtime/package drift, replay and retained-result tamper,
+resource exhaustion, timeout/cancellation, outage recovery, audit failure,
+redaction, and exact concurrent coalescing.
+
 All schemas are JSON Schema 2020-12, closed at every object boundary, and use
 contract version `1.0.0`. Go readers additionally reject duplicate keys,
 trailing documents, noncanonical timestamps, unsorted/duplicate sets,

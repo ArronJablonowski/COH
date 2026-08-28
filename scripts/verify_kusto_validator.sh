@@ -39,7 +39,11 @@ test_properties=(
 "${dotnet}" restore "${repository_root}/tests/kusto-language/KustoValidator.Tests.csproj" \
   --configfile "${repository_root}/helpers/kusto-language/NuGet.Config" --locked-mode "${test_properties[@]}" >/dev/null
 "${dotnet}" run --project "${repository_root}/tests/kusto-language/KustoValidator.Tests.csproj" --no-restore \
-  "${test_properties[@]}" -- "${repository_root}/contracts/kusto-validator/v1/fixtures/helper-request.json"
+  "${test_properties[@]}" -- \
+  "${repository_root}/contracts/kusto-validator/v1/fixtures/helper-request.json" \
+  "${repository_root}/contracts/kusto-validator/v1/fixtures/accepted-corpus.json" \
+  "${repository_root}/contracts/kusto-validator/v1/fixtures/metadata-corpus.json" \
+  "${repository_root}/contracts/kusto-validator/v1/fixtures/denial-corpus.json"
 
 request="$(tr -d '\n' < "${repository_root}/contracts/kusto-validator/v1/fixtures/helper-request.json")"
 transport="$(/usr/bin/printf '%s' "${request}" | /usr/bin/python3 -c 'import json,sys; print(json.dumps({"request_chunk_00":sys.stdin.read()}, separators=(",", ":")))')"

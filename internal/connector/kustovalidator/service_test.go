@@ -22,10 +22,17 @@ type serviceHelper struct {
 	fail   error
 	denied bool
 	wait   bool
+	delay  time.Duration
+	mu     sync.Mutex
 }
 
 func (helper *serviceHelper) Validate(ctx context.Context, request HelperRequest) (HelperResponse, error) {
+	helper.mu.Lock()
 	helper.calls++
+	helper.mu.Unlock()
+	if helper.delay > 0 {
+		time.Sleep(helper.delay)
+	}
 	if helper.wait {
 		<-ctx.Done()
 		return HelperResponse{}, ctx.Err()
@@ -58,9 +65,12 @@ func (helper *serviceHelper) Validate(ctx context.Context, request HelperRequest
 type serviceAdmission struct {
 	phases    []string
 	denyPhase string
+	mu        sync.Mutex
 }
 
 func (gate *serviceAdmission) CheckKustoValidation(_ context.Context, check AdmissionCheck) error {
+	gate.mu.Lock()
+	defer gate.mu.Unlock()
 	gate.phases = append(gate.phases, check.Phase)
 	if gate.denyPhase == check.Phase {
 		return errors.New("denied")
@@ -77,9 +87,12 @@ func (trust serviceTrust) VerifyKustoHelper(context.Context, HelperAttestation) 
 type serviceRevocation struct {
 	phases    []string
 	denyPhase string
+	mu        sync.Mutex
 }
 
 func (gate *serviceRevocation) CheckKustoRevocation(_ context.Context, check RevocationCheck) error {
+	gate.mu.Lock()
+	defer gate.mu.Unlock()
 	gate.phases = append(gate.phases, check.Phase)
 	if gate.denyPhase == check.Phase {
 		return errors.New("revoked")
@@ -90,9 +103,12 @@ func (gate *serviceRevocation) CheckKustoRevocation(_ context.Context, check Rev
 type serviceAudit struct {
 	calls int
 	err   error
+	mu    sync.Mutex
 }
 
 func (audit *serviceAudit) CommitKustoValidation(_ context.Context, proof AuditProof) (AuditProof, error) {
+	audit.mu.Lock()
+	defer audit.mu.Unlock()
 	audit.calls++
 	return proof, audit.err
 }
@@ -149,7 +165,7 @@ func TestServiceRechecksAuthorityAndAuditsBeforeReleasingKQL(t *testing.T) {
 	}
 }
 
-func TestServiceAuditFailureWithholdsSuccess(t *testing.T) {
+func TestAuditFailureWithholdsSuccess(t *testing.T) {
 	helper, audit := &serviceHelper{}, &serviceAudit{err: errors.New("offline")}
 	service, _ := NewService(helper, &serviceAdmission{}, serviceTrust{}, &serviceRevocation{}, audit, newServiceReplay(), serviceClock{serviceNow})
 	admission, err := service.Validate(context.Background(), serviceInput(t))
@@ -176,7 +192,7 @@ func TestServiceAuditsSemanticDenialWithoutReleasingKQL(t *testing.T) {
 	}
 }
 
-func TestServiceTimeoutAbandonsReservationAndCanRecover(t *testing.T) {
+func TestTimeoutCancellationAndRecovery(t *testing.T) {
 	input, helper, replay := serviceInput(t), &serviceHelper{wait: true}, newServiceReplay()
 	service, _ := NewService(helper, &serviceAdmission{}, serviceTrust{}, &serviceRevocation{}, &serviceAudit{}, replay, serviceClock{serviceNow})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
@@ -187,6 +203,23 @@ func TestServiceTimeoutAbandonsReservationAndCanRecover(t *testing.T) {
 	helper.wait = false
 	if admission, err := service.Validate(context.Background(), input); err != nil || admission.CanonicalKQL == "" {
 		t.Fatalf("recovery admission=%+v err=%v", admission, err)
+	}
+	canceledInput := serviceInput(t)
+	canceledInput.IdempotencyKey = "kusto-validation-canceled"
+	canceled, cancelNow := context.WithCancel(context.Background())
+	cancelNow()
+	if _, err := service.Validate(canceled, canceledInput); queryconnector.Code(err) != queryconnector.Canceled {
+		t.Fatalf("cancellation error = %v", err)
+	}
+	outageInput := serviceInput(t)
+	outageInput.IdempotencyKey = "kusto-validation-outage"
+	helper.fail = errors.New("offline")
+	if _, err := service.Validate(context.Background(), outageInput); queryconnector.Code(err) != queryconnector.Unavailable {
+		t.Fatalf("outage error = %v", err)
+	}
+	helper.fail = nil
+	if admission, err := service.Validate(context.Background(), outageInput); err != nil || admission.CanonicalKQL == "" {
+		t.Fatalf("outage recovery admission=%+v err=%v", admission, err)
 	}
 }
 

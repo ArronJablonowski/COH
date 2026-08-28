@@ -67,6 +67,21 @@ func TestNativeHelperRejectsProvenanceDrift(t *testing.T) {
 	}
 }
 
+func TestNativeHelperRejectsResourceExhaustion(t *testing.T) {
+	var request HelperRequest
+	unmarshalFixture(t, "helper-request.json", &request)
+	config := NativeConfiguration{ToolName: NativeToolName, ToolVersion: NativeToolVersion,
+		ArtifactDigest: request.HelperIdentityExpectation.ArtifactDigest, ManifestDigest: repeatDigest("d")}
+	stub := &nativeRunnerStub{result: NativeExecution{AttemptID: request.RequestID, ToolName: config.ToolName,
+		ToolVersion: config.ToolVersion, ArtifactDigest: config.ArtifactDigest, ManifestDigest: config.ManifestDigest,
+		Operation: NativeOperationName, RequiredTier: "T0", Outcome: "succeeded", OutputTruncated: true,
+		StandardOutput: readFixture(t, "helper-response.accepted.json")}}
+	helper, _ := NewNativeHelper(stub, config)
+	if _, err := helper.Validate(context.Background(), request); err == nil {
+		t.Fatal("resource-exhausted output accepted")
+	}
+}
+
 func TestNativeHelperSplitUTF8AndOversize(t *testing.T) {
 	input := []byte(strings.Repeat("a", maximumChunkBytes-1) + "☃" + strings.Repeat("b", 10))
 	chunks, err := splitUTF8(input)
