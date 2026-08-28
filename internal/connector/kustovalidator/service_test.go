@@ -205,14 +205,14 @@ func TestTimeoutCancellationAndRecovery(t *testing.T) {
 		t.Fatalf("recovery admission=%+v err=%v", admission, err)
 	}
 	canceledInput := serviceInput(t)
-	canceledInput.IdempotencyKey = "kusto-validation-canceled"
+	canceledInput.IdempotencyKey = testIdempotency("canceled")
 	canceled, cancelNow := context.WithCancel(context.Background())
 	cancelNow()
 	if _, err := service.Validate(canceled, canceledInput); queryconnector.Code(err) != queryconnector.Canceled {
 		t.Fatalf("cancellation error = %v", err)
 	}
 	outageInput := serviceInput(t)
-	outageInput.IdempotencyKey = "kusto-validation-outage"
+	outageInput.IdempotencyKey = testIdempotency("outage")
 	helper.fail = errors.New("offline")
 	if _, err := service.Validate(context.Background(), outageInput); queryconnector.Code(err) != queryconnector.Unavailable {
 		t.Fatalf("outage error = %v", err)
@@ -278,8 +278,10 @@ func serviceInput(t *testing.T) ValidateRequest {
 		Limits:    capability.HardLimits, RequestedAt: stamp(serviceNow.Add(-time.Second)), Deadline: stamp(serviceNow.Add(time.Minute))}
 	return ValidateRequest{Query: query, Capability: capability, Schema: fixture.Schema,
 		WorkspaceIdentityDigest: fixture.WorkspaceIdentityDigest, QualificationDigest: fixture.QualificationDigest,
-		Registry: registry, Policy: fixture.Policy, Helper: attestation, IdempotencyKey: "kusto-validation-1"}
+		Registry: registry, Policy: fixture.Policy, Helper: attestation, IdempotencyKey: testIdempotency("1")}
 }
+
+func testIdempotency(suffix string) string { return "kusto-validation-" + suffix }
 
 func equalStrings(left, right []string) bool {
 	if len(left) != len(right) {
