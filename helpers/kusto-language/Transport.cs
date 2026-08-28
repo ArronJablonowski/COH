@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace COH.KustoValidator;
@@ -13,6 +14,7 @@ internal static class Transport
         UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow,
         MaxDepth = 64,
         WriteIndented = false,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     internal static async Task<byte[]> ReadBoundedAsync(Stream input, CancellationToken cancellationToken)
@@ -84,6 +86,77 @@ internal static class Transport
         RejectDuplicateProperties(requestBytes);
         return JsonSerializer.Deserialize<HelperRequest>(requestBytes, JsonOptions)
             ?? throw new InvalidDataException("helper_request");
+    }
+
+    internal static byte[] CanonicalBytes<T>(T value)
+    {
+        var encoded = JsonSerializer.SerializeToUtf8Bytes(value, JsonOptions);
+        var writer = new ArrayBufferWriter<byte>(encoded.Length);
+        var inString = false;
+        var escaped = false;
+        for (var index = 0; index < encoded.Length; index++)
+        {
+            var current = encoded[index];
+            if (inString && !escaped && current is (byte)'<' or (byte)'>' or (byte)'&')
+            {
+                writer.Write(current switch
+                {
+                    (byte)'<' => "\\u003c"u8,
+                    (byte)'>' => "\\u003e"u8,
+                    _ => "\\u0026"u8,
+                });
+                continue;
+            }
+            if (inString && !escaped && index + 2 < encoded.Length && current == 0xe2 && encoded[index + 1] == 0x80 &&
+                encoded[index + 2] is 0xa8 or 0xa9)
+            {
+                writer.Write(encoded[index + 2] == 0xa8 ? "\\u2028"u8 : "\\u2029"u8);
+                index += 2;
+                continue;
+            }
+            writer.Write(encoded.AsSpan(index, 1));
+            if (!inString && current == (byte)'"')
+            {
+                inString = true;
+            }
+            else if (inString && escaped)
+            {
+                escaped = false;
+            }
+            else if (inString && current == (byte)'\\')
+            {
+                escaped = true;
+            }
+            else if (inString && current == (byte)'"')
+            {
+                inString = false;
+            }
+        }
+        var canonical = writer.WrittenSpan.ToArray();
+        for (var index = 0; index + 5 < canonical.Length; index++)
+        {
+            if (canonical[index] != (byte)'\\' || canonical[index + 1] != (byte)'u')
+            {
+                continue;
+            }
+            var slashCount = 1;
+            for (var prior = index - 1; prior >= 0 && canonical[prior] == (byte)'\\'; prior--)
+            {
+                slashCount++;
+            }
+            if (slashCount % 2 == 0)
+            {
+                continue;
+            }
+            for (var digit = index + 2; digit < index + 6; digit++)
+            {
+                if (canonical[digit] is >= (byte)'A' and <= (byte)'F')
+                {
+                    canonical[digit] += (byte)('a' - 'A');
+                }
+            }
+        }
+        return canonical;
     }
 
     internal static void RejectDuplicateProperties(ReadOnlySpan<byte> json)

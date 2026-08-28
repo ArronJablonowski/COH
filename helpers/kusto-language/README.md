@@ -5,6 +5,14 @@ credentialless parser/compiler launched through COH's signed native executor as
 T0 with `network:none`. It has no generic command, argument, file, environment,
 credential, endpoint, or network surface.
 
+The helper performs `KustoCode.ParseAndAnalyze` against an exact closed
+`GlobalState` built from the request schema. It defaults to denial for every
+unlisted operator or resolved function, rejects wildcard/fuzzy union and remote
+entity paths, denies dynamic/open output, and constructs its terminal `take`
+as a cloned `PipeExpression`/`TakeOperator` tree. The formatted tree is reparsed
+and reanalyzed, and its non-terminal structural fingerprint and semantic
+inventory must match before canonical KQL can leave the process.
+
 The project pins .NET SDK 10.0.400, runtime 10.0.11, and
 `Microsoft.Azure.Kusto.Language` 12.4.1. Restore is locked and requires signed
 packages. Supported self-contained single-file RIDs are `osx-arm64`,

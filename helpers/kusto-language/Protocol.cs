@@ -8,6 +8,7 @@ internal static class Protocol
     internal const string RequestVersion = "coh.kusto-helper-request/v1";
     internal const string ResponseVersion = "coh.kusto-helper-response/v1";
     internal const string ValidatorVersion = "kusto-language-12.4.1-coh-1.0.0";
+    internal const string RegistryDigest = "sha256:4b01ac2f77f54138c0a9b5fdab1a5a9195f147804aac44884e03860a83ee6f52";
     internal const int MaximumInputBytes = 1 << 20;
     internal const int MaximumChunkCount = 8;
     internal const int MaximumChunkCharacters = 61_440;

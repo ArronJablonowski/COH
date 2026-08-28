@@ -179,6 +179,15 @@ The helper never appends text to the caller query. After successful analysis it:
 5. formats that AST with `KustoFormatter` into canonical KQL; and
 6. reparses and reanalyzes the formatted result against the same `GlobalState`.
 
+Kusto.Language 12.4.1 exposes immutable syntax nodes but keeps the four-argument
+`PipeExpression` constructor non-public. The pinned helper therefore resolves
+that exact constructor by type signature and invokes it only with the three
+cloned, already-typed nodes above and a null diagnostic list. Missing or changed
+constructor shape, invocation failure, or a different post-bind tree is a hard
+compatibility denial; there is no text-append fallback. This dependency on an
+internal API is covered by the exact package pin, managed conformance test, and
+version-migration gate.
+
 The integer is the lower of request and policy maxima. It is typed numeric data,
 not query text; no untrusted byte is concatenated into the template. An existing
 user `take`, `limit`, or `top` may narrow results, but the helper always adds its

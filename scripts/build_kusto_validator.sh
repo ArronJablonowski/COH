@@ -5,7 +5,13 @@ set -euo pipefail
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && /bin/pwd -P)"
 helper_root="${repository_root}/helpers/kusto-language"
 toolchain_root="${COH_TOOLCHAIN_ROOT:?COH_TOOLCHAIN_ROOT must name approved external mutable storage}"
-dotnet_root="${toolchain_root}/dotnet/10.0.400-osx-arm64"
+case "$(/usr/bin/uname -sm)" in
+  "Darwin arm64") sdk_host="osx-arm64" ;;
+  "Linux x86_64") sdk_host="linux-x64" ;;
+  "Linux aarch64") sdk_host="linux-arm64" ;;
+  *) echo "Unsupported .NET build host" >&2; exit 64 ;;
+esac
+dotnet_root="${toolchain_root}/dotnet/10.0.400-${sdk_host}"
 dotnet="${dotnet_root}/dotnet"
 rid="${1:-}"
 
@@ -14,12 +20,7 @@ if [[ ! -x "${dotnet}" ]]; then
   exit 64
 fi
 if [[ -z "${rid}" ]]; then
-  case "$(/usr/bin/uname -sm)" in
-    "Darwin arm64") rid="osx-arm64" ;;
-    "Linux x86_64") rid="linux-x64" ;;
-    "Linux aarch64") rid="linux-arm64" ;;
-    *) echo "Unsupported build host; pass osx-arm64, linux-x64, or linux-arm64" >&2; exit 64 ;;
-  esac
+  rid="${sdk_host}"
 fi
 case "${rid}" in
   osx-arm64|linux-x64|linux-arm64) ;;
@@ -37,6 +38,7 @@ mkdir -p "${DOTNET_CLI_HOME}" "${NUGET_PACKAGES}" "${toolchain_root}/kusto-valid
 temporary_root="$(mktemp -d "${toolchain_root}/kusto-validator/builds/build.XXXXXX")"
 trap 'rm -rf -- "${temporary_root}"' EXIT
 build_properties=(
+  "-p:SelfContained=true"
   "-p:BaseIntermediateOutputPath=${temporary_root}/obj/"
   "-p:BaseOutputPath=${temporary_root}/bin/"
   "-p:MSBuildProjectExtensionsPath=${temporary_root}/obj/"
@@ -60,7 +62,7 @@ for package in "${packages[@]}"; do
   "${dotnet}" nuget verify --all "${package}" >/dev/null
 done
 
-"${dotnet}" publish KustoValidator.csproj -c Release -r "${rid}" --no-restore -o "${temporary_root}/publish" "${build_properties[@]}" >/dev/null
+"${dotnet}" publish KustoValidator.csproj -c Release -r "${rid}" --no-restore -o "${temporary_root}/publish" "${build_properties[@]}"
 artifact="${temporary_root}/publish/coh-kusto-validator"
 [[ -f "${artifact}" ]] || { echo "Published helper is unavailable" >&2; exit 66; }
 artifact_sha="$(/usr/bin/shasum -a 256 "${artifact}" | /usr/bin/awk '{print $1}')"
