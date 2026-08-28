@@ -27,7 +27,7 @@ func validateRequest(value Request) error {
 	if value.Mode != Startup && value.Mode != Maintenance {
 		return newError(InvalidInput, "activation_mode")
 	}
-	if value.Mode == Startup && value.ExpectedActiveRevision != 0 {
+	if value.Mode == Startup && (value.ExpectedActiveRevision != 0 || value.Candidate.ProfileRevision != 1) {
 		return newError(Denied, "startup_replacement")
 	}
 	return nil

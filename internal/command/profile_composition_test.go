@@ -282,7 +282,11 @@ func verifyCommandTestLayer(t *testing.T, layer profilecomposition.Layer) profil
 	}
 	encoded, _ := json.Marshal(profilecomposition.Envelope{SchemaVersion: profilecomposition.EnvelopeSchemaVersion,
 		ContractVersion: profilecomposition.ContractVersion, Layer: layer, LayerDigest: digest, Signatures: signatures})
-	verified, err := profilecomposition.Verify(context.Background(), encoded, commandTrustSnapshot(), compositionClock{compositionTestTime})
+	snapshot := commandTrustSnapshot()
+	if len(layer.Target.DeploymentKinds) == 1 {
+		snapshot.Environment = layer.Target.DeploymentKinds[0]
+	}
+	verified, err := profilecomposition.Verify(context.Background(), encoded, snapshot, compositionClock{compositionTestTime})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +349,8 @@ func commandQualificationAuthority(prepared PreparedProfileCapabilities,
 			ProfileDigest: bundle.ProfileDigest, IssuedAt: q.IssuedAt, ExpiresAt: q.ExpiresAt,
 			RegistryRevision: 11, AuthorityRevision: q.AuthorityRevision, Active: true}
 	}
-	return capabilityseam.QualificationAuthoritySnapshot{BundleDigest: prepared.BundleDigest(), CompositionRevision: 1,
-		ProfileDigest: bundle.ProfileDigest, Revision: 11, ObservedAt: compositionTestTime.Add(-time.Minute),
+	return capabilityseam.QualificationAuthoritySnapshot{BundleDigest: prepared.BundleDigest(),
+		CompositionRevision: prepared.candidate.Request().Revision,
+		ProfileDigest:       bundle.ProfileDigest, Revision: 11, ObservedAt: compositionTestTime.Add(-time.Minute),
 		ValidUntil: compositionTestTime.Add(4 * time.Minute), Records: records}
 }

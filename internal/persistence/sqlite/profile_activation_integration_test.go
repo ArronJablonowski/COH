@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,6 +58,24 @@ type lostActivationResponseStore struct {
 	profileactivation.Store
 	failOperation string
 	fired         bool
+}
+
+type concurrentMaintenanceGate struct {
+	mu     sync.Mutex
+	digest string
+}
+
+func (gate *concurrentMaintenanceGate) Quiesce(_ context.Context,
+	plan profileactivation.QuiescencePlan) (profileactivation.QuiescenceAttestation, error) {
+	gate.mu.Lock()
+	defer gate.mu.Unlock()
+	return profileactivation.QuiescenceAttestation{TransitionID: plan.TransitionID,
+		AttestationDigest: gate.digest, AdmissionsStopped: true, Durable: true}, nil
+}
+func (gate *concurrentMaintenanceGate) Release(context.Context, profileactivation.QuiescenceAttestation) error {
+	gate.mu.Lock()
+	defer gate.mu.Unlock()
+	return nil
 }
 
 func (store *lostActivationResponseStore) fail(operation string) error {
@@ -201,6 +220,54 @@ func TestProfileActivationRejectsFalseQuiescenceAndCancellationWithoutPublicatio
 	}
 	if _, found, err := store.LoadTransition(context.Background(), canceledRequest.TransitionID); err != nil || found {
 		t.Fatalf("canceled transition found=%v err=%v", found, err)
+	}
+}
+
+func TestConcurrentExactActivationConvergesOnOneDurablePublication(t *testing.T) {
+	store := openEphemeralProfileActivationStore(t)
+	gate := &concurrentMaintenanceGate{digest: "sha256:" + strings.Repeat("a", 64)}
+	controller, err := profileactivation.NewController(store, gate, activationClock{profileActivationTime})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := profileActivationRequest(1, "1")
+	const workers = 16
+	results := make(chan profileactivation.Result, workers)
+	errorsFound := make(chan error, workers)
+	var group sync.WaitGroup
+	for range workers {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			result, activateErr := controller.Activate(context.Background(), request)
+			if activateErr != nil {
+				errorsFound <- activateErr
+				return
+			}
+			results <- result
+		}()
+	}
+	group.Wait()
+	close(results)
+	close(errorsFound)
+	successes := 0
+	for result := range results {
+		successes++
+		if result.Profile.CompositionDigest != request.Candidate.CompositionDigest {
+			t.Fatalf("result=%+v", result)
+		}
+	}
+	for activateErr := range errorsFound {
+		if profileactivation.Code(activateErr) != profileactivation.Unavailable {
+			t.Fatalf("unexpected concurrent error=%v", activateErr)
+		}
+	}
+	if successes == 0 {
+		t.Fatal("no concurrent activation succeeded")
+	}
+	final, err := controller.Activate(context.Background(), request)
+	if err != nil || !final.Replayed || final.Transition.Phase != profileactivation.Active {
+		t.Fatalf("final=%+v err=%v", final, err)
 	}
 }
 

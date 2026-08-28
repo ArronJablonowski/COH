@@ -18,6 +18,7 @@
 | Valid graph IDs, module paths, access modes, and SemVer prerelease/build values | Preserve exact values in inspection | Redaction never aliases or rewrites identity |
 | Missing baseline, multiple baselines, missing parent, parent mismatch, or cycle | Deny with no partial profile | Layer graph must be closed and acyclic |
 | Unsigned, invalid, expired, untrusted, or revoked signer | Deny | Provenance must be current |
+| Trust snapshot environment does not cover the layer deployment selector | Deny | Trust cannot cross workstation, server, or Compose scope |
 | Added endpoint/permission, raised limit, or false-to-true feature | Deny | Overlays only narrow |
 | Conflicting deployment profile or offline bundle | Deny | Security posture is exact |
 | Capability bundle conflict, ambiguity, cycle, qualification drift, or graph/profile mismatch | Deny | COH-E25-01 remains authoritative |

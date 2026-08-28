@@ -71,6 +71,15 @@ func TestTrustSnapshotCannotBeSerialized(t *testing.T) {
 	}
 }
 
+func TestTrustSnapshotEnvironmentMustCoverLayerDeployment(t *testing.T) {
+	input := readFixture(t, "layer.signed.valid.json")
+	snapshot := fixtureTrust()
+	snapshot.Environment = "native_server"
+	if _, err := Verify(context.Background(), input, snapshot, fixedClock{fixtureTime}); Code(err) != Denied || Reason(err) != "trust_environment_scope" {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestSignedLayerDenialCorpus(t *testing.T) {
 	type denialCase struct {
 		Name         string `json:"name"`

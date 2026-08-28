@@ -42,6 +42,10 @@ func Verify(ctx context.Context, input []byte, snapshot TrustSnapshot, clock Clo
 		return VerifiedLayer{}, err
 	}
 	envelope := validated.Value()
+	if snapshot.Environment != "test" &&
+		!slices.Contains(envelope.Layer.Target.DeploymentKinds, snapshot.Environment) {
+		return VerifiedLayer{}, newError(Denied, "trust_environment_scope")
+	}
 	layerIssued, _ := parseTimestamp(envelope.Layer.IssuedAt)
 	layerNotBefore, _ := parseTimestamp(envelope.Layer.NotBefore)
 	layerExpires, _ := parseTimestamp(envelope.Layer.ExpiresAt)

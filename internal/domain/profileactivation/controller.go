@@ -39,15 +39,22 @@ func (controller *Controller) Activate(ctx context.Context, request Request) (Re
 	}
 	replayed := found
 	if found {
-		if transition.IntentDigest != intent || transition.Candidate != request.Candidate ||
-			transition.Mode != request.Mode || transition.MaxDrainDurationMS != request.MaxDrainDurationMS ||
-			transition.ExpectedActiveRevision != request.ExpectedActiveRevision ||
-			transition.ExpectedCompositionDigest != request.ExpectedCompositionDigest {
+		if !transitionMatchesRequest(transition, request, intent) {
 			return Result{}, newError(Denied, "transition_replay_drift")
 		}
 	} else {
-		if err := controller.validateCurrent(ctx, request); err != nil {
-			return Result{}, err
+		if currentErr := controller.validateCurrent(ctx, request); currentErr != nil {
+			concurrent, concurrentFound, loadErr := controller.store.LoadTransition(ctx, request.TransitionID)
+			if loadErr != nil {
+				return Result{}, normalizeDependency(loadErr, "transition_recheck")
+			}
+			if concurrentFound && !transitionMatchesRequest(concurrent, request, intent) {
+				return Result{}, newError(Denied, "transition_replay_drift")
+			}
+			if !concurrentFound {
+				return Result{}, currentErr
+			}
+			return controller.continueActivation(ctx, concurrent, true)
 		}
 		now := formatTime(controller.clock.Now())
 		transition = Transition{SchemaVersion: TransitionSchema, ContractVersion: ContractVersion,
@@ -62,6 +69,13 @@ func (controller *Controller) Activate(ctx context.Context, request Request) (Re
 		}
 	}
 	return controller.continueActivation(ctx, transition, replayed)
+}
+
+func transitionMatchesRequest(transition Transition, request Request, intent string) bool {
+	return transition.IntentDigest == intent && transition.Candidate == request.Candidate &&
+		transition.Mode == request.Mode && transition.MaxDrainDurationMS == request.MaxDrainDurationMS &&
+		transition.ExpectedActiveRevision == request.ExpectedActiveRevision &&
+		transition.ExpectedCompositionDigest == request.ExpectedCompositionDigest
 }
 
 func (controller *Controller) validateCurrent(ctx context.Context, request Request) error {

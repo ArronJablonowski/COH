@@ -51,6 +51,8 @@ revision is resolved from the trusted composition root. Signature order is
 canonical by role, signer identity, key identity, and key revision. Duplicate
 signers, an absent publisher, unknown keys, expired keys, revoked keys, invalid
 signatures, or a trust snapshot older than five minutes deny composition.
+The snapshot environment must exactly cover the layer's deployment selector;
+a workstation trust decision cannot qualify a native-server or Compose layer.
 
 Signing proves provenance only. It does not authorize activation or operation.
 
