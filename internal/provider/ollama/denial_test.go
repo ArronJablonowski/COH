@@ -148,7 +148,7 @@ func TestConfigurationAndLoopbackTransportDenyRouteExpansion(t *testing.T) {
 	if client.CheckRedirect(redirect, []*http.Request{request}) != http.ErrUseLastResponse {
 		t.Fatal("redirect was not denied")
 	}
-	if reflect.TypeOf(Config{}).NumField() != 9 {
+	if reflect.TypeOf(Config{}).NumField() != 10 {
 		t.Fatal("configuration surface changed")
 	}
 }
