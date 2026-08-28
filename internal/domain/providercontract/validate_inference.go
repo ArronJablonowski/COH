@@ -26,6 +26,9 @@ func ValidateRequest(value InferenceRequest) error {
 	if err := validateProvider(value.Provider); err != nil {
 		return err
 	}
+	if err := validateModelSurface(value.ModelSurface); err != nil {
+		return err
+	}
 	if !digestPattern.MatchString(value.CapabilityDigest) || len(value.Messages) == 0 || len(value.Messages) > 16384 ||
 		len(value.Tools) > 1024 || value.MaximumOutputTokens == 0 || value.MaximumOutputTokens > 1048576 {
 		return NewError(InvalidInput, "request_bounds")
@@ -65,6 +68,47 @@ func ValidateRequest(value InferenceRequest) error {
 		}
 	}
 	return nil
+}
+
+func validateModelSurface(value ModelSurfaceBinding) error {
+	for _, identifier := range append([]string{value.RunID, value.ProjectionID}, value.OrderedSourceRecordIDs...) {
+		if !uuidPattern.MatchString(identifier) {
+			return NewError(InvalidInput, "model_surface_identity")
+		}
+	}
+	if !tokenPattern.MatchString(value.ProviderID) || value.ProjectionVersion != ContractVersion ||
+		len(value.OrderedSourceRecordIDs) == 0 || len(value.OrderedSourceRecordIDs) > 16384 ||
+		!uniqueStringValues(value.OrderedSourceRecordIDs) || len(value.ArtifactDigests) > 16384 ||
+		!slices.IsSorted(value.ArtifactDigests) || !uniqueDigestValues(value.ArtifactDigests) {
+		return NewError(InvalidInput, "model_surface_binding")
+	}
+	for _, digest := range []string{value.ProjectionDigest, value.VocabularyDigest, value.CompositionDigest,
+		value.SurfaceDigest, value.BindingDigest} {
+		if !digestPattern.MatchString(digest) {
+			return NewError(InvalidInput, "model_surface_digest")
+		}
+	}
+	return nil
+}
+
+func uniqueStringValues(values []string) bool {
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		if _, exists := seen[value]; exists {
+			return false
+		}
+		seen[value] = struct{}{}
+	}
+	return true
+}
+
+func uniqueDigestValues(values []string) bool {
+	for index, value := range values {
+		if !digestPattern.MatchString(value) || index > 0 && values[index-1] == value {
+			return false
+		}
+	}
+	return true
 }
 
 func ValidateResponse(value InferenceResponse) error {

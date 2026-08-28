@@ -18,8 +18,8 @@
     "record_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
     "record_digest": {"$ref": "#/$defs/digest"},
     "content": {"$ref": "#/$defs/content_binding"},
-    "trust": {"enum": ["trusted_control", "trusted_system", "untrusted_external", "untrusted_model", "untrusted_retrieval"]},
-    "instruction_disposition": {"enum": ["trusted_control_instruction", "trusted_system_instruction", "untrusted_data_only"]},
+    "trust": {"enum": ["trusted_control", "trusted_system", "trusted_user", "untrusted_external", "untrusted_model", "untrusted_retrieval"]},
+    "instruction_disposition": {"enum": ["trusted_control_instruction", "trusted_system_instruction", "trusted_user_instruction", "untrusted_data_only"]},
     "occurred_at": {"$ref": "#/$defs/timestamp"},
     "sequence": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
     "immutable": {"const": true},
@@ -33,6 +33,14 @@
     {
       "if": {"properties": {"projection_rule": {"const": "retrieved_context"}}},
       "then": {"properties": {"instruction_disposition": {"const": "untrusted_data_only"}}}
+    },
+    {
+      "if": {"properties": {"trust": {"const": "trusted_user"}}},
+      "then": {"properties": {"instruction_disposition": {"const": "trusted_user_instruction"}}}
+    },
+    {
+      "if": {"properties": {"instruction_disposition": {"const": "trusted_user_instruction"}}},
+      "then": {"properties": {"trust": {"const": "trusted_user"}}}
     }
   ],
   "$defs": {

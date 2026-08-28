@@ -60,7 +60,7 @@ func validateSource(value Source) error {
 		value.EventVersion > 65535 || value.EventClass != "model_surface" || !validProjectionRule(value.ProjectionRule) ||
 		!validScope(value.Scope) || !validUUID7(value.RunID) || value.RecordRevision == 0 ||
 		value.RecordRevision > MaximumRevision || !validDigest(value.RecordDigest) || validateContent(value.Content) != nil ||
-		!oneOf(value.Trust, "trusted_control", "trusted_system", "untrusted_external", "untrusted_model", "untrusted_retrieval") ||
+		!oneOf(value.Trust, "trusted_control", "trusted_system", "trusted_user", "untrusted_external", "untrusted_model", "untrusted_retrieval") ||
 		!validInstructionDisposition(value.InstructionDisposition) || !validTimestamp(value.OccurredAt) ||
 		value.Sequence == 0 || value.Sequence > MaximumRevision || !value.Immutable {
 		return newError(InvalidInput, "source")
@@ -69,7 +69,9 @@ func validateSource(value Source) error {
 		value.InstructionDisposition != "untrusted_data_only" ||
 		value.ProjectionRule == "retrieved_context" && value.InstructionDisposition != "untrusted_data_only" ||
 		value.InstructionDisposition == "trusted_control_instruction" && value.Trust != "trusted_control" ||
-		value.InstructionDisposition == "trusted_system_instruction" && value.Trust != "trusted_system" {
+		value.InstructionDisposition == "trusted_system_instruction" && value.Trust != "trusted_system" ||
+		value.InstructionDisposition == "trusted_user_instruction" && value.Trust != "trusted_user" ||
+		value.Trust == "trusted_user" && value.InstructionDisposition != "trusted_user_instruction" {
 		return newError(Denied, "instruction_disposition")
 	}
 	return nil
@@ -87,7 +89,8 @@ func validateProjectedItem(value ProjectedItem, expectedOrdinal uint64) error {
 	if value.SurfaceKind == "retrieved_context" && value.InstructionDisposition != "untrusted_data_only" {
 		return newError(Denied, "projected_instruction")
 	}
-	if value.InstructionDisposition != "untrusted_data_only" && !oneOf(value.Role, "system", "developer") ||
+	if oneOf(value.InstructionDisposition, "trusted_control_instruction", "trusted_system_instruction") && !oneOf(value.Role, "system", "developer") ||
+		value.InstructionDisposition == "trusted_user_instruction" && (value.Role != "user" || value.SurfaceKind != "message") ||
 		value.SurfaceKind == "tool_schema" && value.InstructionDisposition == "untrusted_data_only" {
 		return newError(Denied, "projected_instruction")
 	}

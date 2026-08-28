@@ -39,7 +39,9 @@ done
 /usr/bin/jq -e '
   .additionalProperties == false
   and .properties.schema_version.const == "coh.provider-request/v1"
-  and (.required | contains(["messages", "tools", "output_constraint", "sampling", "state", "deadline"]))
+  and (.required | contains(["model_surface", "messages", "tools", "output_constraint", "sampling", "state", "deadline"]))
+  and (.["$defs"].model_surface.additionalProperties == false)
+  and (.["$defs"].model_surface.required | contains(["projection_digest", "ordered_source_record_ids", "surface_digest", "binding_digest"]))
   and (."$defs".content_item.oneOf | length) == 5
   and (.properties | has("options") | not)
   and (.properties | has("headers") | not)

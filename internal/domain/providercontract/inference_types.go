@@ -50,30 +50,48 @@ type State struct {
 	StateDigest string `json:"state_digest,omitempty"`
 }
 
+// ModelSurfaceBinding carries the sealed provenance of the exact ordered
+// content assembled for this request. It is descriptive and grants no
+// provider, tool, policy, approval, or action authority.
+type ModelSurfaceBinding struct {
+	RunID                  string   `json:"run_id"`
+	ProviderID             string   `json:"provider_id"`
+	ProjectionID           string   `json:"projection_id"`
+	ProjectionVersion      string   `json:"projection_version"`
+	ProjectionDigest       string   `json:"projection_digest"`
+	OrderedSourceRecordIDs []string `json:"ordered_source_record_ids"`
+	ArtifactDigests        []string `json:"artifact_digests"`
+	VocabularyDigest       string   `json:"vocabulary_digest"`
+	CompositionDigest      string   `json:"composition_digest"`
+	SurfaceDigest          string   `json:"surface_digest"`
+	BindingDigest          string   `json:"binding_digest"`
+}
+
 type InferenceRequest struct {
-	SchemaVersion          string           `json:"schema_version"`
-	ContractVersion        string           `json:"contract_version"`
-	RequestID              string           `json:"request_id"`
-	AttemptID              string           `json:"attempt_id"`
-	OrganizationID         string           `json:"organization_id"`
-	TenantID               string           `json:"tenant_id"`
-	CaseID                 string           `json:"case_id"`
-	TaskID                 string           `json:"task_id"`
-	ActorID                string           `json:"actor_id"`
-	Provider               ProviderIdentity `json:"provider"`
-	CapabilityDigest       string           `json:"capability_digest"`
-	QualificationID        string           `json:"qualification_id"`
-	Messages               []Message        `json:"messages"`
-	Tools                  []Tool           `json:"tools"`
-	OutputConstraint       OutputConstraint `json:"output_constraint"`
-	Sampling               Sampling         `json:"sampling"`
-	MaximumOutputTokens    uint64           `json:"maximum_output_tokens"`
-	State                  State            `json:"state"`
-	Deadline               string           `json:"deadline"`
-	AuthorizationDigest    string           `json:"authorization_digest"`
-	PolicyDecisionDigest   string           `json:"policy_decision_digest"`
-	ApprovalDecisionDigest string           `json:"approval_decision_digest"`
-	AuditReservationDigest string           `json:"audit_reservation_digest"`
+	SchemaVersion          string              `json:"schema_version"`
+	ContractVersion        string              `json:"contract_version"`
+	RequestID              string              `json:"request_id"`
+	AttemptID              string              `json:"attempt_id"`
+	OrganizationID         string              `json:"organization_id"`
+	TenantID               string              `json:"tenant_id"`
+	CaseID                 string              `json:"case_id"`
+	TaskID                 string              `json:"task_id"`
+	ActorID                string              `json:"actor_id"`
+	Provider               ProviderIdentity    `json:"provider"`
+	CapabilityDigest       string              `json:"capability_digest"`
+	QualificationID        string              `json:"qualification_id"`
+	ModelSurface           ModelSurfaceBinding `json:"model_surface"`
+	Messages               []Message           `json:"messages"`
+	Tools                  []Tool              `json:"tools"`
+	OutputConstraint       OutputConstraint    `json:"output_constraint"`
+	Sampling               Sampling            `json:"sampling"`
+	MaximumOutputTokens    uint64              `json:"maximum_output_tokens"`
+	State                  State               `json:"state"`
+	Deadline               string              `json:"deadline"`
+	AuthorizationDigest    string              `json:"authorization_digest"`
+	PolicyDecisionDigest   string              `json:"policy_decision_digest"`
+	ApprovalDecisionDigest string              `json:"approval_decision_digest"`
+	AuditReservationDigest string              `json:"audit_reservation_digest"`
 }
 
 type Usage struct {

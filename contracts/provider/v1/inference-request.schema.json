@@ -7,7 +7,7 @@
   "required": [
     "schema_version", "contract_version", "request_id", "attempt_id",
     "organization_id", "tenant_id", "case_id", "task_id", "actor_id",
-    "provider", "capability_digest", "qualification_id", "messages", "tools",
+    "provider", "capability_digest", "qualification_id", "model_surface", "messages", "tools",
     "output_constraint", "sampling", "maximum_output_tokens", "state",
     "deadline", "authorization_digest", "policy_decision_digest",
     "approval_decision_digest", "audit_reservation_digest"
@@ -25,6 +25,7 @@
     "provider": {"$ref": "capability.schema.json#/$defs/provider_identity"},
     "capability_digest": {"$ref": "capability.schema.json#/$defs/digest"},
     "qualification_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+    "model_surface": {"$ref": "#/$defs/model_surface"},
     "messages": {
       "type": "array", "minItems": 1, "maxItems": 16384,
       "items": {"$ref": "#/$defs/message"}
@@ -44,6 +45,23 @@
     "audit_reservation_digest": {"$ref": "capability.schema.json#/$defs/digest"}
   },
   "$defs": {
+    "model_surface": {
+      "type": "object", "additionalProperties": false,
+      "required": ["run_id", "provider_id", "projection_id", "projection_version", "projection_digest", "ordered_source_record_ids", "artifact_digests", "vocabulary_digest", "composition_digest", "surface_digest", "binding_digest"],
+      "properties": {
+        "run_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+        "provider_id": {"$ref": "capability.schema.json#/$defs/bounded_name"},
+        "projection_id": {"$ref": "capability.schema.json#/$defs/uuid7"},
+        "projection_version": {"const": "1.0.0"},
+        "projection_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+        "ordered_source_record_ids": {"type": "array", "minItems": 1, "maxItems": 16384, "uniqueItems": true, "items": {"$ref": "capability.schema.json#/$defs/uuid7"}},
+        "artifact_digests": {"type": "array", "maxItems": 16384, "uniqueItems": true, "items": {"$ref": "capability.schema.json#/$defs/digest"}},
+        "vocabulary_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+        "composition_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+        "surface_digest": {"$ref": "capability.schema.json#/$defs/digest"},
+        "binding_digest": {"$ref": "capability.schema.json#/$defs/digest"}
+      }
+    },
     "message": {
       "type": "object", "additionalProperties": false,
       "required": ["message_id", "role", "items"],

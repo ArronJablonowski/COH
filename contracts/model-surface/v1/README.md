@@ -64,10 +64,12 @@ classification, and `immutable=true`, not mutable provider-ready bytes.
 
 The separately stored owning bytes decode as
 `coh.model-surface-payload/v1`. That closed envelope fixes the projection kind,
-role, optional bounded name, inner media type, and text or object content. Tool
-schemas require a trusted system/developer role, a bounded name,
-`application/schema+json`, and object content. Retrieved and compacted content
-requires the data role. Envelope metadata is not provider-visible; the
+role, optional bounded name, and one provider-neutral typed content shape:
+text, input/output JSON, tool call/result, reasoning reference, or tool
+definition. The nested shapes are schema-closed and match the provider contract.
+Tool definitions require a trusted system/developer role, bounded name,
+description, and exact input/output schema digests. Retrieved and compacted
+content requires the data role. Envelope metadata is not provider-visible; the
 projector emits one canonical provider-visible item from it.
 
 Retrieved, external, and model-originated content is always

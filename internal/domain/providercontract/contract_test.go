@@ -268,8 +268,13 @@ func validRequest(provider ProviderIdentity, capabilityDigest string) InferenceR
 		CaseID: "0198e300-1000-7000-8000-000000000007", TaskID: "0198e300-1000-7000-8000-000000000008",
 		ActorID: "0198e300-1000-7000-8000-000000000009", Provider: provider, CapabilityDigest: capabilityDigest,
 		QualificationID: "0198e300-1000-7000-8000-000000000002",
-		Messages:        []Message{{MessageID: "0198e300-1000-7000-8000-000000000010", Role: "user", Items: []ContentItem{{Kind: "text", Text: "hello"}}}},
-		Tools:           []Tool{}, OutputConstraint: OutputConstraint{Kind: "text"}, Sampling: Sampling{TemperatureMilli: 200, TopPMillionths: 900000, Seed: 7},
+		ModelSurface: ModelSurfaceBinding{RunID: "0198e300-1000-7000-8000-000000000020", ProviderID: "ollama.local",
+			ProjectionID: "0198e300-1000-7000-8000-000000000021", ProjectionVersion: ContractVersion,
+			ProjectionDigest: digest("1"), OrderedSourceRecordIDs: []string{"0198e300-1000-7000-8000-000000000010"},
+			ArtifactDigests: []string{}, VocabularyDigest: digest("2"), CompositionDigest: digest("3"),
+			SurfaceDigest: digest("4"), BindingDigest: digest("5")},
+		Messages: []Message{{MessageID: "0198e300-1000-7000-8000-000000000010", Role: "user", Items: []ContentItem{{Kind: "text", Text: "hello"}}}},
+		Tools:    []Tool{}, OutputConstraint: OutputConstraint{Kind: "text"}, Sampling: Sampling{TemperatureMilli: 200, TopPMillionths: 900000, Seed: 7},
 		MaximumOutputTokens: 1024, State: State{Mode: "stateless"}, Deadline: "2026-08-26T06:01:00.000000000Z",
 		AuthorizationDigest: digest("a"), PolicyDecisionDigest: digest("b"), ApprovalDecisionDigest: digest("c"), AuditReservationDigest: digest("d")}
 }

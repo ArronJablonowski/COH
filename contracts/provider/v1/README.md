@@ -25,7 +25,7 @@ not a valid tool result.
 | Schema | Purpose |
 |---|---|
 | `capability.schema.json` | Exact provider identity and supported behavior/limits |
-| `inference-request.schema.json` | Typed input, tools, output constraint, state, sampling, and route |
+| `inference-request.schema.json` | Sealed model-surface lineage, typed input/tools, output constraint, state, sampling, and route |
 | `inference-response.schema.json` | Typed output, terminal state, usage, and actual provenance |
 | `stream-event.schema.json` | Ordered deltas and exactly one terminal response or error |
 | `qualification-record.schema.json` | Time-bounded release-matrix conformance evidence |
@@ -86,6 +86,12 @@ admitted only when every requested behavior is present in both the current
 capability snapshot and an unexpired passing qualification record for the
 exact tuple. Unknown, partially qualified, stale, or materially changed
 capability fails closed as unsupported.
+
+Every request also carries the exact run, provider route, projection, ordered
+source records, immutable artifacts, vocabulary, composition, rendered
+surface, and sealed inference-binding digests. The model-surface admission
+boundary constructs messages and tools from that projection; callers cannot
+submit an alternate visible surface alongside valid authority metadata.
 
 Qualification contains six mandatory conformance cases: capability discovery,
 structured output, tool call, cancellation, identity/provenance, and policy

@@ -60,7 +60,7 @@
         "content_digest": {"$ref": "#/$defs/digest"},
         "rendered_digest": {"$ref": "#/$defs/digest"},
         "rendered_length": {"type": "integer", "minimum": 0, "maximum": 16777216},
-        "instruction_disposition": {"enum": ["trusted_control_instruction", "trusted_system_instruction", "untrusted_data_only"]}
+        "instruction_disposition": {"enum": ["trusted_control_instruction", "trusted_system_instruction", "trusted_user_instruction", "untrusted_data_only"]}
       }
     }
   }

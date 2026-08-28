@@ -1,10 +1,14 @@
 package modelsurface
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"slices"
 	"unicode/utf8"
+
+	"github.com/ArronJablonowski/COH/internal/domain/providercontract"
 )
 
 type SurfacePayload struct {
@@ -13,7 +17,7 @@ type SurfacePayload struct {
 	SurfaceKind     string          `json:"surface_kind"`
 	Role            string          `json:"role"`
 	Name            string          `json:"name"`
-	MediaType       string          `json:"media_type"`
+	ContentKind     string          `json:"content_kind"`
 	Content         json.RawMessage `json:"content"`
 }
 
@@ -55,50 +59,145 @@ func validatePayload(value SurfacePayload) error {
 	if !validProjectionRule(value.SurfaceKind) ||
 		!oneOf(value.Role, "system", "developer", "user", "assistant", "tool", "data") ||
 		(value.Name != "" && !validToken(value.Name)) ||
-		!oneOf(value.MediaType, "application/json", "application/schema+json", "text/plain") ||
+		!oneOf(value.ContentKind, "text", "input_json", "output_json", "tool_call", "tool_result", "reasoning_ref", "tool_definition") ||
 		len(value.Content) == 0 || len(value.Content) > MaximumInputBytes {
 		return newError(InvalidInput, "payload")
 	}
-	var content any
-	if err := json.Unmarshal(value.Content, &content); err != nil {
+	if err := validatePayloadContent(value.ContentKind, value.Content); err != nil {
 		return newError(InvalidInput, "payload_content")
-	}
-	switch value.MediaType {
-	case "text/plain":
-		text, ok := content.(string)
-		if !ok || text == "" || len(text) > 8<<20 || !utf8.ValidString(text) {
-			return newError(InvalidInput, "payload_content")
-		}
-	case "application/json", "application/schema+json":
-		object, ok := content.(map[string]any)
-		if !ok || len(object) > 4096 {
-			return newError(InvalidInput, "payload_content")
-		}
 	}
 	switch value.SurfaceKind {
 	case "message":
-		if !oneOf(value.Role, "system", "developer", "user", "assistant", "tool") || value.Name != "" {
+		if value.Name != "" || !messageContentAllowed(value.Role, value.ContentKind) {
 			return newError(Denied, "payload_surface")
 		}
 	case "prompt_section":
-		if !oneOf(value.Role, "system", "developer") || value.MediaType == "application/schema+json" {
+		if !oneOf(value.Role, "system", "developer") || !oneOf(value.ContentKind, "text", "input_json") {
 			return newError(Denied, "payload_surface")
 		}
 	case "tool_schema":
 		if !oneOf(value.Role, "system", "developer") || !validToken(value.Name) ||
-			value.MediaType != "application/schema+json" {
+			value.ContentKind != "tool_definition" {
 			return newError(Denied, "payload_surface")
 		}
 	case "retrieved_context", "compaction_replacement":
-		if value.Role != "data" {
+		if value.Role != "data" || !oneOf(value.ContentKind, "text", "input_json") {
 			return newError(Denied, "payload_surface")
 		}
 	case "policy_notice":
-		if !oneOf(value.Role, "system", "developer") {
+		if !oneOf(value.Role, "system", "developer") || !oneOf(value.ContentKind, "text", "input_json") {
 			return newError(Denied, "payload_surface")
 		}
 	}
 	return nil
+}
+
+type payloadJSONContent struct {
+	Value        json.RawMessage `json:"value"`
+	SchemaDigest string          `json:"schema_digest"`
+}
+type payloadToolCall struct {
+	CallID            string          `json:"call_id"`
+	ToolName          string          `json:"tool_name"`
+	Arguments         json.RawMessage `json:"arguments"`
+	InputSchemaDigest string          `json:"input_schema_digest"`
+}
+type payloadToolResult struct {
+	CallID             string          `json:"call_id"`
+	Outcome            string          `json:"outcome"`
+	Value              json.RawMessage `json:"value"`
+	OutputSchemaDigest string          `json:"output_schema_digest"`
+	ResultDigest       string          `json:"result_digest"`
+}
+type payloadReasoningRef struct {
+	ReferenceID string `json:"reference_id"`
+	Digest      string `json:"digest"`
+}
+type payloadToolDefinition struct {
+	Description        string `json:"description"`
+	InputSchemaDigest  string `json:"input_schema_digest"`
+	OutputSchemaDigest string `json:"output_schema_digest"`
+}
+
+func validatePayloadContent(kind string, raw json.RawMessage) error {
+	switch kind {
+	case "text":
+		var text string
+		if err := json.Unmarshal(raw, &text); err != nil || text == "" || len(text) > 8<<20 || !utf8.ValidString(text) {
+			return newError(InvalidInput, "payload_text")
+		}
+	case "input_json", "output_json":
+		var value payloadJSONContent
+		if decodePayloadContent(raw, &value) != nil || !validJSONObject(value.Value) || !validDigest(value.SchemaDigest) {
+			return newError(InvalidInput, "payload_json")
+		}
+	case "tool_call":
+		var value payloadToolCall
+		if decodePayloadContent(raw, &value) != nil || len(value.CallID) == 0 || len(value.CallID) > 128 ||
+			!validToken(value.ToolName) || !validJSONObject(value.Arguments) || !validDigest(value.InputSchemaDigest) {
+			return newError(InvalidInput, "payload_tool_call")
+		}
+	case "tool_result":
+		var value payloadToolResult
+		if decodePayloadContent(raw, &value) != nil {
+			return newError(InvalidInput, "payload_tool_result")
+		}
+		digest, digestErr := providercontract.DigestToolResult(value.Value)
+		if len(value.CallID) == 0 || len(value.CallID) > 128 ||
+			!oneOf(value.Outcome, "succeeded", "denied", "canceled", "timeout", "failed", "uncertain") ||
+			!validJSONObject(value.Value) || !validDigest(value.OutputSchemaDigest) || digestErr != nil || digest != value.ResultDigest {
+			return newError(InvalidInput, "payload_tool_result")
+		}
+	case "reasoning_ref":
+		var value payloadReasoningRef
+		if decodePayloadContent(raw, &value) != nil || len(value.ReferenceID) == 0 || len(value.ReferenceID) > 256 || !validDigest(value.Digest) {
+			return newError(InvalidInput, "payload_reasoning")
+		}
+	case "tool_definition":
+		var value payloadToolDefinition
+		if decodePayloadContent(raw, &value) != nil || len(value.Description) == 0 || len(value.Description) > 4096 ||
+			!validDigest(value.InputSchemaDigest) || !validDigest(value.OutputSchemaDigest) {
+			return newError(InvalidInput, "payload_tool_definition")
+		}
+	default:
+		return newError(Unsupported, "payload_content_kind")
+	}
+	return nil
+}
+
+func decodePayloadContent(input []byte, target any) error {
+	decoder := json.NewDecoder(bytes.NewReader(input))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return newError(InvalidInput, "payload_content_shape")
+	}
+	reencoded, err := canonicalRecord(target)
+	if err != nil || !bytes.Equal(reencoded, input) {
+		return newError(InvalidInput, "payload_content_shape")
+	}
+	return nil
+}
+
+func validJSONObject(value json.RawMessage) bool {
+	var object map[string]any
+	return len(value) > 0 && json.Unmarshal(value, &object) == nil && object != nil
+}
+
+func messageContentAllowed(role, kind string) bool {
+	switch role {
+	case "system", "developer", "user":
+		return oneOf(kind, "text", "input_json")
+	case "assistant":
+		return oneOf(kind, "text", "output_json", "tool_call", "reasoning_ref")
+	case "tool":
+		return kind == "tool_result"
+	default:
+		return false
+	}
 }
 
 type ProjectionRequest struct {
@@ -116,7 +215,7 @@ type VisibleItem struct {
 	SurfaceKind string          `json:"surface_kind"`
 	Role        string          `json:"role"`
 	Name        string          `json:"name"`
-	MediaType   string          `json:"media_type"`
+	ContentKind string          `json:"content_kind"`
 	Content     json.RawMessage `json:"content"`
 }
 
@@ -182,8 +281,12 @@ func (projector *Projector) Project(ctx context.Context, request ProjectionReque
 		if value.SurfaceKind != source.ProjectionRule || !projectionTrustAllowed(source, value) {
 			return ProjectedSurface{}, newError(Denied, "projection_trust")
 		}
-		visibleItem := VisibleItem{Ordinal: uint64(index + 1), SurfaceKind: value.SurfaceKind, Role: value.Role,
-			Name: value.Name, MediaType: value.MediaType, Content: append(json.RawMessage(nil), value.Content...)}
+		visibleRole := value.Role
+		if visibleRole == "data" {
+			visibleRole = "user"
+		}
+		visibleItem := VisibleItem{Ordinal: uint64(index + 1), SurfaceKind: value.SurfaceKind, Role: visibleRole,
+			Name: value.Name, ContentKind: value.ContentKind, Content: append(json.RawMessage(nil), value.Content...)}
 		rendered, encodeErr := canonicalRecord(visibleItem)
 		if encodeErr != nil {
 			return ProjectedSurface{}, encodeErr
@@ -225,12 +328,18 @@ func (projector *Projector) Project(ctx context.Context, request ProjectionReque
 }
 
 func projectionTrustAllowed(source Source, payload SurfacePayload) bool {
-	if source.InstructionDisposition == "untrusted_data_only" {
+	switch source.InstructionDisposition {
+	case "untrusted_data_only":
 		return !oneOf(payload.Role, "system", "developer") &&
 			!oneOf(payload.SurfaceKind, "prompt_section", "tool_schema", "policy_notice")
+	case "trusted_user_instruction":
+		return payload.Role == "user" && payload.SurfaceKind == "message"
+	case "trusted_control_instruction", "trusted_system_instruction":
+		return oneOf(payload.Role, "system", "developer") &&
+			oneOf(payload.SurfaceKind, "message", "prompt_section", "tool_schema", "policy_notice")
+	default:
+		return false
 	}
-	return oneOf(payload.Role, "system", "developer") &&
-		oneOf(payload.SurfaceKind, "message", "prompt_section", "tool_schema", "policy_notice")
 }
 
 func cloneProjection(value Projection) Projection {

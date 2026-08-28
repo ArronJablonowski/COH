@@ -145,6 +145,7 @@ func newTestRig(t *testing.T, fixture string) testRig {
 		TenantID: "0198e300-2000-7000-8000-000000000006", CaseID: "0198e300-2000-7000-8000-000000000007",
 		TaskID: "0198e300-2000-7000-8000-000000000008", ActorID: "0198e300-2000-7000-8000-000000000009",
 		Provider: provider, CapabilityDigest: capability.Digest(), QualificationID: "0198e300-2000-7000-8000-000000000002",
+		ModelSurface: testSurfaceBinding("0198e300-2000-7000-8000-000000000010"),
 		Messages: []providercontract.Message{{MessageID: "0198e300-2000-7000-8000-000000000010", Role: "user",
 			Items: []providercontract.ContentItem{{Kind: "text", Text: "Inspect the host."}}}},
 		Tools: []providercontract.Tool{{Name: "query_host", Description: "Query one host.", InputSchemaDigest: inputDigest,
@@ -155,6 +156,10 @@ func newTestRig(t *testing.T, fixture string) testRig {
 		AuditReservationDigest: testDigest("1")}
 	return testRig{adapter: adapter, request: decodeRequest(t, request), http: httpClient, reasoning: reasoning,
 		schemas: schemas, registry: registry, clock: clock}
+}
+
+func testSurfaceBinding(messageID string) providercontract.ModelSurfaceBinding {
+	return providercontract.ModelSurfaceBinding{RunID: "0198e300-2000-7000-8000-000000000020", ProviderID: "openai_responses.approved_external", ProjectionID: "0198e300-2000-7000-8000-000000000021", ProjectionVersion: providercontract.ContractVersion, ProjectionDigest: testDigest("2"), OrderedSourceRecordIDs: []string{messageID}, ArtifactDigests: []string{}, VocabularyDigest: testDigest("3"), CompositionDigest: testDigest("4"), SurfaceDigest: testDigest("5"), BindingDigest: testDigest("6")}
 }
 
 func testProvider() providercontract.ProviderIdentity {

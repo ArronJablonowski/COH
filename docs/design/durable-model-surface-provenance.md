@@ -37,6 +37,9 @@ deterministic ordered projector
 authorization/audit-bound inference binding
                 |
                 v
+model-surface admission boundary
+                |
+                v
 qualified provider adapter
                 |
                 v
@@ -47,6 +50,14 @@ The source resolver and artifact reader are narrow, read-only ports. They expose
 no repository mutation, connector, credential, policy, approval, audit, broker,
 runner, E-stop, or generic callback. The projector can render data; it cannot
 authorize a tool action.
+
+Provider-request admission accepts dispatch controls but rejects caller-supplied
+messages, tools, or model-surface metadata. It revalidates the sealed projection
+and every rendered item, derives the provider identifier, constructs the exact
+typed provider messages and sorted tool definitions, seals the inference
+binding, and then runs the provider contract decoder. Production dispatch uses
+`provider.SurfaceGateway`, whose input type is the opaque admitted inference;
+vendor adapters remain low-level translation boundaries.
 
 ## Invariants
 

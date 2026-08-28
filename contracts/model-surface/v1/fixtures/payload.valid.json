@@ -1,1 +1,1 @@
-{"content":"Investigate host.","contract_version":"1.0.0","media_type":"text/plain","name":"","role":"user","schema_version":"coh.model-surface-payload/v1","surface_kind":"message"}
+{"content":"Investigate host.","content_kind":"text","contract_version":"1.0.0","name":"","role":"user","schema_version":"coh.model-surface-payload/v1","surface_kind":"message"}

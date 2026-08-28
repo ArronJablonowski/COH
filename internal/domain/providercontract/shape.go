@@ -40,8 +40,9 @@ func validateQualificationShape(input []byte) error {
 }
 
 func validateRequestShape(input []byte) error {
-	root, err := exactObject(input, []string{"schema_version", "contract_version", "request_id", "attempt_id", "organization_id", "tenant_id", "case_id", "task_id", "actor_id", "provider", "capability_digest", "qualification_id", "messages", "tools", "output_constraint", "sampling", "maximum_output_tokens", "state", "deadline", "authorization_digest", "policy_decision_digest", "approval_decision_digest", "audit_reservation_digest"})
+	root, err := exactObject(input, []string{"schema_version", "contract_version", "request_id", "attempt_id", "organization_id", "tenant_id", "case_id", "task_id", "actor_id", "provider", "capability_digest", "qualification_id", "model_surface", "messages", "tools", "output_constraint", "sampling", "maximum_output_tokens", "state", "deadline", "authorization_digest", "policy_decision_digest", "approval_decision_digest", "audit_reservation_digest"})
 	if err != nil || exactMap(root["provider"], providerFields, nil) != nil ||
+		exactMap(root["model_surface"], []string{"run_id", "provider_id", "projection_id", "projection_version", "projection_digest", "ordered_source_record_ids", "artifact_digests", "vocabulary_digest", "composition_digest", "surface_digest", "binding_digest"}, nil) != nil ||
 		exactMap(root["sampling"], []string{"temperature_milli", "top_p_millionths", "seed"}, nil) != nil {
 		return NewError(InvalidInput, "document_decoding")
 	}

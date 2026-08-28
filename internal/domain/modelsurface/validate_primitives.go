@@ -84,7 +84,7 @@ func validClassification(value string) bool {
 }
 
 func validInstructionDisposition(value string) bool {
-	return oneOf(value, "trusted_control_instruction", "trusted_system_instruction", "untrusted_data_only")
+	return oneOf(value, "trusted_control_instruction", "trusted_system_instruction", "trusted_user_instruction", "untrusted_data_only")
 }
 
 func validProjectionRule(value string) bool {
