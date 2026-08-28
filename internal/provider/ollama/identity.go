@@ -107,7 +107,7 @@ func (adapter *Adapter) verifyIdentity(ctx context.Context, requested string) er
 		observed.Model != provider.ActualModel || observed.ModelRevision != provider.ModelRevision ||
 		observed.TemplateDigest != provider.ChatTemplateDigest || observed.ModelInfoDigest != provider.TokenizerDigest ||
 		observed.ContextLimit != provider.ContextLimit || !contains(observed.Capabilities, "completion") ||
-		!contains(observed.Capabilities, "tools") || !contains(observed.Capabilities, "thinking") {
+		!contains(observed.Capabilities, "tools") {
 		return newError(providercontract.Denied, "observed_identity_drift", false)
 	}
 	observation := LocalRouteObservation{Endpoint: adapter.config.Endpoint, RuntimeVersion: observed.RuntimeVersion,
@@ -152,7 +152,7 @@ func validateShow(show showResponse, record modelRecord) (uint64, string, error)
 	if !validStringSet(show.Capabilities, 64) {
 		return 0, "", newError(providercontract.Conflict, "model_capability_duplicate", false)
 	}
-	if len(record.Capabilities) > 0 && !equalStringSet(record.Capabilities, show.Capabilities) {
+	if len(record.Capabilities) > 0 && !subsetStringSet(record.Capabilities, show.Capabilities) {
 		return 0, "", newError(providercontract.Denied, "model_capability_drift", false)
 	}
 	if len(show.Modelfile) > 1<<20 || !utf8.ValidString(show.Modelfile) ||
@@ -219,6 +219,19 @@ func equalStringSet(left, right []string) bool {
 	sort.Strings(left)
 	sort.Strings(right)
 	return slices.Equal(left, right)
+}
+
+func subsetStringSet(subset, superset []string) bool {
+	values := make(map[string]struct{}, len(superset))
+	for _, value := range superset {
+		values[value] = struct{}{}
+	}
+	for _, value := range subset {
+		if _, ok := values[value]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func validTagDetails(value modelDetails) bool {

@@ -58,6 +58,23 @@ func TestSparseTagDetailsAreCompletedByBoundShowMetadata(t *testing.T) {
 	}
 }
 
+func TestSparseTagCapabilitiesAreCompletedByBoundShowMetadata(t *testing.T) {
+	var show showResponse
+	if err := decodeExact(readFixture(t, "show.json"), &show); err != nil {
+		t.Fatal(err)
+	}
+	record := modelRecord{Name: "qwen3:8b", Model: "qwen3:8b", ModifiedAt: show.ModifiedAt, Size: 1,
+		Digest: testDigest("a")[len("sha256:"):], Details: show.Details,
+		Capabilities: []string{"completion", "tools"}}
+	if _, _, err := validateShow(show, record); err != nil {
+		t.Fatal(err)
+	}
+	record.Capabilities = append(record.Capabilities, "embedding")
+	if _, _, err := validateShow(show, record); Code(err) != providercontract.Denied || Reason(err) != "model_capability_drift" {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestCurrentOllamaMetadataDriftFailsClosed(t *testing.T) {
 	base := func(t *testing.T) (showResponse, modelRecord) {
 		t.Helper()
@@ -77,7 +94,7 @@ func TestCurrentOllamaMetadataDriftFailsClosed(t *testing.T) {
 		reason string
 	}{
 		{"capability drift", func(_ *showResponse, record *modelRecord) {
-			record.Capabilities = []string{"completion", "thinking"}
+			record.Capabilities = append(record.Capabilities, "embedding")
 		}, providercontract.Denied, "model_capability_drift"},
 		{"duplicate capability", func(show *showResponse, _ *modelRecord) {
 			show.Capabilities = append(show.Capabilities, show.Capabilities[0])
