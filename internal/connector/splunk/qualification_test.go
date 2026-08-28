@@ -21,6 +21,7 @@ type qualificationClientStub struct {
 	current      CurrentContext
 	indexes      IndexInventory
 	fields       RegisteredFieldInventory
+	parser       ParserResult
 	receipts     []CallReceipt
 	err          error
 	operations   []string
@@ -45,6 +46,11 @@ func (client *qualificationClientStub) Indexes(_ context.Context, request Invent
 func (client *qualificationClientStub) RegisteredFields(_ context.Context, request InventoryRequest) (RegisteredFieldInventory, CallReceipt, error) {
 	client.operations = append(client.operations, request.Binding.Operation)
 	return client.fields, client.nextReceipt(), client.err
+}
+
+func (client *qualificationClientStub) ParserPreflight(_ context.Context, request ParserRequest) (ParserResult, CallReceipt, error) {
+	client.operations = append(client.operations, request.Binding.Operation)
+	return client.parser, client.nextReceipt(), client.err
 }
 
 func (client *qualificationClientStub) nextReceipt() CallReceipt {

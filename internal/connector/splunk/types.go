@@ -118,6 +118,7 @@ type Client interface {
 	CurrentContext(context.Context, CallBinding) (CurrentContext, CallReceipt, error)
 	Indexes(context.Context, InventoryRequest) (IndexInventory, CallReceipt, error)
 	RegisteredFields(context.Context, InventoryRequest) (RegisteredFieldInventory, CallReceipt, error)
+	ParserPreflight(context.Context, ParserRequest) (ParserResult, CallReceipt, error)
 }
 
 // CredentialSource lends one broker-owned authentication token to one bound
@@ -186,4 +187,13 @@ type RegisteredField struct {
 type RegisteredFieldInventory struct {
 	Fields    []RegisteredField
 	Truncated bool
+}
+
+type ParserRequest struct {
+	Binding      CallBinding
+	CanonicalSPL string
+}
+
+type ParserResult struct {
+	Commands []string
 }

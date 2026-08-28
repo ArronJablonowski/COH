@@ -81,10 +81,12 @@ type Plan struct {
 	SubsearchCount        uint32           `json:"subsearch_count"`
 	CommandCount          uint32           `json:"command_count"`
 	QueryDigest           string           `json:"query_digest"`
+	ScopeDigest           string           `json:"scope_digest"`
 	CapabilityDigest      string           `json:"capability_digest"`
 	SchemaDigest          string           `json:"schema_digest"`
 	Authority             AuthorityBinding `json:"authority"`
 	RegistryDigest        string           `json:"registry_digest"`
+	ParserReceiptDigest   string           `json:"parser_receipt_digest"`
 	MandatoryFilterDigest string           `json:"mandatory_filter_digest"`
 	PlanDigest            string           `json:"plan_digest"`
 }

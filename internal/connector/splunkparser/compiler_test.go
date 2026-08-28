@@ -147,6 +147,23 @@ func TestPlanDigestRejectsMutation(t *testing.T) {
 	}
 }
 
+func TestBindParserReceiptFinalizesPlanDigest(t *testing.T) {
+	t.Parallel()
+	request := validCompileRequest(t)
+	request.Query = `search resource=endpoint | fields action,event_time,host,source`
+	candidate, err := Compile(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalized, err := BindParserReceipt(candidate, digestForTest("9"))
+	if err != nil || finalized.ParserReceiptDigest != digestForTest("9") || finalized.PlanDigest == candidate.PlanDigest || finalized.PlanDigest != PlanDigest(finalized) {
+		t.Fatalf("finalized=%+v err=%v", finalized, err)
+	}
+	if _, err := BindParserReceipt(candidate, zeroDigest()); err == nil {
+		t.Fatal("zero parser receipt accepted")
+	}
+}
+
 func validCompileRequest(t *testing.T) CompileRequest {
 	t.Helper()
 	definition, err := DecodeDefinition(readFixture(t, "definition.valid.json"))
@@ -159,7 +176,8 @@ func validCompileRequest(t *testing.T) CompileRequest {
 		ActorID:             "018f0000-0000-7000-8000-000000000012",
 		AuthorizationDigest: digestForTest("1"), PolicyDecisionDigest: digestForTest("2"),
 		AuditReservationDigest: digestForTest("3"), CapabilityDigest: digestForTest("4"), SchemaDigest: digestForTest("5"),
-		Earliest: "2026-08-27T11:00:00.000000000Z", Latest: "2026-08-27T12:00:00.000000000Z",
+		ScopeDigest: digestForTest("6"),
+		Earliest:    "2026-08-27T11:00:00.000000000Z", Latest: "2026-08-27T12:00:00.000000000Z",
 		MaximumRows: 100, MaximumBytes: MaximumDocumentBytes, MaximumDurationMillis: 30000,
 		MandatoryTenantValue: "tenant_alpha", MandatorySourceValue: "edr",
 	}

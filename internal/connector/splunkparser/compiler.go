@@ -21,6 +21,7 @@ type CompileRequest struct {
 	AuditReservationDigest string
 	CapabilityDigest       string
 	SchemaDigest           string
+	ScopeDigest            string
 	Earliest               string
 	Latest                 string
 	MaximumRows            uint64
@@ -28,6 +29,16 @@ type CompileRequest struct {
 	MaximumDurationMillis  uint64
 	MandatoryTenantValue   string
 	MandatorySourceValue   string
+}
+
+// Inspect returns the bounded logical resource selected by a structurally valid
+// query. It exposes no literals or native text.
+func Inspect(ctx context.Context, input string) (string, error) {
+	query, err := parse(ctx, input)
+	if err != nil {
+		return "", err
+	}
+	return query.resourceID, nil
 }
 
 // Compile binds logical syntax to an admitted schema and returns an immutable,
@@ -68,10 +79,12 @@ func Compile(ctx context.Context, request CompileRequest) (Plan, error) {
 		MaximumRows: maximumRows, MaximumBytes: request.MaximumBytes, MaximumDurationMillis: request.MaximumDurationMillis,
 		SubsearchCount: typed.subsearchCount(), CommandCount: typed.totalCommandCount(),
 		QueryDigest:      hash("COH-SPLUNK-LOGICAL-QUERY-V1\x00", renderLogical(typed)),
+		ScopeDigest:      request.ScopeDigest,
 		CapabilityDigest: request.CapabilityDigest, SchemaDigest: request.SchemaDigest,
 		Authority: AuthorityBinding{ActorID: request.ActorID, AuthorizationDigest: request.AuthorizationDigest,
 			PolicyDecisionDigest: request.PolicyDecisionDigest, AuditReservationDigest: request.AuditReservationDigest},
-		RegistryDigest: registry.Digest, MandatoryFilterDigest: hash("COH-SPLUNK-MANDATORY-FILTERS-V1\x00", mandatory),
+		RegistryDigest: registry.Digest, ParserReceiptDigest: zeroDigest(),
+		MandatoryFilterDigest: hash("COH-SPLUNK-MANDATORY-FILTERS-V1\x00", mandatory),
 	}
 	plan.PlanDigest = PlanDigest(plan)
 	if err := validatePlan(plan); err != nil {
@@ -88,7 +101,7 @@ func validateCompileRequest(request CompileRequest) error {
 	latest, latestErr := time.Parse("2006-01-02T15:04:05.000000000Z", request.Latest)
 	if !uuidPattern.MatchString(request.QueryID) || !uuidPattern.MatchString(request.ActorID) ||
 		!validDigests(request.AuthorizationDigest, request.PolicyDecisionDigest, request.AuditReservationDigest,
-			request.CapabilityDigest, request.SchemaDigest) || earliestErr != nil || latestErr != nil || !earliest.Before(latest) ||
+			request.CapabilityDigest, request.SchemaDigest, request.ScopeDigest) || earliestErr != nil || latestErr != nil || !earliest.Before(latest) ||
 		request.MaximumRows == 0 || request.MaximumRows > request.Definition.HardMaximumRows ||
 		request.MaximumBytes == 0 || request.MaximumBytes > MaximumDocumentBytes ||
 		request.MaximumDurationMillis == 0 || request.MaximumDurationMillis > 120000 {
@@ -307,3 +320,19 @@ func safeMandatoryValue(value string) bool {
 	}
 	return true
 }
+
+// BindParserReceipt finalizes a local candidate after the independent vendor
+// parser succeeds. The returned plan digest binds that exact receipt.
+func BindParserReceipt(candidate Plan, receiptDigest string) (Plan, error) {
+	if err := validatePlan(candidate); err != nil || !digestPattern.MatchString(receiptDigest) || receiptDigest == zeroDigest() {
+		return Plan{}, syntaxDenied("parser_receipt_invalid")
+	}
+	candidate.ParserReceiptDigest = receiptDigest
+	candidate.PlanDigest = PlanDigest(candidate)
+	if err := validatePlan(candidate); err != nil {
+		return Plan{}, syntaxDenied("compiled_plan_invalid")
+	}
+	return candidate, nil
+}
+
+func zeroDigest() string { return "sha256:" + strings.Repeat("0", 64) }

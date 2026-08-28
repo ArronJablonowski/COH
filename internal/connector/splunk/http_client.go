@@ -169,6 +169,49 @@ func (client *HTTPClient) RegisteredFields(ctx context.Context, request Inventor
 	return RegisteredFieldInventory{Fields: fields, Truncated: truncated}, receipt, nil
 }
 
+func (client *HTTPClient) ParserPreflight(ctx context.Context, request ParserRequest) (ParserResult, CallReceipt, error) {
+	if err := validateCallBinding(client.config, request.Binding, "splunk.parser"); err != nil ||
+		len(request.CanonicalSPL) == 0 || len(request.CanonicalSPL) > 65536 || strings.ContainsAny(request.CanonicalSPL, "`\x00\r\n") {
+		return ParserResult{}, CallReceipt{}, deniedCall("splunk_parser_request_invalid")
+	}
+	form := url.Values{"output_mode": {"json"}, "q": {request.CanonicalSPL}, "parse_only": {"true"},
+		"enable_lookups": {"false"}, "reload_macros": {"false"}}
+	body, receipt, err := client.postForm(ctx, request.Binding, "/services/search/v2/parser", form)
+	if err != nil {
+		return ParserResult{}, CallReceipt{}, err
+	}
+	var response struct {
+		RemoteSearch      string `json:"remoteSearch"`
+		RemoteTimeOrdered bool   `json:"remoteTimeOrdered"`
+		EventsSearch      string `json:"eventsSearch"`
+		EventsTimeOrdered bool   `json:"eventsTimeOrdered"`
+		EventsStreaming   bool   `json:"eventsStreaming"`
+		ReportsSearch     string `json:"reportsSearch"`
+		Commands          []struct {
+			Command      string                     `json:"command"`
+			RawArgs      string                     `json:"rawargs"`
+			Pipeline     string                     `json:"pipeline"`
+			Args         map[string]json.RawMessage `json:"args"`
+			IsGenerating bool                       `json:"isGenerating"`
+			StreamType   string                     `json:"streamType"`
+		} `json:"commands"`
+	}
+	if err := decodeStrictVendor(body, &response); err != nil || len(response.RemoteSearch) == 0 || len(response.RemoteSearch) > 65536 ||
+		len(response.EventsSearch) == 0 || len(response.EventsSearch) > 65536 || len(response.ReportsSearch) > 65536 ||
+		len(response.Commands) == 0 || len(response.Commands) > 40 {
+		return ParserResult{}, CallReceipt{}, deniedCall("splunk_parser_response_invalid")
+	}
+	commands := make([]string, 0, len(response.Commands))
+	for _, command := range response.Commands {
+		if !namePattern.MatchString(command.Command) || len(command.RawArgs) > 65536 || command.Pipeline == "" ||
+			len(command.Pipeline) > 128 || command.Args == nil || command.StreamType == "" || len(command.StreamType) > 128 {
+			return ParserResult{}, CallReceipt{}, deniedCall("splunk_parser_response_invalid")
+		}
+		commands = append(commands, command.Command)
+	}
+	return ParserResult{Commands: commands}, receipt, nil
+}
+
 type splunkEntries[T any] struct {
 	Entry []struct {
 		Name    string `json:"name"`
@@ -246,6 +289,75 @@ func (client *HTTPClient) get(ctx context.Context, binding CallBinding, path str
 		LeaseDecisionDigest: decisionDigest, TransportDigest: authenticatedDigest}, nil
 }
 
+func (client *HTTPClient) postForm(ctx context.Context, binding CallBinding, path string, form url.Values) ([]byte, CallReceipt, error) {
+	if client == nil || client.client == nil || nilPort(client.credentials) {
+		return nil, CallReceipt{}, invalidInput("splunk_http_client_required")
+	}
+	if err := contextError(ctx); err != nil {
+		return nil, CallReceipt{}, err
+	}
+	preflightDigest, err := client.verifyPeer(ctx)
+	if err != nil {
+		return nil, CallReceipt{}, mapTransportError(ctx, err)
+	}
+	requestURL := *client.endpoint
+	requestURL.Path = path
+	encodedForm := form.Encode()
+	requestDigest := hashValue("COH-SPLUNK-HTTP-REQUEST-V1\x00", struct{ Method, Path, Body string }{http.MethodPost, path,
+		hashValue("COH-SPLUNK-HTTP-FORM-V1\x00", encodedForm)})
+	var body []byte
+	var responseDigest, authenticatedDigest string
+	decisionDigest, err := client.credentials.Use(ctx, binding, func(token []byte) error {
+		if !validCredential(token) {
+			return deniedCall("splunk_credential_invalid")
+		}
+		request, requestErr := http.NewRequestWithContext(ctx, http.MethodPost, requestURL.String(), strings.NewReader(encodedForm))
+		if requestErr != nil {
+			return invalidInput("splunk_http_request_invalid")
+		}
+		request.Header.Set("Accept", "application/json")
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "Splunk "+string(token))
+		defer request.Header.Del("Authorization")
+		response, requestErr := client.client.Do(request)
+		if requestErr != nil {
+			return mapTransportError(ctx, requestErr)
+		}
+		defer response.Body.Close()
+		authenticatedDigest, requestErr = pinnedPeerDigest(response, client.config.TransportIdentityDigest)
+		if requestErr != nil {
+			return requestErr
+		}
+		maximum := int64(min(client.config.HardLimits.MaximumBytes, uint64(queryconnector.MaximumDocumentBytes)))
+		body, requestErr = io.ReadAll(io.LimitReader(response.Body, maximum+1))
+		if requestErr != nil || int64(len(body)) > maximum {
+			return deniedCall("splunk_response_oversized")
+		}
+		responseDigest = hashValue("COH-SPLUNK-HTTP-RESPONSE-V1\x00", struct {
+			Status int
+			Body   []byte
+		}{response.StatusCode, body})
+		if response.StatusCode != http.StatusOK {
+			if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+				return deniedCall("splunk_authentication_or_privilege_denied")
+			}
+			if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
+				return deniedCall("splunk_parser_rejected")
+			}
+			return queryconnector.NewError(queryconnector.Unavailable, "splunk_vendor_unavailable", nil)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, CallReceipt{}, mapTransportError(ctx, err)
+	}
+	if !digestPattern.MatchString(decisionDigest) || authenticatedDigest != preflightDigest {
+		return nil, CallReceipt{}, deniedCall("splunk_transport_receipt_invalid")
+	}
+	return body, CallReceipt{RequestDigest: requestDigest, ResponseDigest: responseDigest,
+		LeaseDecisionDigest: decisionDigest, TransportDigest: authenticatedDigest}, nil
+}
+
 func (client *HTTPClient) verifyPeer(ctx context.Context) (string, error) {
 	host := client.endpoint.Host
 	if client.endpoint.Port() == "" {
@@ -298,6 +410,30 @@ func decodeVendor(input []byte, output any) error {
 		return err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(canonical))
+	decoder.UseNumber()
+	if err := decoder.Decode(output); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return fmt.Errorf("trailing vendor JSON")
+	}
+	return nil
+}
+
+func decodeStrictVendor(input []byte, output any) error {
+	if len(input) == 0 {
+		return errors.New("empty vendor response")
+	}
+	unique, err := domaincontract.DecodeUnique(input)
+	if err != nil {
+		return err
+	}
+	canonical, err := json.Marshal(unique)
+	if err != nil {
+		return err
+	}
+	decoder := json.NewDecoder(bytes.NewReader(canonical))
+	decoder.DisallowUnknownFields()
 	decoder.UseNumber()
 	if err := decoder.Decode(output); err != nil {
 		return err

@@ -238,9 +238,9 @@ func validatePlan(value Plan) error {
 		value.MaximumRows == 0 || value.MaximumRows > 100000 || value.MaximumBytes == 0 || value.MaximumBytes > MaximumDocumentBytes ||
 		value.MaximumDurationMillis == 0 || value.MaximumDurationMillis > 120000 ||
 		value.SubsearchCount > MaximumSubsearches || value.CommandCount == 0 || value.CommandCount > MaximumCommands*(value.SubsearchCount+1) ||
-		!validDigests(value.QueryDigest, value.CapabilityDigest, value.SchemaDigest, value.Authority.AuthorizationDigest,
+		!validDigests(value.QueryDigest, value.ScopeDigest, value.CapabilityDigest, value.SchemaDigest, value.Authority.AuthorizationDigest,
 			value.Authority.PolicyDecisionDigest, value.Authority.AuditReservationDigest, value.RegistryDigest,
-			value.MandatoryFilterDigest, value.PlanDigest) || !uuidPattern.MatchString(value.Authority.ActorID) || value.PlanDigest != planDigest(value) {
+			value.ParserReceiptDigest, value.MandatoryFilterDigest, value.PlanDigest) || !uuidPattern.MatchString(value.Authority.ActorID) || value.PlanDigest != planDigest(value) {
 		return denied("plan invalid")
 	}
 	columnNames := map[string]struct{}{}

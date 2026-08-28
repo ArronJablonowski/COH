@@ -168,6 +168,16 @@ operation returns unavailable and stores no accepted plan. Cancellation or
 timeout returns the matching common error. A subsequent fresh-authority retry
 recompiles from canonical input; it does not reuse an uncertain vendor result.
 
+The adapter retains discovered schema only for the exact capability digest and
+expiry that produced it. Validation derives a resource-specific parser
+definition from that qualified administrator allowlist, compiles locally, and
+then posts the canonical candidate only to `/services/search/v2/parser`. The
+returned command multiset must exactly match the locally emitted search,
+projection/aggregation, sort, and head commands. The final plan digest binds
+the common scope digest and the authenticated parser receipt. Query-ID
+substitution, stale capability/schema, semantic drift, and applied policy
+revocation remove or prevent retained plans before execution.
+
 ## Test and release trajectory
 
 Task 2 publishes the strict plan, decision, registry, denial, and redacted-audit

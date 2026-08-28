@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ArronJablonowski/COH/internal/connector/splunkparser"
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
 
@@ -27,6 +29,19 @@ type splunkCursorRecord struct {
 	issuedAt, expiresAt                           time.Time
 }
 
+type splunkSchemaRecord struct {
+	capabilityDigest string
+	expiresAt        time.Time
+	entries          []queryconnector.SchemaEntry
+}
+
+type splunkValidationRecord struct {
+	queryID    string
+	validation queryconnector.ValidatedValidation
+	plan       splunkparser.Plan
+	expiresAt  time.Time
+}
+
 type Adapter struct {
 	config        Config
 	client        Client
@@ -36,6 +51,10 @@ type Adapter struct {
 	mu           sync.Mutex
 	capabilities map[string]splunkCapabilityRecord
 	cursors      map[string]splunkCursorRecord
+	schemas      map[string]splunkSchemaRecord
+	validations  map[string]splunkValidationRecord
+	queryIDs     map[string]string
+	revoked      map[string]string
 }
 
 func NewAdapter(config Config, client Client, qualification ValidatedQualification, clock Clock) (*Adapter, error) {
@@ -48,7 +67,9 @@ func NewAdapter(config Config, client Client, qualification ValidatedQualificati
 		return nil, conflictCall("splunk_qualification_configuration_mismatch")
 	}
 	return &Adapter{config: cloneConfig(config), client: client, qualification: qualification, clock: clock,
-		capabilities: make(map[string]splunkCapabilityRecord), cursors: make(map[string]splunkCursorRecord)}, nil
+		capabilities: make(map[string]splunkCapabilityRecord), cursors: make(map[string]splunkCursorRecord),
+		schemas: make(map[string]splunkSchemaRecord), validations: make(map[string]splunkValidationRecord),
+		queryIDs: make(map[string]string), revoked: make(map[string]string)}, nil
 }
 
 func (adapter *Adapter) Probe(ctx context.Context, scope queryconnector.Scope,
@@ -182,6 +203,14 @@ func (adapter *Adapter) DiscoverSchema(ctx context.Context,
 		return queryconnector.ValidatedSchemaPage{}, deniedCall("splunk_schema_page_limit_exceeded")
 	}
 	schemaDigest := hashValue("COH-SPLUNK-SCHEMA-V1\x00", entries)
+	adapter.mu.Lock()
+	if len(adapter.schemas) >= maximumAdapterRecords {
+		adapter.mu.Unlock()
+		return queryconnector.ValidatedSchemaPage{}, deniedCall("splunk_adapter_capacity_reached")
+	}
+	adapter.schemas[schemaRecordKey(request.CapabilityDigest, schemaDigest)] = splunkSchemaRecord{
+		capabilityDigest: request.CapabilityDigest, expiresAt: record.expiresAt, entries: append([]queryconnector.SchemaEntry(nil), entries...)}
+	adapter.mu.Unlock()
 	provenanceDigest := hashValue("COH-SPLUNK-DISCOVERY-PROVENANCE-V1\x00", struct {
 		Capability, Qualification string
 		Resources                 []Resource
@@ -193,6 +222,187 @@ func (adapter *Adapter) DiscoverSchema(ctx context.Context,
 	cursor := splunkCursorRecord{requestDigest: splunkSchemaRequestDigest(request), schemaDigest: schemaDigest,
 		provenanceDigest: provenanceDigest, entries: entries, issuedAt: now, expiresAt: record.expiresAt}
 	return adapter.page(ctx, request, cursor)
+}
+
+// Validate compiles the restricted logical SPL profile locally, then submits
+// only the resulting canonical candidate to Splunk's non-authorizing v2 parser.
+func (adapter *Adapter) Validate(ctx context.Context, query queryconnector.ValidatedQuery) (queryconnector.ValidatedValidation, error) {
+	if adapter == nil || query.Digest() == "" {
+		return queryconnector.ValidatedValidation{}, invalidInput("splunk_adapter_required")
+	}
+	if err := contextError(ctx); err != nil {
+		return queryconnector.ValidatedValidation{}, err
+	}
+	value := query.Value()
+	if value.Language != "spl" || validateAdapterScope(adapter.config, value.Scope) != nil ||
+		validateAuthority(adapter.config, CallBinding{Scope: value.Scope, Authority: value.Authority}) != nil ||
+		!validQueryLimits(value.Limits) || exceedsQueryLimits(value.Limits, adapter.config.HardLimits) {
+		return adapter.validation(ctx, query, "denied", "splunk_query_binding_invalid", "", "")
+	}
+	now := adapter.clock.Now().UTC()
+	requestedAt, requestedErr := time.Parse(splunkTimestampLayout, value.RequestedAt)
+	deadline, deadlineErr := time.Parse(splunkTimestampLayout, value.Deadline)
+	adapter.mu.Lock()
+	adapter.removeExpiredLocked(now)
+	if _, revoked := adapter.revoked[value.Authority.PolicyDecisionDigest]; revoked {
+		adapter.mu.Unlock()
+		return adapter.validation(ctx, query, "denied", "splunk_authority_revoked", "", "")
+	}
+	if replay, ok := adapter.validations[query.Digest()]; ok {
+		adapter.mu.Unlock()
+		return replay.validation, nil
+	}
+	if bound, ok := adapter.queryIDs[value.QueryID]; ok && bound != query.Digest() {
+		adapter.mu.Unlock()
+		return adapter.validation(ctx, query, "denied", "splunk_query_replay_conflict", "", "")
+	}
+	capability, capabilityOK := adapter.capabilities[value.CapabilityDigest]
+	schema, schemaOK := adapter.schemas[schemaRecordKey(value.CapabilityDigest, value.SchemaDigest)]
+	adapter.mu.Unlock()
+	if !capabilityOK || !schemaOK || schema.capabilityDigest != value.CapabilityDigest ||
+		!now.Before(capability.expiresAt) || !now.Before(schema.expiresAt) || !slices.Equal(capability.resources, value.Scope.ResourceIDs) {
+		return adapter.validation(ctx, query, "denied", "splunk_query_authority_stale", "", "")
+	}
+	if requestedErr != nil || deadlineErr != nil || requestedAt.After(now) || !now.Before(deadline) || deadline.After(capability.expiresAt) {
+		return adapter.validation(ctx, query, "denied", "splunk_query_stale", "", "")
+	}
+	resource, err := splunkparser.Inspect(ctx, value.NativeText)
+	if err != nil {
+		return adapter.parserDenial(ctx, query, err)
+	}
+	if !slices.Contains(value.Scope.ResourceIDs, resource) {
+		return adapter.validation(ctx, query, "denied", "splunk_resource_scope_mismatch", "", "")
+	}
+	definition, err := adapter.parserDefinition(resource, schema.entries)
+	if err != nil {
+		return adapter.validation(ctx, query, "denied", queryconnector.Reason(err), "", "")
+	}
+	tenantValue, sourceValue := "", ""
+	if definition.TenantField != "" {
+		tenantValue = value.Scope.TenantID
+	}
+	if definition.SourceField != "" {
+		sourceValue = value.Scope.SourceID
+	}
+	candidate, err := splunkparser.Compile(ctx, splunkparser.CompileRequest{Query: value.NativeText, QueryID: value.QueryID,
+		Definition: definition, ActorID: value.Authority.ActorID, AuthorizationDigest: value.Authority.AuthorizationDigest,
+		PolicyDecisionDigest: value.Authority.PolicyDecisionDigest, AuditReservationDigest: value.Authority.AuditReservationDigest,
+		CapabilityDigest: value.CapabilityDigest, SchemaDigest: value.SchemaDigest,
+		ScopeDigest: hashValue("COH-SPLUNK-SCOPE-V1\x00", value.Scope), Earliest: value.TimeRange.Start, Latest: value.TimeRange.End,
+		MaximumRows: value.Limits.MaximumRows, MaximumBytes: value.Limits.MaximumBytes,
+		MaximumDurationMillis: value.Limits.MaximumDurationMillis, MandatoryTenantValue: tenantValue, MandatorySourceValue: sourceValue})
+	if err != nil {
+		return adapter.parserDenial(ctx, query, err)
+	}
+	binding := CallBinding{Scope: value.Scope, Authority: value.Authority, Operation: "splunk.parser",
+		Targets: append([]string(nil), value.Scope.ResourceIDs...)}
+	parsed, receipt, err := adapter.client.ParserPreflight(ctx, ParserRequest{Binding: binding, CanonicalSPL: candidate.CanonicalSPL})
+	if err != nil {
+		return queryconnector.ValidatedValidation{}, err
+	}
+	if err := validateQualificationReceipt(adapter.config, receipt); err != nil {
+		return queryconnector.ValidatedValidation{}, err
+	}
+	if !validParserCommands(parsed.Commands, candidate.CanonicalSPL, candidate.CommandCount) {
+		return adapter.validation(ctx, query, "denied", "splunk_parser_semantic_drift", "", "")
+	}
+	receiptDigest := hashValue("COH-SPLUNK-PARSER-RECEIPT-V1\x00", struct {
+		Result  ParserResult
+		Receipt CallReceipt
+	}{parsed, receipt})
+	plan, err := splunkparser.BindParserReceipt(candidate, receiptDigest)
+	if err != nil {
+		return queryconnector.ValidatedValidation{}, deniedCall("splunk_parser_receipt_invalid")
+	}
+	validation, err := adapter.validation(ctx, query, "accepted", "", plan.QueryDigest, plan.PlanDigest)
+	if err != nil {
+		return queryconnector.ValidatedValidation{}, err
+	}
+	adapter.mu.Lock()
+	adapter.removeExpiredLocked(now)
+	if _, revoked := adapter.revoked[value.Authority.PolicyDecisionDigest]; revoked {
+		adapter.mu.Unlock()
+		return adapter.validation(ctx, query, "denied", "splunk_authority_revoked", "", "")
+	}
+	if bound, ok := adapter.queryIDs[value.QueryID]; ok && bound != query.Digest() {
+		adapter.mu.Unlock()
+		return adapter.validation(ctx, query, "denied", "splunk_query_replay_conflict", "", "")
+	}
+	if len(adapter.validations) >= maximumAdapterRecords {
+		adapter.mu.Unlock()
+		return queryconnector.ValidatedValidation{}, deniedCall("splunk_adapter_capacity_reached")
+	}
+	adapter.validations[query.Digest()] = splunkValidationRecord{queryID: value.QueryID, validation: validation, plan: plan, expiresAt: deadline}
+	adapter.queryIDs[value.QueryID] = query.Digest()
+	adapter.mu.Unlock()
+	return validation, nil
+}
+
+// ApplyRevocation removes any retained plan bound to the revoked policy
+// decision and prevents the decision from authorizing a later retry.
+func (adapter *Adapter) ApplyRevocation(ctx context.Context, evidence splunkparser.RevocationEvidence) error {
+	if adapter == nil {
+		return invalidInput("splunk_adapter_required")
+	}
+	if err := contextError(ctx); err != nil {
+		return err
+	}
+	encoded, _ := json.Marshal(evidence)
+	validated, err := splunkparser.DecodeRevocationEvidence(encoded)
+	if err != nil {
+		return invalidInput("splunk_revocation_invalid")
+	}
+	observed, err := time.Parse(splunkTimestampLayout, validated.ObservedAt)
+	if err != nil || observed.After(adapter.clock.Now().UTC()) {
+		return invalidInput("splunk_revocation_invalid")
+	}
+	adapter.mu.Lock()
+	defer adapter.mu.Unlock()
+	existing, exists := adapter.revoked[validated.DecisionDigest]
+	if exists && existing != validated.RevocationDigest {
+		return conflictCall("splunk_revocation_conflict")
+	}
+	if !exists && len(adapter.revoked) >= maximumAdapterRecords {
+		return deniedCall("splunk_adapter_capacity_reached")
+	}
+	adapter.revoked[validated.DecisionDigest] = validated.RevocationDigest
+	for key, record := range adapter.validations {
+		if record.plan.Authority.PolicyDecisionDigest == validated.DecisionDigest &&
+			record.plan.Authority.AuditReservationDigest == validated.AuditReservationDigest {
+			delete(adapter.validations, key)
+			if adapter.queryIDs[record.queryID] == key {
+				delete(adapter.queryIDs, record.queryID)
+			}
+		}
+	}
+	return nil
+}
+
+func (adapter *Adapter) parserDenial(ctx context.Context, query queryconnector.ValidatedQuery, err error) (queryconnector.ValidatedValidation, error) {
+	var semantic *splunkparser.ParseError
+	if errors.As(err, &semantic) {
+		return adapter.validation(ctx, query, "denied", semantic.Reason, "", "")
+	}
+	return queryconnector.ValidatedValidation{}, err
+}
+
+func (adapter *Adapter) validation(ctx context.Context, query queryconnector.ValidatedQuery, outcome, reason, canonical, provenance string) (queryconnector.ValidatedValidation, error) {
+	reasons := []string{}
+	if reason != "" {
+		reasons = []string{reason}
+	}
+	if provenance == "" {
+		provenance = hashValue("COH-SPLUNK-VALIDATION-DENIAL-V1\x00", struct{ Query, Reason string }{query.Digest(), reason})
+	}
+	if canonical == "" {
+		canonical = hashValue("COH-SPLUNK-CANONICAL-QUERY-V1\x00", struct{ Query, Provenance string }{query.Digest(), provenance})
+	}
+	value := queryconnector.ValidationResult{SchemaVersion: queryconnector.ValidationSchemaVersion,
+		ContractVersion: queryconnector.ContractVersion, QueryID: query.Value().QueryID, Outcome: outcome,
+		ReasonCodes: reasons, ValidatorVersion: splunkparser.ValidatorVersion,
+		CanonicalQueryDigest: canonical, ProvenanceDigest: provenance}
+	encoded, _ := json.Marshal(value)
+	return queryconnector.DecodeValidation(ctx, encoded)
 }
 
 // LoadSchema exposes the same bounded operation to the common schema cache.
@@ -368,7 +578,99 @@ func (adapter *Adapter) removeExpiredLocked(now time.Time) {
 			delete(adapter.cursors, key)
 		}
 	}
+	for key, value := range adapter.schemas {
+		if !now.Before(value.expiresAt) {
+			delete(adapter.schemas, key)
+		}
+	}
+	for key, value := range adapter.validations {
+		if !now.Before(value.expiresAt) {
+			delete(adapter.validations, key)
+			if adapter.queryIDs[value.queryID] == key {
+				delete(adapter.queryIDs, value.queryID)
+			}
+		}
+	}
 }
+
+func (adapter *Adapter) parserDefinition(resourceID string, entries []queryconnector.SchemaEntry) (splunkparser.Definition, error) {
+	resourceIndex := slices.IndexFunc(adapter.config.Resources, func(value Resource) bool { return value.ID == resourceID })
+	if resourceIndex < 0 {
+		return splunkparser.Definition{}, deniedCall("splunk_resource_not_allowed")
+	}
+	entryTypes := make(map[string]string)
+	for _, entry := range entries {
+		if entry.ResourceID == resourceID {
+			entryTypes[entry.Name] = entry.Type
+		}
+	}
+	fields := make([]splunkparser.FieldRule, 0, len(adapter.config.Fields))
+	defaultProjection := make([]string, 0, len(adapter.config.Fields))
+	timestamp, tenant, source := "", "", ""
+	for _, configured := range adapter.config.Fields {
+		if !slices.Contains(configured.ResourceIDs, resourceID) {
+			continue
+		}
+		if entryTypes[configured.SchemaName] != configured.Type {
+			return splunkparser.Definition{}, conflictCall("splunk_parser_schema_mismatch")
+		}
+		sortable := configured.Type != "boolean"
+		aggregatable := configured.Type != "boolean" && configured.Type != "timestamp"
+		fields = append(fields, splunkparser.FieldRule{Name: configured.SchemaName, VendorName: configured.VendorName,
+			Type: configured.Type, Projectable: true, Filterable: true, Sortable: sortable, Aggregatable: aggregatable})
+		defaultProjection = append(defaultProjection, configured.SchemaName)
+		if timestamp == "" && configured.Type == "timestamp" {
+			timestamp = configured.SchemaName
+		}
+		if configured.SchemaName == "tenant.id" {
+			tenant = configured.SchemaName
+		}
+		if configured.SchemaName == "source.id" {
+			source = configured.SchemaName
+		}
+		delete(entryTypes, configured.SchemaName)
+	}
+	if timestamp == "" || len(fields) == 0 || len(entryTypes) != 0 {
+		return splunkparser.Definition{}, conflictCall("splunk_parser_schema_mismatch")
+	}
+	definition := splunkparser.Definition{SchemaVersion: splunkparser.DefinitionVersion,
+		ContractVersion: splunkparser.ContractVersion, ValidatorVersion: splunkparser.ValidatorVersion,
+		SourceID: adapter.config.SourceID, Resources: []splunkparser.ResourceRule{{ID: resourceID,
+			VendorIndex: adapter.config.Resources[resourceIndex].Index}}, Fields: fields, DefaultProjection: defaultProjection,
+		StableSort: []splunkparser.SortRule{{Name: timestamp, Direction: "desc"}}, TimestampField: timestamp,
+		TenantField: tenant, SourceField: source, HardMaximumRows: adapter.config.HardLimits.MaximumRows}
+	encoded, _ := json.Marshal(definition)
+	return splunkparser.DecodeDefinition(encoded)
+}
+
+func validParserCommands(commands []string, canonical string, expected uint32) bool {
+	if len(commands) != int(expected) || len(commands) == 0 || commands[0] != "search" {
+		return false
+	}
+	want := map[string]int{
+		"search": 1 + strings.Count(canonical, "[ search "),
+		"fields": strings.Count(canonical, " | fields "),
+		"table":  strings.Count(canonical, " | table "),
+		"stats":  strings.Count(canonical, " | stats "),
+		"sort":   strings.Count(canonical, " | sort "),
+		"head":   strings.Count(canonical, " | head "),
+	}
+	got := make(map[string]int, len(want))
+	for _, command := range commands {
+		if _, allowed := want[command]; !allowed {
+			return false
+		}
+		got[command]++
+	}
+	for command, count := range want {
+		if got[command] != count {
+			return false
+		}
+	}
+	return true
+}
+
+func schemaRecordKey(capability, schema string) string { return capability + "\x00" + schema }
 
 func validateAdapterScope(config Config, scope queryconnector.Scope) error {
 	if !uuidV7Pattern.MatchString(scope.OrganizationID) || !uuidV7Pattern.MatchString(scope.TenantID) ||
