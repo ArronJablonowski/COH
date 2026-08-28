@@ -1,0 +1,72 @@
+{
+  "schema_version": "coh.sentinel-slicing-corpus/v1",
+  "corpus_version": "1.0.0",
+  "issue": "COH-E14-06",
+  "requirements": ["EVAL-016", "FR-052", "FR-054"],
+  "trials_per_task": 5,
+  "thresholds": {
+    "maximum_false_complete": 0,
+    "maximum_released_denied_rows": 0,
+    "minimum_outcome_grade_rate": 1,
+    "minimum_trajectory_grade_rate": 1,
+    "minimum_replay_rate": 1,
+    "minimum_boundary_coverage_rate": 1
+  },
+  "tasks": [
+    {
+      "id": "mandatory-timespan", "boundary": "timespan", "fault": "none", "recording_id": "mandatory-timespan", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "completed", "completeness": "complete", "reason_codes": [], "rows_returned": 1, "slices_completed": 1, "released_rows": 1},
+      "trajectory": ["timespan.admitted", "slice.dispatched", "slice.validated", "result.released"]
+    },
+    {
+      "id": "missing-timespan", "boundary": "timespan", "fault": "missing_timespan", "recording_id": "missing-timespan", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_timespan_required"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0},
+      "trajectory": ["timespan.denied", "result.withheld"]
+    },
+    {
+      "id": "half-open-boundary", "boundary": "slicing", "fault": "boundary_duplicate", "recording_id": "half-open-boundary", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "completed", "completeness": "complete", "reason_codes": [], "rows_returned": 2, "slices_completed": 2, "released_rows": 2},
+      "trajectory": ["slice.planned", "slice.split", "slice.complete", "dedupe.complete", "result.released"]
+    },
+    {
+      "id": "stable-key-dedupe", "boundary": "dedupe", "fault": "boundary_duplicate", "recording_id": "stable-key-dedupe", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "completed", "completeness": "complete", "reason_codes": [], "rows_returned": 1, "slices_completed": 2, "released_rows": 1},
+      "trajectory": ["slice.complete", "dedupe.duplicate", "dedupe.complete", "result.released"]
+    },
+    {
+      "id": "stable-key-conflict", "boundary": "dedupe", "fault": "duplicate_conflict", "recording_id": "stable-key-conflict", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_stable_key_conflict"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0},
+      "trajectory": ["dedupe.conflict", "result.withheld"]
+    },
+    {
+      "id": "timestamp-ambiguity", "boundary": "ambiguity", "fault": "timestamp_ambiguity", "recording_id": "timestamp-ambiguity", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_identical_timestamp_ambiguous"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0},
+      "trajectory": ["ordering.ambiguous", "result.withheld"]
+    },
+    {
+      "id": "partial-error", "boundary": "partial_error", "fault": "partial_error", "recording_id": "partial-error", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "unknown", "completeness": "not_applicable", "reason_codes": ["sentinel_partial_error"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0},
+      "trajectory": ["response.partial_error", "rows.discarded", "result.withheld"]
+    },
+    {
+      "id": "caller-cancellation", "boundary": "cancellation", "fault": "cancel", "recording_id": "caller-cancellation", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "canceled", "completeness": "not_applicable", "reason_codes": ["sentinel_query_canceled"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0},
+      "trajectory": ["query.canceled", "release.fenced", "result.withheld"]
+    },
+    {
+      "id": "uncertain-retry", "boundary": "recovery", "fault": "uncertain_retry", "recording_id": "uncertain-retry", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "unknown", "completeness": "not_applicable", "reason_codes": ["sentinel_retry_uncertain"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0},
+      "trajectory": ["retry.uncertain", "result.withheld"]
+    },
+    {
+      "id": "provenance-tamper", "boundary": "binding", "fault": "tamper", "recording_id": "provenance-tamper", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_provenance_mismatch"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0},
+      "trajectory": ["binding.denied", "result.withheld"]
+    },
+    {
+      "id": "slice-limit", "boundary": "limits", "fault": "slice_limit", "recording_id": "slice-limit", "recording_sha256": "sha256:1b1242605fb1b8d6b8ae7ccd718376c8cf661b292a3e8dd1bd707322adf01589",
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_slice_limit_exceeded"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0},
+      "trajectory": ["limit.exhausted", "result.withheld"]
+    }
+  ]
+}

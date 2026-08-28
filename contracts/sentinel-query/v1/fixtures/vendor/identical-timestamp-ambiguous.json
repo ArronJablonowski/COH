@@ -1,0 +1,15 @@
+{
+  "tables": [
+    {
+      "name": "PrimaryResult",
+      "columns": [
+        {"name": "TimeGenerated", "type": "datetime"},
+        {"name": "Computer", "type": "string"}
+      ],
+      "rows": [
+        ["2026-01-01T00:30:00.000000000Z", "host-a"],
+        ["2026-01-01T00:30:00.000000000Z", "host-b"]
+      ]
+    }
+  ]
+}

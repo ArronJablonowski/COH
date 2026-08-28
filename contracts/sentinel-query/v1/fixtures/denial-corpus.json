@@ -1,0 +1,26 @@
+{
+  "schema_version": "coh.sentinel-query-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"class": "missing_timespan", "reason": "sentinel_timespan_required", "covered_by": "TestSentinelMandatoryTimespan"},
+    {"class": "relative_timespan", "reason": "sentinel_timespan_noncanonical", "covered_by": "TestSentinelMandatoryTimespan"},
+    {"class": "timespan_widening", "reason": "sentinel_slice_outside_query", "covered_by": "TestSentinelSlicePlannerDenials"},
+    {"class": "slice_gap", "reason": "sentinel_slice_coverage_invalid", "covered_by": "TestSentinelSlicePlannerDenials"},
+    {"class": "slice_overlap", "reason": "sentinel_slice_coverage_invalid", "covered_by": "TestSentinelSlicePlannerDenials"},
+    {"class": "slice_limit", "reason": "sentinel_slice_limit_exceeded", "covered_by": "TestSentinelSlicePlannerDenials"},
+    {"class": "duplicate_conflict", "reason": "sentinel_stable_key_conflict", "covered_by": "TestSentinelStableKeyDenials"},
+    {"class": "timestamp_ambiguity", "reason": "sentinel_identical_timestamp_ambiguous", "covered_by": "TestSentinelStableKeyDenials"},
+    {"class": "partial_error", "reason": "sentinel_partial_error", "covered_by": "TestSentinelPartialErrorRejected"},
+    {"class": "schema_drift", "reason": "sentinel_result_schema_mismatch", "covered_by": "TestSentinelResponseDenials"},
+    {"class": "oversize_response", "reason": "sentinel_response_oversized", "covered_by": "TestSentinelResponseDenials"},
+    {"class": "authority_substitution", "reason": "sentinel_authority_mismatch", "covered_by": "TestSentinelRuntimeBindingDenials"},
+    {"class": "workspace_substitution", "reason": "sentinel_workspace_mismatch", "covered_by": "TestSentinelTransportDenials"},
+    {"class": "management_endpoint", "reason": "sentinel_operation_denied", "covered_by": "TestSentinelTransportDenials"},
+    {"class": "redirect", "reason": "sentinel_redirect_denied", "covered_by": "TestSentinelTransportDenials"},
+    {"class": "timeout", "reason": "sentinel_query_timeout", "covered_by": "TestSentinelTimeout"},
+    {"class": "cancellation", "reason": "sentinel_query_canceled", "covered_by": "TestSentinelCancellation"},
+    {"class": "uncertain_retry", "reason": "sentinel_retry_uncertain", "covered_by": "TestSentinelRecoveryDenials"},
+    {"class": "response_tamper", "reason": "sentinel_response_digest_mismatch", "covered_by": "TestSentinelResponseDenials"},
+    {"class": "provenance_tamper", "reason": "sentinel_provenance_mismatch", "covered_by": "TestSentinelRuntimeBindingDenials"}
+  ]
+}

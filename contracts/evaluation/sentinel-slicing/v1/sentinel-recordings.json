@@ -1,0 +1,69 @@
+{
+  "schema_version": "coh.sentinel-slicing-recordings/v1",
+  "recording_version": "1.0.0",
+  "sanitized": true,
+  "network": "disabled",
+  "recordings": [
+    {
+      "id": "mandatory-timespan", "boundary": "timespan", "fault": "none", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "timespan.admitted", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": ["event-1"], "row_digests": ["sha256:1111111111111111111111111111111111111111111111111111111111111111"], "outcome": "ok", "partial": false, "threshold_reached": false, "request_digest": "sha256:2111111111111111111111111111111111111111111111111111111111111111", "response_digest": "sha256:3111111111111111111111111111111111111111111111111111111111111111"}],
+      "expected": {"outcome": "completed", "completeness": "complete", "reason_codes": [], "rows_returned": 1, "slices_completed": 1, "released_rows": 1}, "trajectory": ["timespan.admitted", "slice.dispatched", "slice.validated", "result.released"]
+    },
+    {
+      "id": "missing-timespan", "boundary": "timespan", "fault": "missing_timespan", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "timespan.denied", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": false, "row_keys": [], "row_digests": [], "outcome": "error", "partial": false, "threshold_reached": false, "request_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "response_digest": "sha256:3222222222222222222222222222222222222222222222222222222222222222"}],
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_timespan_required"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0}, "trajectory": ["timespan.denied", "result.withheld"]
+    },
+    {
+      "id": "half-open-boundary", "boundary": "slicing", "fault": "boundary_duplicate", "sanitized": true, "network": "disabled",
+      "steps": [
+        {"sequence": 1, "event": "slice.complete", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T00:30:00.000000000Z", "end_exclusive": true, "row_keys": ["event-left"], "row_digests": ["sha256:1333333333333333333333333333333333333333333333333333333333333333"], "outcome": "ok", "partial": false, "threshold_reached": false, "request_digest": "sha256:2333333333333333333333333333333333333333333333333333333333333333", "response_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"},
+        {"sequence": 2, "event": "slice.complete", "slice_start": "2026-01-01T00:30:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": ["event-boundary"], "row_digests": ["sha256:1444444444444444444444444444444444444444444444444444444444444444"], "outcome": "ok", "partial": false, "threshold_reached": false, "request_digest": "sha256:2444444444444444444444444444444444444444444444444444444444444444", "response_digest": "sha256:3444444444444444444444444444444444444444444444444444444444444444"}
+      ],
+      "expected": {"outcome": "completed", "completeness": "complete", "reason_codes": [], "rows_returned": 2, "slices_completed": 2, "released_rows": 2}, "trajectory": ["slice.planned", "slice.split", "slice.complete", "dedupe.complete", "result.released"]
+    },
+    {
+      "id": "stable-key-dedupe", "boundary": "dedupe", "fault": "boundary_duplicate", "sanitized": true, "network": "disabled",
+      "steps": [
+        {"sequence": 1, "event": "slice.complete", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T00:30:00.000000000Z", "end_exclusive": true, "row_keys": ["event-shared"], "row_digests": ["sha256:1555555555555555555555555555555555555555555555555555555555555555"], "outcome": "ok", "partial": false, "threshold_reached": false, "request_digest": "sha256:2555555555555555555555555555555555555555555555555555555555555555", "response_digest": "sha256:3555555555555555555555555555555555555555555555555555555555555555"},
+        {"sequence": 2, "event": "slice.complete", "slice_start": "2026-01-01T00:30:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": ["event-shared"], "row_digests": ["sha256:1555555555555555555555555555555555555555555555555555555555555555"], "outcome": "ok", "partial": false, "threshold_reached": false, "request_digest": "sha256:2555555555555555555555555555555555555555555555555555555555555556", "response_digest": "sha256:3555555555555555555555555555555555555555555555555555555555555556"}
+      ],
+      "expected": {"outcome": "completed", "completeness": "complete", "reason_codes": [], "rows_returned": 1, "slices_completed": 2, "released_rows": 1}, "trajectory": ["slice.complete", "dedupe.duplicate", "dedupe.complete", "result.released"]
+    },
+    {
+      "id": "stable-key-conflict", "boundary": "dedupe", "fault": "duplicate_conflict", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "dedupe.conflict", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": ["event-shared", "event-shared"], "row_digests": ["sha256:1666666666666666666666666666666666666666666666666666666666666666", "sha256:1777777777777777777777777777777777777777777777777777777777777777"], "outcome": "error", "partial": false, "threshold_reached": false, "request_digest": "sha256:2666666666666666666666666666666666666666666666666666666666666666", "response_digest": "sha256:3666666666666666666666666666666666666666666666666666666666666666"}],
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_stable_key_conflict"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0}, "trajectory": ["dedupe.conflict", "result.withheld"]
+    },
+    {
+      "id": "timestamp-ambiguity", "boundary": "ambiguity", "fault": "timestamp_ambiguity", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "ordering.ambiguous", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": [], "row_digests": ["sha256:1888888888888888888888888888888888888888888888888888888888888888", "sha256:1999999999999999999999999999999999999999999999999999999999999999"], "outcome": "error", "partial": false, "threshold_reached": false, "request_digest": "sha256:2888888888888888888888888888888888888888888888888888888888888888", "response_digest": "sha256:3888888888888888888888888888888888888888888888888888888888888888"}],
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_identical_timestamp_ambiguous"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0}, "trajectory": ["ordering.ambiguous", "result.withheld"]
+    },
+    {
+      "id": "partial-error", "boundary": "partial_error", "fault": "partial_error", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "response.partial_error", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": ["withheld-row"], "row_digests": ["sha256:1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"], "outcome": "error", "partial": true, "threshold_reached": false, "request_digest": "sha256:2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "response_digest": "sha256:3aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],
+      "expected": {"outcome": "unknown", "completeness": "not_applicable", "reason_codes": ["sentinel_partial_error"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0}, "trajectory": ["response.partial_error", "rows.discarded", "result.withheld"]
+    },
+    {
+      "id": "caller-cancellation", "boundary": "cancellation", "fault": "cancel", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "query.canceled", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": [], "row_digests": [], "outcome": "canceled", "partial": false, "threshold_reached": false, "request_digest": "sha256:2bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "response_digest": "sha256:3bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}],
+      "expected": {"outcome": "canceled", "completeness": "not_applicable", "reason_codes": ["sentinel_query_canceled"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0}, "trajectory": ["query.canceled", "release.fenced", "result.withheld"]
+    },
+    {
+      "id": "uncertain-retry", "boundary": "recovery", "fault": "uncertain_retry", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "retry.uncertain", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": [], "row_digests": [], "outcome": "unavailable", "partial": false, "threshold_reached": false, "request_digest": "sha256:2ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "response_digest": "sha256:3ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}],
+      "expected": {"outcome": "unknown", "completeness": "not_applicable", "reason_codes": ["sentinel_retry_uncertain"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0}, "trajectory": ["retry.uncertain", "result.withheld"]
+    },
+    {
+      "id": "provenance-tamper", "boundary": "binding", "fault": "tamper", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "binding.denied", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": [], "row_digests": [], "outcome": "error", "partial": false, "threshold_reached": false, "request_digest": "sha256:2ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "response_digest": "sha256:3ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}],
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_provenance_mismatch"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0}, "trajectory": ["binding.denied", "result.withheld"]
+    },
+    {
+      "id": "slice-limit", "boundary": "limits", "fault": "slice_limit", "sanitized": true, "network": "disabled",
+      "steps": [{"sequence": 1, "event": "limit.exhausted", "slice_start": "2026-01-01T00:00:00.000000000Z", "slice_end": "2026-01-01T01:00:00.000000000Z", "end_exclusive": true, "row_keys": [], "row_digests": [], "outcome": "error", "partial": false, "threshold_reached": true, "request_digest": "sha256:2eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "response_digest": "sha256:3eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}],
+      "expected": {"outcome": "denied", "completeness": "not_applicable", "reason_codes": ["sentinel_slice_limit_exceeded"], "rows_returned": 0, "slices_completed": 0, "released_rows": 0}, "trajectory": ["limit.exhausted", "result.withheld"]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "tables": [
+    {
+      "name": "PrimaryResult",
+      "columns": [
+        {"name": "TimeGenerated", "type": "datetime"},
+        {"name": "EventRecordId", "type": "long"},
+        {"name": "Computer", "type": "string"}
+      ],
+      "rows": [
+        ["2026-01-01T00:29:59.999999999Z", 41, "host-a"],
+        ["2026-01-01T00:30:00.000000000Z", 42, "host-b"]
+      ]
+    }
+  ],
+  "statistics": {
+    "query": {"executionTime": 0.015, "resourceUsage": {"cache": {"memory": {"hits": 2, "misses": 0}}}}
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "tables": [
+    {
+      "name": "PrimaryResult",
+      "columns": [
+        {"name": "TimeGenerated", "type": "datetime"},
+        {"name": "EventRecordId", "type": "long"}
+      ],
+      "rows": [["2026-01-01T00:15:00.000000000Z", 7]]
+    }
+  ],
+  "error": {
+    "code": "PartialError",
+    "message": "Sanitized partial query failure",
+    "details": [{"code": "QueryTimeout", "message": "Sanitized detail"}]
+  }
+}
