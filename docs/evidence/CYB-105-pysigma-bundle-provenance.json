@@ -1,0 +1,70 @@
+{
+  "schema_version": "coh.pysigma-bundle-provenance/v1",
+  "issue": "CYB-105",
+  "stable_key": "COH-E15-01",
+  "requirements": ["FR-055", "FR-056", "SEC-019"],
+  "qualification_state": "candidate_blocked_license_review",
+  "release_eligible": false,
+  "source": {
+    "vcs_revision": "c597fe4ca9feeea31d4cad600c7186a963b9280e",
+    "vcs_modified": false,
+    "ci_source_digest": "sha256:68f6c08883b665566b87becfda5ef5b93638859aaeec8201a0d1477a8065e374"
+  },
+  "bundle": {
+    "rid": "osx-arm64",
+    "artifact_digest": "sha256:2fc6ccdce6b870e2e6b681e88da6738377ce79ce8dd1f5c3b2d224e65fb54e0c",
+    "runtime_lock_digest": "sha256:36ae075fe22f6b2a35ff0e721ea3486c8989c3aeffce7cbf0a4cac186a233d0d",
+    "package_closure_digest": "sha256:ea88971f4abbca823d6bf9cd8ae7d7941d3396709dfa3f08a3ab0448647c0f46",
+    "runtime_digest": "sha256:7710b0490e6af648676d7ad163fa1d54bffb75d8505162609a1c3c9b76e1929d",
+    "python_version": "3.13.15",
+    "pysigma_version": "1.5.0",
+    "pyinstaller_version": "6.22.2",
+    "wheel_count": 22,
+    "offline_hash_only_restore": true,
+    "reproducible": true
+  },
+  "security": {
+    "action_tier": "T0",
+    "credential_classes": ["none"],
+    "network_mode": "none",
+    "ambient_plugins_denied": true,
+    "external_sources_denied": true,
+    "skip_unsupported_denied": true,
+    "diskcache_present": false,
+    "remote_mitre_modules_present": false,
+    "selected_runtime_vulnerability_count": 0
+  },
+  "signature": {
+    "contract": "coh.signed-tool-manifest/v1",
+    "algorithm": "ed25519",
+    "domain": "COH-SIGNED-TOOL-MANIFEST-V1",
+    "ci_fixture_path_verified": true,
+    "ci_fixture_release_authority": false,
+    "production_signature_present": false,
+    "production_signature_required_before_release": true
+  },
+  "validation_handoff": {
+    "input_state": "compiled_untrusted",
+    "output_state": "native_validated",
+    "schema_rebind_required": true,
+    "unsupported_query_released": false,
+    "validator_ids": [
+      "elastic-esql-1.0.0",
+      "kusto-language-12.4.1-coh-1.0.0",
+      "splunk-parser-1.0.0+native-preflight"
+    ]
+  },
+  "clean_ci": {
+    "lane": "baseline",
+    "go_version": "go1.26.7",
+    "stage_count": 18,
+    "outcome": "passed",
+    "quality_gate_promotable": true,
+    "report_digest": "sha256:dd78b876c8458fb944327dbd8c7c189a5e0405328087b590ff4d9983d5436d75",
+    "report_self_digest": "15781017c6ee2ba951e22035034057180a174e9a5ffefd48beaef9e6b3976e43",
+    "ci_provenance_digest": "sha256:77a2bfb1fb23fc08cd0b08ef6b1e348b58925ae1b3474e4c8e89be5c072b63b4",
+    "sbom_digest": "sha256:b4afa5c7a65f98b09521129b736fd544d51fd85b4fa02df3f64a5d7c8604b86d"
+  },
+  "blocking_issues": ["CYB-187"],
+  "non_blocking_release_followups": ["CYB-173"]
+}
