@@ -1,0 +1,40 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:018f0000-0000-7000-8000-000000000098",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-28T03:18:00Z",
+    "component": {
+      "type": "application",
+      "name": "coh-kusto-validator",
+      "version": "kusto-language-12.4.1-coh-1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "Microsoft.Azure.Kusto.Language",
+      "version": "12.4.1",
+      "purl": "pkg:nuget/Microsoft.Azure.Kusto.Language@12.4.1",
+      "hashes": [{"alg": "SHA-256", "content": "154c176ac9c1c4ae9cf0bc53b74354c9d35798ff587f81fe6e0005028a0a1961"}]
+    },
+    {
+      "type": "library",
+      "name": "Microsoft.NET.ILLink.Tasks",
+      "version": "10.0.11",
+      "purl": "pkg:nuget/Microsoft.NET.ILLink.Tasks@10.0.11",
+      "hashes": [{"alg": "SHA-256", "content": "28ee7ccf5c4bdfe67823c8e0ea62232174f61e224d77e7c6ef5caa1413ac0a76"}]
+    },
+    {
+      "type": "framework",
+      "name": ".NET Runtime",
+      "version": "10.0.11"
+    }
+  ],
+  "properties": [
+    {"name": "coh:dotnet-sdk-version", "value": "10.0.400"},
+    {"name": "coh:locked-packages", "value": "helpers/kusto-language/packages.lock.json"},
+    {"name": "coh:rid-closure-digests", "value": "docs/evidence/CYB-98-helper-manifest.json"}
+  ]
+}

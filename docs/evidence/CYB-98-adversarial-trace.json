@@ -1,0 +1,53 @@
+{
+  "schema_version": "coh.kusto-validator-adversarial-trace/v1",
+  "contract_version": "1.0.0",
+  "issue": "CYB-98",
+  "stable_key": "COH-E14-05",
+  "requirements": ["FR-052", "SEC-019"],
+  "validator_version": "kusto-language-12.4.1-coh-1.0.0",
+  "outcome": "passed",
+  "coverage": {
+    "accepted_kql_cases": 8,
+    "semantic_denial_cases": 20,
+    "total_denial_corpus_cases": 38,
+    "hostile_metadata_cases": 8,
+    "concurrent_validators": 8,
+    "repeated_go_runs": 20,
+    "tier1_rids": ["linux-arm64", "linux-x64", "osx-arm64"]
+  },
+  "controls": [
+    "closed_credentialless_transport",
+    "exact_schema_global_state",
+    "default_deny_semantic_registry",
+    "ast_constructed_terminal_take",
+    "post_rewrite_semantic_proof",
+    "signed_artifact_and_package_closure_binding",
+    "pre_helper_post_helper_and_replay_authority",
+    "audit_before_canonical_kql_release",
+    "exact_replay_and_changed_key_conflict",
+    "live_revocation_and_stale_state_denial",
+    "network_denied_native_sandbox"
+  ],
+  "failure_paths": [
+    "malformed_or_ambiguous_json",
+    "query_or_schema_substitution",
+    "control_set_external_and_remote_kql",
+    "wildcard_fuzzy_dynamic_and_unbounded_kql",
+    "unknown_table_or_column",
+    "metadata_traversal_or_injection",
+    "helper_signature_runtime_or_package_drift",
+    "response_or_retained_result_tamper",
+    "stale_schema_or_revoked_helper",
+    "resource_exhaustion",
+    "timeout_or_cancellation",
+    "helper_or_audit_outage_and_recovery"
+  ],
+  "sensitive_values": "none",
+  "native_kql_exposed_in_audit": false,
+  "literal_exposed_in_audit": false,
+  "schema_name_exposed_in_audit": false,
+  "workspace_exposed_in_audit": false,
+  "credential_exposed": false,
+  "stderr_exposed": false,
+  "blocking_findings": []
+}

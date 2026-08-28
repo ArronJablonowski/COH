@@ -1,0 +1,43 @@
+{
+  "schema_version": "coh.kusto-helper-qualification-manifest/v1",
+  "contract_version": "1.0.0",
+  "issue": "CYB-98",
+  "stable_key": "COH-E14-05",
+  "tool_name": "coh-kusto-validator",
+  "tool_version": "kusto-language-12.4.1-coh-1.0.0",
+  "operation": "validate",
+  "action_tier": "T0",
+  "isolation_class": "native_restricted",
+  "network_policy": "none",
+  "credential_classes": ["none"],
+  "kusto_language_version": "12.4.1",
+  "dotnet_sdk_version": "10.0.400",
+  "dotnet_runtime_version": "10.0.11",
+  "semantic_registry_digest": "sha256:4b01ac2f77f54138c0a9b5fdab1a5a9195f147804aac44884e03860a83ee6f52",
+  "artifacts": [
+    {
+      "rid": "linux-arm64",
+      "artifact_digest": "sha256:f9993d0a107bbbe37b6a5fdb50d6946b2b06403dd983e571920a9b9da0e3f720",
+      "package_closure_digest": "sha256:dcd923cff3a073b3fe5ea34f9eb0a522e2ee6be54b116e56365f6d413532a520"
+    },
+    {
+      "rid": "linux-x64",
+      "artifact_digest": "sha256:760a97a9393ebc5dcbd77f7a33eaf832d4b6479999a75785b9c5c8a4b20bad98",
+      "package_closure_digest": "sha256:0ee1949105aa48d9d86d01adf81b82fb9a4c361c306db515d897665169181c38"
+    },
+    {
+      "rid": "osx-arm64",
+      "artifact_digest": "sha256:ed34dea026780204a5e1efd25d93152dfc8d9287a82590fb0b24611f6b01e35d",
+      "package_closure_digest": "sha256:15f79c443797a3e3ea741765bd90c7b854dae0b077d917e1ec30bbabb63dd9d5"
+    }
+  ],
+  "qualification": {
+    "locked_restore": true,
+    "nuget_signatures_verified": true,
+    "signed_registry_path_verified": true,
+    "reproducible": true,
+    "network_denial_verified": true,
+    "managed_conformance_passed": true,
+    "go_exchange_passed": true
+  }
+}

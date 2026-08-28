@@ -1,0 +1,32 @@
+{
+  "schema_version": "coh.kusto-helper-build-provenance/v1",
+  "contract_version": "1.0.0",
+  "issue": "CYB-98",
+  "stable_key": "COH-E14-05",
+  "builder": {
+    "script": "scripts/build_kusto_validator.sh",
+    "script_sha256": "1ddbb10356933be77f100669dabf9f5d992845b4c438764ab46e404c72803283",
+    "verification_script": "scripts/verify_kusto_validator.sh",
+    "verification_script_sha256": "648b30d86047a091717532cdad2a16b6611f9f2297888ee47e9a8a0bab6b31c6"
+  },
+  "materials": [
+    {"path": "helpers/kusto-language/KustoValidator.csproj", "sha256": "06d70a664d22bf6b3f2621009deff696edbf6416052e27c93a9eaf1b34f544e8"},
+    {"path": "helpers/kusto-language/packages.lock.json", "sha256": "7e5ae2774a644ce9391013bba6aec9c20c2e4a1444cfe6f32fc3211973bfd066"},
+    {"path": "contracts/kusto-validator/v1/fixtures/semantic-registry.json", "sha256": "cac59a7ae2afbebe7874e71da4db5744338bbbde05a50f6903aac706e43fc4de"}
+  ],
+  "environment": {
+    "dotnet_sdk": "10.0.400",
+    "dotnet_runtime": "10.0.11",
+    "restore_mode": "locked",
+    "package_signature_policy": "require",
+    "build_outputs": "external_toolchain_root"
+  },
+  "subjects": [
+    {"rid": "linux-arm64", "sha256": "f9993d0a107bbbe37b6a5fdb50d6946b2b06403dd983e571920a9b9da0e3f720"},
+    {"rid": "linux-x64", "sha256": "760a97a9393ebc5dcbd77f7a33eaf832d4b6479999a75785b9c5c8a4b20bad98"},
+    {"rid": "osx-arm64", "sha256": "ed34dea026780204a5e1efd25d93152dfc8d9287a82590fb0b24611f6b01e35d"}
+  ],
+  "reproducible": true,
+  "revision_independent_helper_identity": true,
+  "network_during_helper_execution": "none"
+}
