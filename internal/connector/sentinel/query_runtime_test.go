@@ -32,7 +32,7 @@ func (validator *runtimeValidatorStub) Validate(_ context.Context,
 	return kustovalidator.ValidationAdmission{Validation: validation, CanonicalKQL: canonical,
 		CanonicalKQLDigest: kustovalidator.CanonicalKQLDigest(canonical),
 		OutputColumns: []kustovalidator.OutputColumn{{Name: "TimeGenerated", Type: "datetime"},
-			{Name: "EventRecordId", Type: "string"}}, Decision: decision, Audit: audit}, nil
+			{Name: "EventRecordId", Type: "string"}, {Name: "Computer", Type: "string"}}, Decision: decision, Audit: audit}, nil
 }
 
 type runtimeQueryClientStub struct {
@@ -46,6 +46,50 @@ type slicingQueryClientStub struct {
 
 type retryQueryClientStub struct {
 	calls []QueryCall
+}
+
+type mergeQueryClientStub struct {
+	mode  string
+	calls []QueryCall
+}
+
+func (client *mergeQueryClientStub) Query(_ context.Context, call QueryCall) (QueryTransportResponse, error) {
+	client.calls = append(client.calls, call)
+	value := queryTestTransportResponse(call.Request)
+	if call.Request.SliceNumber == 1 {
+		value.Statistics.BytesReturned = 65536
+	} else {
+		start, _ := queryTime(call.Request.TimeRange.Start)
+		end, _ := queryTime(call.Request.TimeRange.End)
+		rows := [][]interface{}{{start.Add(end.Sub(start) / 2).Format(sentinelTimestampLayout),
+			"event-" + string(rune('0'+call.Request.SliceNumber)), "host-a"}}
+		switch client.mode {
+		case "boundary", "conflict", "orphan-boundary":
+			rows = [][]interface{}{{client.calls[1].Request.TimeRange.End, "event-boundary", "host-a"}}
+			if client.mode == "conflict" && call.Request.SliceNumber == 3 {
+				rows[0][2] = "host-b"
+			}
+			if client.mode == "orphan-boundary" && call.Request.SliceNumber == 3 {
+				rows = [][]interface{}{{start.Add(end.Sub(start) / 2).Format(sentinelTimestampLayout), "event-3", "host-a"}}
+			}
+		case "outside":
+			rows[0][0] = end.Add(time.Second).Format(sentinelTimestampLayout)
+		case "null-key":
+			rows[0][1] = nil
+		case "unsorted":
+			if call.Request.SliceNumber == 2 {
+				rows = [][]interface{}{
+					{start.Add(2 * end.Sub(start) / 3).Format(sentinelTimestampLayout), "event-b", "host-a"},
+					{start.Add(end.Sub(start) / 3).Format(sentinelTimestampLayout), "event-a", "host-a"},
+				}
+			}
+		}
+		value.Tables[0].Rows = rows
+		value.Statistics.RowsScanned = uint64(len(rows))
+		value.Statistics.RowsReturned = uint64(len(rows))
+	}
+	value.ResponseDigest = queryTransportResponseDigest(value)
+	return DecodeQueryTransportResponse(encodeQueryContract(value))
 }
 
 func (client *retryQueryClientStub) Query(_ context.Context, call QueryCall) (QueryTransportResponse, error) {
@@ -62,6 +106,10 @@ func (client *retryQueryClientStub) Query(_ context.Context, call QueryCall) (Qu
 func (client *slicingQueryClientStub) Query(_ context.Context, call QueryCall) (QueryTransportResponse, error) {
 	client.calls = append(client.calls, call)
 	value := queryTestTransportResponse(call.Request)
+	start, _ := queryTime(call.Request.TimeRange.Start)
+	end, _ := queryTime(call.Request.TimeRange.End)
+	value.Tables[0].Rows[0][0] = start.Add(end.Sub(start) / 2).Format(sentinelTimestampLayout)
+	value.Tables[0].Rows[0][1] = "event-" + string(rune('0'+call.Request.SliceNumber))
 	value.Receipt.TransportIdentityDigest = call.Request.TransportIdentityDigest
 	if call.Request.SliceNumber == 1 {
 		value.Statistics.BytesReturned = 65536
@@ -153,7 +201,7 @@ func TestQueryRuntimeRejectsPartialErrorAndFencesCancellation(t *testing.T) {
 	})
 }
 
-func TestQueryRuntimePlansContiguousHalfOpenSlicesAndWithholdsUnmergedRows(t *testing.T) {
+func TestQueryRuntimePlansContiguousHalfOpenSlicesAndMergesRows(t *testing.T) {
 	client := &slicingQueryClientStub{}
 	runtime, config := sentinelTestQueryRuntimeWithClient(t, client)
 	binding := sentinelTestBinding(config)
@@ -180,8 +228,9 @@ func TestQueryRuntimePlansContiguousHalfOpenSlicesAndWithholdsUnmergedRows(t *te
 		t.Fatalf("job=%+v", job)
 	}
 	poll, err := runtime.Poll(context.Background(), runtimePollRequest(execution, binding.Authority))
-	if err != nil || poll.Value().Page != nil ||
-		!slices.Equal(poll.Value().Completeness.ReasonCodes, []string{"sentinel_dedupe_required"}) {
+	if err != nil || poll.Value().Outcome != "completed" || poll.Value().Page == nil ||
+		len(poll.Value().Page.Rows) != 2 || poll.Value().Page.Rows[0]["EventRecordId"] != "event-2" ||
+		poll.Value().Page.Rows[1]["EventRecordId"] != "event-3" || poll.Value().Statistics.SlicesCompleted != 2 {
 		t.Fatalf("poll=%+v err=%v", poll.Value(), err)
 	}
 }
@@ -205,6 +254,54 @@ func TestQueryRuntimeFailsClosedWhenSliceLimitPreventsSplit(t *testing.T) {
 	if err != nil || poll.Value().Page != nil ||
 		!slices.Equal(poll.Value().Completeness.ReasonCodes, []string{"sentinel_slice_limit_exceeded"}) {
 		t.Fatalf("poll=%+v err=%v", poll.Value(), err)
+	}
+}
+
+func TestQueryRuntimeMergeDeduplicatesBoundaryAndFailsClosed(t *testing.T) {
+	tests := []struct {
+		name, mode, reason string
+		rows               int
+		removeProfile      bool
+	}{
+		{name: "boundary duplicate", mode: "boundary", rows: 1},
+		{name: "stable key conflict", mode: "conflict", reason: "sentinel_stable_key_conflict"},
+		{name: "row outside slice", mode: "outside", reason: "sentinel_row_outside_slice"},
+		{name: "orphan inclusive boundary", mode: "orphan-boundary", reason: "sentinel_row_outside_slice"},
+		{name: "unstable source order", mode: "unsorted", reason: "sentinel_stable_order_invalid"},
+		{name: "null stable key", mode: "null-key", reason: "sentinel_identical_timestamp_ambiguous"},
+		{name: "ambiguous scope", reason: "sentinel_identical_timestamp_ambiguous", removeProfile: true},
+	}
+	for index, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client := &mergeQueryClientStub{mode: test.mode}
+			runtime, config := sentinelTestQueryRuntimeWithClient(t, client)
+			if test.removeProfile {
+				runtime.config.StableKeys = runtime.config.StableKeys[:1]
+			}
+			binding := sentinelTestBinding(config)
+			capability, _ := runtime.Probe(context.Background(), binding.Scope, binding.Authority)
+			query := sentinelRuntimeQuery(t, capability.Digest(), binding, 20+index)
+			validation, _ := runtime.Validate(context.Background(), query)
+			execution, err := runtime.Execute(context.Background(), query, validation)
+			if err != nil {
+				t.Fatal(err)
+			}
+			poll, err := runtime.Poll(context.Background(), runtimePollRequest(execution, binding.Authority))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.reason == "" {
+				if poll.Value().Outcome != "completed" || poll.Value().Page == nil ||
+					len(poll.Value().Page.Rows) != test.rows || poll.Value().Statistics.SlicesCompleted != 2 {
+					t.Fatalf("poll=%+v", poll.Value())
+				}
+				return
+			}
+			if poll.Value().Outcome != "failed" || poll.Value().Page != nil ||
+				!slices.Equal(poll.Value().Completeness.ReasonCodes, []string{test.reason}) {
+				t.Fatalf("poll=%+v", poll.Value())
+			}
+		})
 	}
 }
 
@@ -237,7 +334,7 @@ func sentinelTestQueryRuntime(t *testing.T, partial bool) (*QueryRuntime, *runti
 		DiscoveryConfigDigest: hashValue("COH-SENTINEL-CONFIG-V1\x00", config), SliceSemanticsDigest: sentinelTestDigest("a"),
 		HalfOpenQualified: true, MinimumSliceDurationMillis: 1000,
 		SplitThresholdRows: 500, SplitThresholdBytes: 65536, MaximumResponseBytes: 262144,
-		StableKeys: []StableKeyProfile{{ResourceID: "security-events", TimestampColumn: "TimeGenerated", Columns: []string{"EventRecordId"}}}}
+		StableKeys: sentinelTestStableKeys()}
 	runtimeConfig.Digest = queryRuntimeConfigDigest(runtimeConfig)
 	validator, client := &runtimeValidatorStub{}, &runtimeQueryClientStub{partial: partial}
 	runtime, err := NewQueryRuntime(discovery, runtimeConfig, validator, client, discovery.clock)
@@ -254,13 +351,20 @@ func sentinelTestQueryRuntimeWithClient(t *testing.T, client QueryClient) (*Quer
 		DiscoveryConfigDigest: hashValue("COH-SENTINEL-CONFIG-V1\x00", config), SliceSemanticsDigest: sentinelTestDigest("a"),
 		HalfOpenQualified: true, MinimumSliceDurationMillis: 1000,
 		SplitThresholdRows: 500, SplitThresholdBytes: 65536, MaximumResponseBytes: 262144,
-		StableKeys: []StableKeyProfile{{ResourceID: "security-events", TimestampColumn: "TimeGenerated", Columns: []string{"EventRecordId"}}}}
+		StableKeys: sentinelTestStableKeys()}
 	runtimeConfig.Digest = queryRuntimeConfigDigest(runtimeConfig)
 	runtime, err := NewQueryRuntime(discovery, runtimeConfig, &runtimeValidatorStub{}, client, discovery.clock)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return runtime, config
+}
+
+func sentinelTestStableKeys() []StableKeyProfile {
+	return []StableKeyProfile{
+		{ResourceID: "security-events", TimestampColumn: "TimeGenerated", Columns: []string{"EventRecordId"}},
+		{ResourceID: "signin-events", TimestampColumn: "TimeGenerated", Columns: []string{"EventRecordId"}},
+	}
 }
 
 func sentinelRuntimeQuery(t *testing.T, capability string, binding CallBinding,
@@ -271,7 +375,7 @@ func sentinelRuntimeQuery(t *testing.T, capability string, binding CallBinding,
 		QueryID:         sentinelDeterministicUUID(sentinelTestNow.Add(time.Duration(suffix)*time.Nanosecond), "query"),
 		Scope:           binding.Scope, Authority: binding.Authority, CapabilityDigest: capability,
 		SchemaDigest: sentinelTestDigest("6"), Language: "kql",
-		NativeText: "SecurityEvent | project TimeGenerated, EventRecordId",
+		NativeText: "SecurityEvent | project TimeGenerated, EventRecordId, Computer",
 		TimeRange: queryconnector.TimeRange{Start: sentinelTestNow.Add(-time.Hour).Format(sentinelTimestampLayout),
 			End: sentinelTestNow.Format(sentinelTimestampLayout)}, Limits: queryconnector.Limits{MaximumRows: 100,
 			MaximumBytes: 262144, MaximumDurationMillis: 30000, MaximumPages: 1, MaximumSlices: 8,

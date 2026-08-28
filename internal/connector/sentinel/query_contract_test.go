@@ -73,10 +73,13 @@ func queryTestTransportRequest() QueryTransportRequest {
 }
 
 func queryTestTransportResponse(request QueryTransportRequest) QueryTransportResponse {
+	start, _ := queryTime(request.TimeRange.Start)
+	end, _ := queryTime(request.TimeRange.End)
 	value := QueryTransportResponse{SchemaVersion: QueryResponseVersion, ContractVersion: ContractVersion,
 		RequestDigest: request.RequestDigest, Tables: []QueryTable{{Name: "PrimaryResult",
-			Columns: []QueryColumn{{Name: "TimeGenerated", Type: "datetime"}, {Name: "EventRecordId", Type: "string"}},
-			Rows:    [][]interface{}{{"2026-08-27T00:30:00.000000000Z", "event-1"}}}},
+			Columns: []QueryColumn{{Name: "TimeGenerated", Type: "datetime"}, {Name: "EventRecordId", Type: "string"},
+				{Name: "Computer", Type: "string"}},
+			Rows: [][]interface{}{{start.Add(end.Sub(start) / 2).Format(sentinelTimestampLayout), "event-1", "host-a"}}}},
 		Statistics: QueryStatistics{RowsScanned: 1, RowsReturned: 1, BytesReturned: 96, DurationMillis: 5,
 			ResourceUsageDigest: sentinelTestDigest("c")}, Receipt: QueryReceipt{Operation: QueryOperation, HTTPStatus: 200,
 			RequestDigest: request.RequestDigest, VendorResponseDigest: sentinelTestDigest("d"), LeaseDecisionDigest: sentinelTestDigest("e"),
