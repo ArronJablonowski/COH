@@ -197,6 +197,25 @@ func TestExecParserRejectsMalformedAndMissingTerminalStreams(t *testing.T) {
 	}
 }
 
+func TestExecParserPreservesMalformedVendorJSONReason(t *testing.T) {
+	_, _, err := parseExecJSONL([]byte(`{"type":"thread.started","thread_id":}`))
+	if Code(err) != providercontract.InvalidInput || Reason(err) != "vendor_document_malformed" {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestExecParserAcceptsProgressMessagesAndReturnsLastAgentMessage(t *testing.T) {
+	input := []byte(`{"type":"thread.started","thread_id":"thread-1"}` + "\n" +
+		`{"type":"turn.started"}` + "\n" +
+		`{"type":"item.completed","item":{"id":"msg-1","type":"agent_message","text":"Working."}}` + "\n" +
+		`{"type":"item.completed","item":{"id":"msg-2","type":"agent_message","text":"FINAL: B"}}` + "\n" +
+		`{"type":"turn.completed","usage":{"input_tokens":2,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":1,"reasoning_output_tokens":0}}`)
+	text, _, err := parseExecJSONL(input)
+	if err != nil || text != "FINAL: B" {
+		t.Fatalf("text=%q err=%v", text, err)
+	}
+}
+
 func TestCancellationInterruptsExactTurnAndDoesNotFallback(t *testing.T) {
 	rig := newRig(t)
 	rig.transport.incoming = rig.transport.incoming[:4]

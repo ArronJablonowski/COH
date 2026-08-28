@@ -14,9 +14,13 @@ web, skill, user-input, mutation, reroute, and unknown requests fail closed.
 
 `codex exec` is a separately qualified and explicitly selected batch fallback.
 It uses fixed arguments, cwd, ephemeral JSONL, strict/ignored user config,
-read-only sandbox, bounded stdin/stdout/stderr/time, optional strict output
-schema, empty caller-supplied environment, and an invocation-scoped credential
-channel supplied by the managed runner. It never resumes sessions, adds
+ignored execution rules, explicitly disabled web search and native
+shell/unified-exec/multi-agent/tool-suggestion features, a read-only sandbox,
+bounded stdin/stdout/stderr/time, optional strict output schema, empty
+caller-supplied environment, and an invocation-scoped credential channel
+supplied by the managed runner. It accepts bounded progress agent messages and
+returns only the last agent message while denying every native tool event. It
+never resumes sessions, adds
 directories or images, selects local providers/profiles, uses dangerous flags,
 or receives an automatic failover from App Server. Batch requests with tools
 are reported as unsupported because the CLI JSONL surface cannot prove broker

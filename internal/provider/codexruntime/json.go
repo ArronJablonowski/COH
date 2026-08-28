@@ -31,7 +31,7 @@ func decodeExact(input []byte, output any) error {
 func canonicalJSON(input []byte) ([]byte, error) {
 	value, err := decodeUniqueJSON(input, maximumResponseBytes)
 	if err != nil {
-		return nil, newError(providercontract.InvalidInput, "vendor_json_noncanonical", false)
+		return nil, err
 	}
 	var output bytes.Buffer
 	encoder := json.NewEncoder(&output)

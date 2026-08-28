@@ -86,7 +86,10 @@ func TestBatchFallbackIsExplicitBoundedAndNeverAutomatic(t *testing.T) {
 	if response.Value().Items[0].Text != "Batch complete." {
 		t.Fatalf("response=%+v", response.Value())
 	}
-	wanted := []string{"codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--strict-config", "--sandbox", "read-only", "--cd", "/workspace", "--model", "gpt-5.6-terra", "-"}
+	wanted := []string{"codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--strict-config",
+		"-c", `web_search="disabled"`,
+		"--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "--disable", "tool_suggest",
+		"--sandbox", "read-only", "--cd", "/workspace", "--model", "gpt-5.6-terra", "-"}
 	if !reflect.DeepEqual(rig.batch.invocation.Argv, wanted) || len(rig.batch.invocation.Environment) != 0 || rig.batch.invocation.WorkingDirectory != "/workspace" {
 		t.Fatalf("invocation=%+v", rig.batch.invocation)
 	}

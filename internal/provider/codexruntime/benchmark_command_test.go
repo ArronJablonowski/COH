@@ -91,7 +91,10 @@ type batchRunner struct {
 }
 
 func (r batchRunner) Run(ctx context.Context, invocation codexruntime.BatchInvocation) (codexruntime.BatchResult, error) {
-	wanted := []string{"codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--strict-config", "--sandbox", "read-only", "--cd", r.workspace, "--model", r.provider.ActualModel, "-"}
+	wanted := []string{"codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--strict-config",
+		"-c", `web_search="disabled"`,
+		"--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "--disable", "tool_suggest",
+		"--sandbox", "read-only", "--cd", r.workspace, "--model", r.provider.ActualModel, "-"}
 	if strings.Join(invocation.Argv, "\x00") != strings.Join(wanted, "\x00") || invocation.WorkingDirectory != r.workspace || len(invocation.Environment) != 0 || len(invocation.OutputSchema) != 0 || invocation.MaximumOutputBytes != 16<<20 {
 		return codexruntime.BatchResult{}, errors.New("COH batch invocation departed from the qualified surface")
 	}
@@ -134,7 +137,7 @@ func observation(provider providercontract.ProviderIdentity, workspace, codexHom
 		ProtocolDigest: codexruntime.ProtocolDigest, Model: provider.ActualModel, ModelRevision: provider.ModelRevision,
 		Workspace: workspace, Transport: "exec-jsonl", Sandbox: "read-only", ApprovalPolicy: "untrusted",
 		NetworkMode: "connected", ConfigDigest: provider.ChatTemplateDigest, EnvironmentDigest: provider.HardwareProfileDigest,
-		CredentialMode: "invocation-scoped", ExperimentalSurface: "tools-disabled", CodexHome: codexHome,
+		CredentialMode: "invocation-scoped", ExperimentalSurface: "native-tools-denied", CodexHome: codexHome,
 		ConfigMode: "managed-isolated", RulesMode: "disabled", HooksMode: "disabled", MCPMode: "disabled",
 		WebSearchMode: "disabled", MutationMode: "disabled", EnvironmentMode: "allowlist"}
 }
@@ -266,7 +269,7 @@ func providerIdentity(model, workspace, codexHome string) providercontract.Provi
 		RequestedModel: model, ActualModel: model, ModelRevision: rawDigest([]byte("COH-CODEX-MODEL-ALIAS-V1\x00" + model)),
 		RuntimeName: "codex-exec", RuntimeVersion: codexruntime.RuntimeVersion, RuntimeDigest: codexruntime.RuntimeDigest,
 		TokenizerName: "openai-managed", TokenizerVersion: "1.0.0", TokenizerDigest: rawDigest([]byte("COH-OPENAI-MANAGED-TOKENIZER-V1")),
-		ChatTemplateDigest: rawDigest([]byte("COH-CODEX-BENCH-CONFIG-V1\x00exec-jsonl\x00ignore-user-config\x00ignore-rules\x00strict-config\x00read-only")),
+		ChatTemplateDigest: rawDigest([]byte("COH-CODEX-BENCH-CONFIG-V1\x00exec-jsonl\x00ignore-user-config\x00ignore-rules\x00strict-config\x00web-search-disabled\x00native-tools-denied\x00read-only")),
 		ToolParserDigest:   codexruntime.ToolParserDigest(), ReasoningParserDigest: codexruntime.ReasoningParserDigest(), ContextLimit: 1050000,
 		SamplingProfileDigest: codexruntime.SamplingProfileDigest(), HardwareProfileDigest: rawDigest([]byte("COH-CODEX-BENCH-ENV-V1\x00" + runtime.GOOS + "\x00" + runtime.GOARCH + "\x00" + codexHome)),
 		StateMode: "stateless", PolicyRevision: 1}

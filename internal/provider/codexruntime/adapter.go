@@ -84,7 +84,7 @@ func (a *Adapter) verifyObservation(value providercontract.InferenceRequest, o L
 	p := value.Provider
 	expectedSurface := "dynamicTools-only"
 	if mode == "exec-jsonl" {
-		expectedSurface = "tools-disabled"
+		expectedSurface = "native-tools-denied"
 	}
 	if o.RuntimeVersion != p.RuntimeVersion || o.RuntimeDigest != p.RuntimeDigest || o.ProtocolDigest != ProtocolDigest || o.Model != p.ActualModel || o.ModelRevision != p.ModelRevision || o.Workspace != a.config.Workspace || o.Transport != mode || o.Sandbox != "read-only" || o.ApprovalPolicy != "untrusted" || o.NetworkMode != "connected" || o.ConfigDigest != p.ChatTemplateDigest || o.EnvironmentDigest != p.HardwareProfileDigest || o.CredentialMode != "invocation-scoped" || o.ExperimentalSurface != expectedSurface || !validWorkspace(o.CodexHome) || o.ConfigMode != "managed-isolated" || o.RulesMode != "disabled" || o.HooksMode != "disabled" || o.MCPMode != map[bool]string{true: "disabled", false: "broker-only"}[mode == "exec-jsonl"] || o.WebSearchMode != "disabled" || o.MutationMode != "disabled" || o.EnvironmentMode != "allowlist" {
 		return newError(providercontract.Denied, "runtime_attestation_failed", false)

@@ -15,7 +15,10 @@ func (a *Adapter) invokeBatch(ctx context.Context, validated providercontract.Va
 		return providercontract.ValidatedResponse{}, newError(providercontract.Unsupported, "batch_tools_not_supported", false)
 	}
 	started := a.config.Clock().UTC()
-	argv := []string{"codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--strict-config", "--sandbox", "read-only", "--cd", a.config.Workspace, "--model", request.Provider.RequestedModel}
+	argv := []string{"codex", "exec", "--json", "--ephemeral", "--ignore-user-config", "--ignore-rules", "--strict-config",
+		"-c", `web_search="disabled"`,
+		"--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "--disable", "tool_suggest",
+		"--sandbox", "read-only", "--cd", a.config.Workspace, "--model", request.Provider.RequestedModel}
 	if len(translated.OutputSchema) > 0 {
 		argv = append(argv, "--output-schema", "/coh/runtime/output-schema.json")
 	}
@@ -99,7 +102,7 @@ func parseExecJSONL(input []byte) (string, providercontract.Usage, error) {
 			}
 			turnStarted = true
 		case "item.completed":
-			if !turnStarted || event.Item == nil || event.Item.Type != "agent_message" || event.Item.Text == "" || final != "" {
+			if !turnStarted || event.Item == nil || event.Item.Type != "agent_message" || event.Item.Text == "" {
 				return "", usage, newError(providercontract.Denied, "exec_item_not_supported", false)
 			}
 			final = event.Item.Text
