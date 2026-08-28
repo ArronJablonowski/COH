@@ -120,7 +120,7 @@ func TestRecoveryControllerExactReplayAdvanceAndCrashDirectives(t *testing.T) {
 	stream.BindingDigest, stream.ProjectionDigest, stream.InputSurfaceDigest = binding.BindingDigest, binding.ProjectionDigest, binding.SurfaceDigest
 	raw, _, _ := CanonicalStreamEvent(context.Background(), stream)
 	records.streams[1] = raw
-	current, err = controller.Advance(context.Background(), "run.recovery", current, AdvanceTransition{TransitionID: uuid(63), Phase: "streaming", BindingDigest: binding.BindingDigest, StreamCursor: 1, UpdatedAt: timestamp(5)})
+	_, err = controller.Advance(context.Background(), "run.recovery", current, AdvanceTransition{TransitionID: uuid(63), Phase: "streaming", BindingDigest: binding.BindingDigest, StreamCursor: 1, UpdatedAt: timestamp(5)})
 	if err != nil {
 		t.Fatal(err)
 	}
