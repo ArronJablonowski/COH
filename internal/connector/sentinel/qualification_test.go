@@ -3,6 +3,7 @@ package sentinel
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ type sentinelFixedClock struct{ now time.Time }
 func (clock *sentinelFixedClock) Now() time.Time { return clock.now }
 
 type sentinelQualificationClient struct {
+	mu       sync.Mutex
 	metadata Metadata
 	receipt  CallReceipt
 	err      error
@@ -24,6 +26,8 @@ type sentinelQualificationClient struct {
 }
 
 func (client *sentinelQualificationClient) Metadata(_ context.Context, request MetadataRequest) (Metadata, CallReceipt, error) {
+	client.mu.Lock()
+	defer client.mu.Unlock()
 	client.calls++
 	client.binding = request.Binding
 	return client.metadata, client.receipt, client.err
