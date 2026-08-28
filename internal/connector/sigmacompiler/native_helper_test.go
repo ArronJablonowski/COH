@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -21,12 +22,12 @@ func (clock sigmaClock) Now() time.Time { return clock.now }
 
 type sigmaManifestVerifier struct {
 	authority toolregistry.PublisherAuthority
-	calls     int
+	calls     atomic.Int64
 }
 
 func (verifier *sigmaManifestVerifier) VerifySigmaManifest(ctx context.Context,
 	input []byte) (toolregistry.VerifiedEnvelope, error) {
-	verifier.calls++
+	verifier.calls.Add(1)
 	return toolregistry.Verify(ctx, input, verifier.authority)
 }
 
@@ -73,8 +74,8 @@ func TestNativeHelperVerifiesSignedManifestAndReturnsTypedResponse(t *testing.T)
 	if err != nil || ValidateExchange(request, response) != nil || response.Outcome != "compiled_untrusted" {
 		t.Fatalf("typed compile response denied: outcome=%s err=%v", response.Outcome, err)
 	}
-	if verifier.calls != 1 || len(runner.calls) != 1 {
-		t.Fatalf("unexpected lifecycle calls: verifier=%d runner=%d", verifier.calls, len(runner.calls))
+	if verifier.calls.Load() != 1 || len(runner.calls) != 1 {
+		t.Fatalf("unexpected lifecycle calls: verifier=%d runner=%d", verifier.calls.Load(), len(runner.calls))
 	}
 	call := runner.calls[0]
 	if call.Target != request.Target || call.MappingID != request.Mapping.MappingID ||
@@ -102,8 +103,8 @@ func TestNativeHelperReverifiesAuthorityBeforeEveryUse(t *testing.T) {
 		queryconnector.Reason(err) != "pysigma_signature_or_authority" {
 		t.Fatalf("revoked publisher was not denied: %v", err)
 	}
-	if verifier.calls != 2 || len(runner.calls) != 1 {
-		t.Fatalf("revoked helper reached execution: verifier=%d runner=%d", verifier.calls, len(runner.calls))
+	if verifier.calls.Load() != 2 || len(runner.calls) != 1 {
+		t.Fatalf("revoked helper reached execution: verifier=%d runner=%d", verifier.calls.Load(), len(runner.calls))
 	}
 }
 

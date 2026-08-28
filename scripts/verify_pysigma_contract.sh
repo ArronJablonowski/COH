@@ -12,6 +12,7 @@ for path in \
   "${package}/canonical.go" \
   "${package}/contract.go" \
   "${package}/contract_test.go" \
+  "${package}/native_adversarial_test.go" \
   "${package}/native_helper.go" \
   "${package}/native_helper_test.go" \
   "${package}/native_tool.go" \
