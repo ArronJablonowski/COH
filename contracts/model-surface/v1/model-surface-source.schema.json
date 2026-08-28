@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/model-surface/v1/model-surface-source.schema.json",
+  "title": "COH durable model-surface source v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "source_record_id", "event_type", "event_version", "event_class", "projection_rule", "scope", "run_id", "record_revision", "record_digest", "content", "trust", "instruction_disposition", "occurred_at", "sequence", "immutable", "source_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.model-surface-source/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "source_record_id": {"$ref": "#/$defs/uuid7"},
+    "event_type": {"$ref": "#/$defs/token"},
+    "event_version": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "event_class": {"const": "model_surface"},
+    "projection_rule": {"enum": ["message", "prompt_section", "tool_schema", "retrieved_context", "compaction_replacement", "policy_notice"]},
+    "scope": {"$ref": "#/$defs/scope"},
+    "run_id": {"$ref": "#/$defs/uuid7"},
+    "record_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "record_digest": {"$ref": "#/$defs/digest"},
+    "content": {"$ref": "#/$defs/content_binding"},
+    "trust": {"enum": ["trusted_control", "trusted_system", "untrusted_external", "untrusted_model", "untrusted_retrieval"]},
+    "instruction_disposition": {"enum": ["trusted_control_instruction", "trusted_system_instruction", "untrusted_data_only"]},
+    "occurred_at": {"$ref": "#/$defs/timestamp"},
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "immutable": {"const": true},
+    "source_digest": {"$ref": "#/$defs/digest"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"trust": {"enum": ["untrusted_external", "untrusted_model", "untrusted_retrieval"]}}},
+      "then": {"properties": {"instruction_disposition": {"const": "untrusted_data_only"}}}
+    },
+    {
+      "if": {"properties": {"projection_rule": {"const": "retrieved_context"}}},
+      "then": {"properties": {"instruction_disposition": {"const": "untrusted_data_only"}}}
+    }
+  ],
+  "$defs": {
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{9}Z$"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["organization_id", "tenant_id", "case_id", "task_id"],
+      "properties": {
+        "organization_id": {"$ref": "#/$defs/uuid7"},
+        "tenant_id": {"$ref": "#/$defs/uuid7"},
+        "case_id": {"$ref": "#/$defs/uuid7"},
+        "task_id": {"$ref": "#/$defs/uuid7"}
+      }
+    },
+    "content_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "content_id", "digest", "media_type", "length", "classification", "immutable"],
+      "properties": {
+        "kind": {"enum": ["durable_record", "immutable_artifact"]},
+        "content_id": {"$ref": "#/$defs/token"},
+        "digest": {"$ref": "#/$defs/digest"},
+        "media_type": {"enum": ["application/json", "application/schema+json", "text/markdown", "text/plain"]},
+        "length": {"type": "integer", "minimum": 0, "maximum": 16777216},
+        "classification": {"enum": ["public", "internal", "restricted", "confidential"]},
+        "immutable": {"const": true}
+      }
+    }
+  }
+}

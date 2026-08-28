@@ -1,0 +1,85 @@
+# Durable model-surface provenance
+
+| Field | Decision |
+|---|---|
+| Stable key | COH-E25-04 / CYB-186 |
+| Contract | `contracts/model-surface/v1` |
+| Requirements | FR-014, FR-027, FR-038, FR-044, SEC-011, SEC-015, SEC-016, SEC-020 |
+| Status | v1 contract frozen; implementation proceeds through short tasks in Linear |
+
+## Decision
+
+COH constructs provider-visible context as a deterministic projection of
+durable typed records and immutable artifacts. The projector is a mandatory
+guard between workflow/context assembly and every provider adapter. Provider
+adapters receive an already-validated inference request plus a digest-bound
+surface binding; they cannot admit unbound messages or tools.
+
+This makes the answer to “what exactly did the model see?” a durable,
+replayable record rather than a reconstruction from application logs. It also
+prevents retrieved content, model output, or an extension from silently
+converting itself into an instruction or authority surface.
+
+## Authority and data flow
+
+```text
+durable records / immutable artifacts
+                |
+                v
+scope + vocabulary + trust verification
+                |
+                v
+deterministic ordered projector
+                |
+                +--> durable projection + surface digest
+                |
+                v
+authorization/audit-bound inference binding
+                |
+                v
+qualified provider adapter
+                |
+                v
+lineage-bound stream + explicit terminal outcome
+```
+
+The source resolver and artifact reader are narrow, read-only ports. They expose
+no repository mutation, connector, credential, policy, approval, audit, broker,
+runner, E-stop, or generic callback. The projector can render data; it cannot
+authorize a tool action.
+
+## Invariants
+
+1. Every visible item has exactly one durable source record and immutable
+   content digest.
+2. Only registered `model_surface` event types have projection rules. Log-only
+   and live coordination events can never enter model context.
+3. Scope is exact across organization, tenant, case, task, and run.
+4. Projected ordinals are consecutive and deterministic. Aggregated source IDs
+   and artifact digests must be exact derivations of ordered items.
+5. Untrusted external, retrieved, and model-originated content is always data,
+   never an instruction, tool schema, policy, or approval.
+6. Dispatch binds the projection and surface to current provider,
+   authorization, policy, approval, audit, profile composition, and deadline.
+7. Streaming never loses request, attempt, projection, binding, or source
+   lineage. Silence and interruption are explicit outcomes.
+8. Compaction replaces an exact source set and retains complete leaf coverage
+   and evidentiary metadata.
+9. Restart and replay re-resolve immutable inputs and reproduce the same surface
+   digest before proceeding.
+
+## Failure posture
+
+Missing or mutable content, unknown versions, cross-scope references,
+noncanonical ordering, stale revisions, duplicate records, digest mismatch,
+hostile instructions, provider lineage drift, ambiguous streaming, and coverage
+loss deny closed. Failures are durable typed outcomes; they do not fall back to
+unbound raw prompt construction.
+
+## Delivery sequence
+
+The contract freeze is followed by strict Go records/decoders, source
+resolution, deterministic projection, provider-request admission, stream
+lineage, compaction coverage, recovery/adversarial behavior, and checksummed
+release evidence. Generated architecture catalogs in CYB-185 consume this
+vocabulary only after the runtime implementation is complete.

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/model-surface/v1/event-vocabulary.schema.json",
+  "title": "COH model-surface event vocabulary v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "vocabulary_revision", "definitions", "vocabulary_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.model-surface-event-vocabulary/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "vocabulary_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "definitions": {
+      "type": "array", "minItems": 1, "maxItems": 512,
+      "items": {"$ref": "#/$defs/event_definition"}
+    },
+    "vocabulary_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "event_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_type", "event_version", "event_class", "persistence", "producer_module", "consumer_modules", "projection_rule", "payload_schema_digest"],
+      "properties": {
+        "event_type": {"$ref": "#/$defs/token"},
+        "event_version": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "event_class": {"enum": ["live_coordination", "log_only", "model_surface"]},
+        "persistence": {"enum": ["durable", "ephemeral"]},
+        "producer_module": {"$ref": "#/$defs/token"},
+        "consumer_modules": {
+          "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true,
+          "items": {"$ref": "#/$defs/token"}
+        },
+        "projection_rule": {"enum": ["none", "message", "prompt_section", "tool_schema", "retrieved_context", "compaction_replacement", "policy_notice"]},
+        "payload_schema_digest": {"$ref": "#/$defs/digest"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"event_class": {"const": "model_surface"}}},
+          "then": {
+            "properties": {
+              "persistence": {"const": "durable"},
+              "projection_rule": {"not": {"const": "none"}}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"event_class": {"const": "log_only"}}},
+          "then": {
+            "properties": {
+              "persistence": {"const": "durable"},
+              "projection_rule": {"const": "none"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"event_class": {"const": "live_coordination"}}},
+          "then": {
+            "properties": {
+              "persistence": {"const": "ephemeral"},
+              "projection_rule": {"const": "none"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}
