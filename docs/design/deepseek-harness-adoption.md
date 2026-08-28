@@ -4,7 +4,7 @@
 |---|---|
 | Review date | 2026-08-27 |
 | Upstream | `deepseek-ai/deepseek-harness` at `cd5ef8148158c3a752a658978873241fdf8e2bbc` |
-| Status | Approved for backlog integration; implementation evidence required per leaf issue |
+| Status | Implemented through CYB-182–CYB-186; independent security architecture review remains required before first production release |
 | Scope | Harness composition, extension lifecycle, model-surface provenance, and architecture introspection |
 | Security posture | COH's broker, signed registries, action tiers, immutable evidence, and fail-closed audit remain authoritative |
 
