@@ -16,11 +16,16 @@ const (
 	permissionDigestDomain = "COH-CAPABILITY-PERMISSIONS-V1\x00"
 )
 
-// Resolve builds one complete immutable graph. It performs no activation and
-// returns no executable provider object or action authority.
-func Resolve(ctx context.Context, bundle ValidatedBundle) (ValidatedGraph, error) {
+// Resolve builds one complete immutable graph under current qualification
+// authority. It performs no activation and returns no executable provider
+// object or action authority.
+func (resolver *Resolver) Resolve(ctx context.Context, bundle ValidatedBundle,
+	authority QualificationAuthoritySnapshot) (ValidatedGraph, error) {
 	if err := contextError(ctx); err != nil {
 		return ValidatedGraph{}, err
+	}
+	if resolver == nil || resolver.clock == nil {
+		return ValidatedGraph{}, newError(InvalidInput, "resolver_clock_required")
 	}
 	if bundle.Digest() == "" || len(bundle.CanonicalBytes()) == 0 {
 		return ValidatedGraph{}, newError(InvalidInput, "validated_bundle_required")
@@ -54,6 +59,9 @@ func Resolve(ctx context.Context, bundle ValidatedBundle) (ValidatedGraph, error
 		selected[identifier] = providers[0]
 	}
 	if err := validateResolutionBindings(value, definitions, selected); err != nil {
+		return ValidatedGraph{}, err
+	}
+	if err := validateQualificationAuthority(resolver.clock.Now(), value, selected, authority); err != nil {
 		return ValidatedGraph{}, err
 	}
 

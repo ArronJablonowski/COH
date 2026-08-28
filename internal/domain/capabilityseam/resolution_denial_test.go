@@ -43,7 +43,7 @@ func TestResolverFailsClosedForInvalidGraphs(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := Resolve(context.Background(), test.bundle(t))
+			_, err := resolveForTest(context.Background(), test.bundle(t))
 			if Code(err) != Denied || Reason(err) != test.reason {
 				t.Fatalf("code=%s reason=%s err=%v", Code(err), Reason(err), err)
 			}

@@ -6,15 +6,16 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestResolveProducesDeterministicClosedGraph(t *testing.T) {
 	bundle := decodeFixtureBundle(t)
-	first, err := Resolve(context.Background(), bundle)
+	first, err := resolveForTest(context.Background(), bundle)
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
-	second, err := Resolve(context.Background(), bundle)
+	second, err := resolveForTest(context.Background(), bundle)
 	if err != nil {
 		t.Fatalf("resolve replay: %v", err)
 	}
@@ -31,7 +32,7 @@ func TestResolveProducesDeterministicClosedGraph(t *testing.T) {
 
 func TestResolveOrdersDependenciesBeforeConsumers(t *testing.T) {
 	bundle := bundleWithTokenizerDependency(t)
-	graph, err := Resolve(context.Background(), bundle)
+	graph, err := resolveForTest(context.Background(), bundle)
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -48,7 +49,7 @@ func TestResolveRequiresExactCapabilityVersion(t *testing.T) {
 	bundle := mutateValidBundle(t, func(value *Bundle) {
 		value.Consumers[0].Capability.Version = "2.0.0"
 	})
-	_, err := Resolve(context.Background(), bundle)
+	_, err := resolveForTest(context.Background(), bundle)
 	if Code(err) != Denied || Reason(err) != "consumer_definition_missing" {
 		t.Fatalf("code=%s reason=%s err=%v", Code(err), Reason(err), err)
 	}
@@ -123,4 +124,38 @@ func slicesEqual(left, right []string) bool {
 		}
 	}
 	return true
+}
+
+var qualificationTestTime = time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+
+type fixedClock struct{ now time.Time }
+
+func (clock fixedClock) Now() time.Time { return clock.now }
+
+func resolveForTest(ctx context.Context, bundle ValidatedBundle) (ValidatedGraph, error) {
+	resolver, err := NewResolver(fixedClock{now: qualificationTestTime})
+	if err != nil {
+		return ValidatedGraph{}, err
+	}
+	return resolver.Resolve(ctx, bundle, authorityFor(bundle))
+}
+
+func authorityFor(bundle ValidatedBundle) QualificationAuthoritySnapshot {
+	value := bundle.Value()
+	records := make([]QualificationAuthorityRecord, len(value.Providers))
+	for index, provider := range value.Providers {
+		records[index] = QualificationAuthorityRecord{
+			RecordID: provider.Qualification.RecordID, RecordDigest: provider.Qualification.RecordDigest,
+			ProviderID: provider.ProviderID, ProviderVersion: provider.ProviderVersion,
+			ProviderArtifactDigest: provider.ArtifactDigest, Capability: provider.Capability,
+			ProfileDigest:      provider.Qualification.ProfileDigest,
+			IssuedAt:           provider.Qualification.IssuedAt,
+			ExpiresAt:          provider.Qualification.ExpiresAt,
+			RegistryRevision:   1,
+			AuthorityRevision:  provider.Qualification.AuthorityRevision,
+			RevocationRevision: provider.Qualification.RevocationRevision, Active: provider.Qualification.Status == "qualified",
+		}
+	}
+	return QualificationAuthoritySnapshot{ProfileDigest: value.ProfileDigest, Revision: 1,
+		ObservedAt: qualificationTestTime.Add(-time.Minute), ValidUntil: qualificationTestTime.Add(time.Minute), Records: records}
 }

@@ -67,6 +67,16 @@ Qualification is time-bounded and binds the exact provider and profile digests.
 Revoked, expired, stale-authority, or profile-mismatched qualification denies
 the graph.
 
+Resolution also requires a live, maximum-five-minute trusted registry snapshot
+from the composition root. For every selected provider it binds the exact
+provider identity/version/artifact, capability identity/version, qualification
+record ID/digest and validity interval, profile digest, registry revision,
+qualification-authority revision, current revocation revision, and active
+state. The snapshot contains no executable authority and is not accepted from
+JSON, a profile, a provider, an extension, or model-visible data. Missing,
+extra, duplicate, reordered, expired, inactive, revoked, or drifted records
+deny the complete graph.
+
 A consumer names one capability, scope, permission subset, and access mode.
 The consumer scope and permissions must be no wider than both the definition
 and selected provider. Every consumer and dependency edge must be declared.
