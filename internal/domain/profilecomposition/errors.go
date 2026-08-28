@@ -22,6 +22,10 @@ func (err *Error) Error() string {
 }
 func newError(code ErrorCode, reason string) error { return &Error{code: code, reason: reason} }
 
+// NewError creates a fixed-code redacted error for trusted boundary adapters.
+// Callers must use stable non-sensitive reason codes.
+func NewError(code ErrorCode, reason string) error { return newError(code, reason) }
+
 func Code(err error) ErrorCode {
 	var typed *Error
 	if errors.As(err, &typed) {

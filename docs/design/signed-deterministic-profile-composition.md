@@ -45,9 +45,11 @@ key, credential, activation callback, policy evaluator, or execution authority.
    multiple baselines, and cycles.
 5. Derive the stable total order and apply only the frozen field-specific merge
    rules. Any widening or conflicting exact field denies the profile.
-6. Load exact deployment, policy, and capability bundle artifacts by digest.
+6. Derive the non-circular profile binding digest from the exact target and
+   effective security posture, then load exact deployment, policy, and capability
+   bundle artifacts by digest.
 7. Run deployment-profile validation and COH-E25-01 capability resolution using
-   the candidate composition digest and current qualification authority.
+   the profile binding digest and current qualification authority.
 8. Canonically encode the resolved profile and derive the redacted inspection
    projection. Publish both atomically or publish neither.
 

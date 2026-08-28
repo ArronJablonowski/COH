@@ -4,7 +4,7 @@
   "title": "COH resolved profile v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "contract_version", "profile_id", "revision", "target", "ordered_layers", "deployment_profile", "capability_bundles", "policy_bundles", "endpoint_references", "permissions", "limits", "features", "offline_bundle_digest", "capability_graph_digest", "composition_digest"],
+  "required": ["schema_version", "contract_version", "profile_id", "revision", "target", "ordered_layers", "deployment_profile", "capability_bundles", "policy_bundles", "endpoint_references", "permissions", "limits", "features", "offline_bundle_digest", "profile_binding_digest", "capability_graph_digest", "composition_digest"],
   "properties": {
     "schema_version": {"const": "coh.resolved-profile/v1"},
     "contract_version": {"const": "1.0.0"},
@@ -20,6 +20,7 @@
     "limits": {"$ref": "#/$defs/limits"},
     "features": {"$ref": "#/$defs/features"},
     "offline_bundle_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+    "profile_binding_digest": {"$ref": "#/$defs/digest"},
     "capability_graph_digest": {"$ref": "#/$defs/digest"},
     "composition_digest": {"$ref": "#/$defs/digest"}
   },

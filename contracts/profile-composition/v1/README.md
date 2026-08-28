@@ -84,9 +84,22 @@ narrow it. No implicit default or generic JSON merge exists.
 The selected capability bundles are decoded and joined as declarations before
 the COH-E25-01 resolver runs. Definition/provider/consumer conflicts, ambiguous
 providers, dependency cycles, widening, invalid qualification, or a graph whose
-profile digest differs from the resolved composition digest deny publication.
+profile digest differs from the profile binding digest deny publication.
 
 ## Digests and redacted inspection
+
+Provider qualification uses a non-circular profile binding digest over the exact
+target, deployment-profile reference, policy-bundle references, narrowed
+endpoints, permissions, limits, features, and offline-bundle digest:
+
+```text
+sha256("COH-PROFILE-BINDING-V1\0" || COH-CJ-1(profile binding))
+```
+
+It deliberately excludes capability-bundle digests, capability graph, and layer
+lineage because those artifacts themselves bind this value. The final
+composition digest below binds the complete lineage, capability artifacts, and
+resolved graph, so this exclusion cannot hide provenance or alter final identity.
 
 The resolved composition digest is:
 
@@ -98,7 +111,7 @@ The inspection digest uses the same rule with domain
 `COH-PROFILE-INSPECTION-V1\0` and `inspection_digest` omitted. Inspection is a
 derived view, never an input. It lists stable IDs, versions, owner module names,
 qualification state, graph edges, effective limits/feature states, layer and
-signature-set digests, trust/revocation revisions, and final digests.
+signature-set digests, trust/revocation revisions, profile binding, and final digests.
 
 There is no field for credentials, secret values, raw evidence, prompt content,
 private paths, endpoints, raw configuration, signatures, public keys, executable
