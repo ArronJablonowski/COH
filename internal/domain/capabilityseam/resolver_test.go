@@ -49,7 +49,7 @@ func TestResolveRequiresExactCapabilityVersion(t *testing.T) {
 		value.Consumers[0].Capability.Version = "2.0.0"
 	})
 	_, err := Resolve(context.Background(), bundle)
-	if Code(err) != Denied || Reason(err) != "consumer_provider_missing" {
+	if Code(err) != Denied || Reason(err) != "consumer_definition_missing" {
 		t.Fatalf("code=%s reason=%s err=%v", Code(err), Reason(err), err)
 	}
 }
@@ -67,6 +67,11 @@ func mutateValidBundle(t *testing.T, mutate func(*Bundle)) ValidatedBundle {
 	t.Helper()
 	value := decodeFixtureBundle(t).Value()
 	mutate(&value)
+	return encodeBundle(t, value)
+}
+
+func encodeBundle(t *testing.T, value Bundle) ValidatedBundle {
+	t.Helper()
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		t.Fatal(err)

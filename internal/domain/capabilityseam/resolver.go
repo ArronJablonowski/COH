@@ -53,6 +53,9 @@ func Resolve(ctx context.Context, bundle ValidatedBundle) (ValidatedGraph, error
 		}
 		selected[identifier] = providers[0]
 	}
+	if err := validateResolutionBindings(value, definitions, selected); err != nil {
+		return ValidatedGraph{}, err
+	}
 
 	edges, order, err := resolveDependencies(ctx, value.Definitions, definitions, selected)
 	if err != nil {
