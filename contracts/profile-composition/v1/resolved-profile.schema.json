@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/profile-composition/v1/resolved-profile.schema.json",
+  "title": "COH resolved profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "profile_id", "revision", "target", "ordered_layers", "deployment_profile", "capability_bundles", "policy_bundles", "endpoint_references", "permissions", "limits", "features", "offline_bundle_digest", "capability_graph_digest", "composition_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.resolved-profile/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "profile_id": {"$ref": "#/$defs/uuid7"},
+    "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "target": {"$ref": "#/$defs/exact_target"},
+    "ordered_layers": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/layer_binding"}},
+    "deployment_profile": {"$ref": "#/$defs/artifact_ref"},
+    "capability_bundles": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/artifact_ref"}},
+    "policy_bundles": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/artifact_ref"}},
+    "endpoint_references": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/token"}},
+    "permissions": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/token"}},
+    "limits": {"$ref": "#/$defs/limits"},
+    "features": {"$ref": "#/$defs/features"},
+    "offline_bundle_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+    "capability_graph_digest": {"$ref": "#/$defs/digest"},
+    "composition_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "artifact_ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "revision", "digest"],
+      "properties": {
+        "id": {"$ref": "#/$defs/token"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "exact_target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deployment_kind", "connectivity_mode", "platform", "surface"],
+      "properties": {
+        "deployment_kind": {"enum": ["compose", "native_server", "native_workstation"]},
+        "connectivity_mode": {"enum": ["air_gapped", "connected", "restricted_connected"]},
+        "platform": {"enum": ["darwin_arm64", "linux_amd64", "linux_arm64", "windows_amd64"]},
+        "surface": {"enum": ["api", "cli", "headless", "test", "web"]}
+      }
+    },
+    "layer_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["layer_id", "name", "kind", "revision", "precedence", "layer_digest", "predecessor_digest", "signature_set_digest", "publisher_key_revision", "trust_revision", "revocation_revision", "rollback_authorization_digest"],
+      "properties": {
+        "layer_id": {"$ref": "#/$defs/uuid7"},
+        "name": {"$ref": "#/$defs/token"},
+        "kind": {"enum": ["baseline", "connectivity", "deployment", "overlay", "site", "surface"]},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "precedence": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "layer_digest": {"$ref": "#/$defs/digest"},
+        "predecessor_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "signature_set_digest": {"$ref": "#/$defs/digest"},
+        "publisher_key_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "trust_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "revocation_revision": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807},
+        "rollback_authorization_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]}
+      }
+    },
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["max_concurrency", "max_context_bytes", "max_duration_ms", "max_evidence_bytes", "max_model_tokens", "max_tool_calls"],
+      "properties": {
+        "max_concurrency": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "max_context_bytes": {"type": "integer", "minimum": 1, "maximum": 67108864},
+        "max_duration_ms": {"type": "integer", "minimum": 1, "maximum": 86400000},
+        "max_evidence_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "max_model_tokens": {"type": "integer", "minimum": 1, "maximum": 1048576},
+        "max_tool_calls": {"type": "integer", "minimum": 0, "maximum": 100000}
+      }
+    },
+    "features": {
+      "type": "object", "additionalProperties": false,
+      "required": ["external_connectivity", "extension_lifecycle", "model_inference", "retrieval", "tool_dispatch"],
+      "properties": {
+        "external_connectivity": {"type": "boolean"},
+        "extension_lifecycle": {"type": "boolean"},
+        "model_inference": {"type": "boolean"},
+        "retrieval": {"type": "boolean"},
+        "tool_dispatch": {"type": "boolean"}
+      }
+    }
+  }
+}

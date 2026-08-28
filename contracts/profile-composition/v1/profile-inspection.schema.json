@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/profile-composition/v1/profile-inspection.schema.json",
+  "title": "COH redacted profile inspection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "profile_id", "profile_revision", "target", "composition_digest", "capability_graph_digest", "lineage", "definitions", "providers", "consumers", "dependency_edges", "consumer_edges", "limits", "feature_states", "inspection_digest"],
+  "properties": {
+    "schema_version": {"const": "coh.profile-inspection/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "profile_id": {"$ref": "#/$defs/uuid7"},
+    "profile_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "target": {"$ref": "#/$defs/exact_target"},
+    "composition_digest": {"$ref": "#/$defs/digest"},
+    "capability_graph_digest": {"$ref": "#/$defs/digest"},
+    "lineage": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/lineage"}},
+    "definitions": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/definition"}},
+    "providers": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/provider"}},
+    "consumers": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/consumer"}},
+    "dependency_edges": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/$defs/dependency_edge"}},
+    "consumer_edges": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/$defs/consumer_edge"}},
+    "limits": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"$ref": "#/$defs/limit"}},
+    "feature_states": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"$ref": "#/$defs/feature"}},
+    "inspection_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.:-]{0,255}$"},
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "exact_target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deployment_kind", "connectivity_mode", "platform", "surface"],
+      "properties": {
+        "deployment_kind": {"enum": ["compose", "native_server", "native_workstation"]},
+        "connectivity_mode": {"enum": ["air_gapped", "connected", "restricted_connected"]},
+        "platform": {"enum": ["darwin_arm64", "linux_amd64", "linux_arm64", "windows_amd64"]},
+        "surface": {"enum": ["api", "cli", "headless", "test", "web"]}
+      }
+    },
+    "lineage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["position", "layer_id", "name", "kind", "revision", "layer_digest", "signature_set_digest", "qualification_state", "trust_revision", "revocation_revision"],
+      "properties": {
+        "position": {"type": "integer", "minimum": 0, "maximum": 127},
+        "layer_id": {"$ref": "#/$defs/uuid7"},
+        "name": {"$ref": "#/$defs/token"},
+        "kind": {"enum": ["baseline", "connectivity", "deployment", "overlay", "site", "surface"]},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "layer_digest": {"$ref": "#/$defs/digest"},
+        "signature_set_digest": {"$ref": "#/$defs/digest"},
+        "qualification_state": {"const": "qualified"},
+        "trust_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "revocation_revision": {"type": "integer", "minimum": 0, "maximum": 9223372036854775807}
+      }
+    },
+    "definition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_id", "capability_version", "owner_module", "declaration_digest", "access_policy", "lifecycle", "non_replaceable"],
+      "properties": {
+        "node_id": {"$ref": "#/$defs/token"},
+        "capability_version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+        "owner_module": {"$ref": "#/$defs/token"},
+        "declaration_digest": {"$ref": "#/$defs/digest"},
+        "access_policy": {"enum": ["broker_intent_only", "read_only_service"]},
+        "lifecycle": {"enum": ["restart_bound", "static", "transactional"]},
+        "non_replaceable": {"type": "boolean"}
+      }
+    },
+    "provider": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_id", "capability_node_id", "provider_version", "artifact_digest", "qualification_digest", "qualification_state", "scope_digest", "permission_digest"],
+      "properties": {
+        "node_id": {"$ref": "#/$defs/token"},
+        "capability_node_id": {"$ref": "#/$defs/token"},
+        "provider_version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "qualification_digest": {"$ref": "#/$defs/digest"},
+        "qualification_state": {"const": "qualified"},
+        "scope_digest": {"$ref": "#/$defs/digest"},
+        "permission_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "consumer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_id", "declaration_digest", "scope_digest", "permission_digest"],
+      "properties": {
+        "node_id": {"$ref": "#/$defs/token"},
+        "declaration_digest": {"$ref": "#/$defs/digest"},
+        "scope_digest": {"$ref": "#/$defs/digest"},
+        "permission_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "dependency_edge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["from", "to", "kind"],
+      "properties": {
+        "from": {"$ref": "#/$defs/token"},
+        "to": {"$ref": "#/$defs/token"},
+        "kind": {"enum": ["optional", "required"]}
+      }
+    },
+    "consumer_edge": {
+      "type": "object", "additionalProperties": false,
+      "required": ["consumer", "capability", "provider", "access_mode"],
+      "properties": {
+        "consumer": {"$ref": "#/$defs/token"},
+        "capability": {"$ref": "#/$defs/token"},
+        "provider": {"$ref": "#/$defs/token"},
+        "access_mode": {"enum": ["broker_intent", "read_only"]}
+      }
+    },
+    "limit": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "value", "source_layer_digest"],
+      "properties": {
+        "name": {"enum": ["max_concurrency", "max_context_bytes", "max_duration_ms", "max_evidence_bytes", "max_model_tokens", "max_tool_calls"]},
+        "value": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+        "source_layer_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "feature": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "enabled", "source_layer_digest"],
+      "properties": {
+        "name": {"enum": ["external_connectivity", "extension_lifecycle", "model_inference", "retrieval", "tool_dispatch"]},
+        "enabled": {"type": "boolean"},
+        "source_layer_digest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

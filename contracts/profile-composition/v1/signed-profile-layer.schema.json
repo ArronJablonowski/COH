@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coh.invalid/contracts/profile-composition/v1/signed-profile-layer.schema.json",
+  "title": "COH signed profile layer v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "layer", "layer_digest", "signatures"],
+  "properties": {
+    "schema_version": {"const": "coh.signed-profile-layer/v1"},
+    "contract_version": {"const": "1.0.0"},
+    "layer": {"$ref": "#/$defs/layer"},
+    "layer_digest": {"$ref": "#/$defs/digest"},
+    "signatures": {
+      "type": "array", "minItems": 1, "maxItems": 8,
+      "items": {"$ref": "#/$defs/signature"}
+    }
+  },
+  "$defs": {
+    "token": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,127}$"},
+    "uuid7": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"},
+    "artifact_ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "revision", "digest"],
+      "properties": {
+        "id": {"$ref": "#/$defs/token"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deployment_kinds", "connectivity_modes", "platforms", "surfaces"],
+      "properties": {
+        "deployment_kinds": {"type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": true, "items": {"enum": ["compose", "native_server", "native_workstation"]}},
+        "connectivity_modes": {"type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": true, "items": {"enum": ["air_gapped", "connected", "restricted_connected"]}},
+        "platforms": {"type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true, "items": {"enum": ["darwin_arm64", "linux_amd64", "linux_arm64", "windows_amd64"]}},
+        "surfaces": {"type": "array", "minItems": 1, "maxItems": 5, "uniqueItems": true, "items": {"enum": ["api", "cli", "headless", "test", "web"]}}
+      }
+    },
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["max_concurrency", "max_context_bytes", "max_duration_ms", "max_evidence_bytes", "max_model_tokens", "max_tool_calls"],
+      "properties": {
+        "max_concurrency": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "max_context_bytes": {"type": "integer", "minimum": 1, "maximum": 67108864},
+        "max_duration_ms": {"type": "integer", "minimum": 1, "maximum": 86400000},
+        "max_evidence_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "max_model_tokens": {"type": "integer", "minimum": 1, "maximum": 1048576},
+        "max_tool_calls": {"type": "integer", "minimum": 0, "maximum": 100000}
+      }
+    },
+    "features": {
+      "type": "object", "additionalProperties": false,
+      "required": ["external_connectivity", "extension_lifecycle", "model_inference", "retrieval", "tool_dispatch"],
+      "properties": {
+        "external_connectivity": {"type": "boolean"},
+        "extension_lifecycle": {"type": "boolean"},
+        "model_inference": {"type": "boolean"},
+        "retrieval": {"type": "boolean"},
+        "tool_dispatch": {"type": "boolean"}
+      }
+    },
+    "contribution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deployment_profile", "capability_bundles", "policy_bundles", "endpoint_references", "permissions", "limits", "features", "offline_bundle_digest"],
+      "properties": {
+        "deployment_profile": {"$ref": "#/$defs/artifact_ref"},
+        "capability_bundles": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/artifact_ref"}},
+        "policy_bundles": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/artifact_ref"}},
+        "endpoint_references": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/token"}},
+        "permissions": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/token"}},
+        "limits": {"$ref": "#/$defs/limits"},
+        "features": {"$ref": "#/$defs/features"},
+        "offline_bundle_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]}
+      }
+    },
+    "parent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["layer_id", "revision", "layer_digest"],
+      "properties": {
+        "layer_id": {"$ref": "#/$defs/uuid7"},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "layer_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "layer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "contract_version", "layer_id", "name", "kind", "revision", "precedence", "predecessor_digest", "rollback_authorization_digest", "target", "parents", "contribution", "issued_at", "not_before", "expires_at"],
+      "properties": {
+        "schema_version": {"const": "coh.profile-layer/v1"},
+        "contract_version": {"const": "1.0.0"},
+        "layer_id": {"$ref": "#/$defs/uuid7"},
+        "name": {"$ref": "#/$defs/token"},
+        "kind": {"enum": ["baseline", "connectivity", "deployment", "overlay", "site", "surface"]},
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "precedence": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "predecessor_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "rollback_authorization_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": ""}]},
+        "target": {"$ref": "#/$defs/target"},
+        "parents": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/parent"}},
+        "contribution": {"$ref": "#/$defs/contribution"},
+        "issued_at": {"$ref": "#/$defs/timestamp"},
+        "not_before": {"$ref": "#/$defs/timestamp"},
+        "expires_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "signature": {
+      "type": "object", "additionalProperties": false,
+      "required": ["role", "signer_id", "key_id", "key_revision", "algorithm", "signed_at", "signature"],
+      "properties": {
+        "role": {"enum": ["publisher", "reviewer"]},
+        "signer_id": {"$ref": "#/$defs/uuid7"},
+        "key_id": {"$ref": "#/$defs/token"},
+        "key_revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "algorithm": {"const": "ed25519"},
+        "signed_at": {"$ref": "#/$defs/timestamp"},
+        "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+      }
+    }
+  }
+}
