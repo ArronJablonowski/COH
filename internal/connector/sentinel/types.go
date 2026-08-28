@@ -3,6 +3,7 @@ package sentinel
 
 import (
 	"context"
+	"time"
 
 	"github.com/ArronJablonowski/COH/internal/domain/queryconnector"
 )
@@ -169,3 +170,19 @@ type CallReceipt struct {
 	LeaseDecisionDigest string
 	TransportDigest     string
 }
+
+type Clock interface {
+	Now() time.Time
+}
+
+type ValidatedQualification struct {
+	value  Qualification
+	bytes  []byte
+	digest string
+}
+
+func (value ValidatedQualification) Value() Qualification { return cloneQualification(value.value) }
+func (value ValidatedQualification) CanonicalBytes() []byte {
+	return append([]byte(nil), value.bytes...)
+}
+func (value ValidatedQualification) Digest() string { return value.digest }
