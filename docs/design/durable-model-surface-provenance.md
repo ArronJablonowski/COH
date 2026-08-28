@@ -72,6 +72,16 @@ run, actor, projection, ordered sources, artifact set, composition, vocabulary,
 and input-surface digest. Cancellation, timeout, interruption, uncertainty, and
 denial therefore cannot silently become fallback.
 
+Compaction selects an exact contiguous range from a sealed projection and
+resolves coverage metadata through a read-only authoritative port. Prior
+replacements expand to their original leaf sources; duplicate, missing,
+cross-scope, reordered, or overlapping coverage denies closed. Leaf records
+retain evidence identifiers, normalized and original time semantics, result
+state (including negative and gap), completeness, and uncertainty. The summary
+artifact must be immutable and decode as a data-role
+`compaction_replacement` surface payload before the coverage and replacement
+digests are sealed.
+
 ## Invariants
 
 1. Every visible item has exactly one durable source record and immutable

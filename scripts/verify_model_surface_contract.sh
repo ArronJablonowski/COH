@@ -42,7 +42,8 @@ for path in "${contract}/README.md" "${contract}/compatibility-matrix.md" \
   "${root}/internal/domain/modelsurface/resolution.go" \
   "${root}/internal/domain/modelsurface/projection.go" \
   "${root}/internal/domain/modelsurface/admission.go" \
-  "${root}/internal/domain/modelsurface/stream_runtime.go"; do
+  "${root}/internal/domain/modelsurface/stream_runtime.go" \
+  "${root}/internal/domain/modelsurface/compaction.go"; do
   [[ -f "${path}" && ! -L "${path}" ]] || {
     echo "error: required model-surface artifact is missing or linked: ${path}" >&2
     exit 2
