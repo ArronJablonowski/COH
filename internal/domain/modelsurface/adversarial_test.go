@@ -134,6 +134,7 @@ func TestCompactionPressureOverMaximumCoverageDeniesBeforeReads(t *testing.T) {
 }
 
 func FuzzModelSurfaceStrictDecoders(f *testing.F) {
+	f.Add(uint8(0), []byte(`{}`))
 	fixtures := []string{"event-vocabulary.valid.json", "source.valid.json", "projection.valid.json", "binding.valid.json", "stream.valid.json", "compaction.valid.json", "transition.valid.json", "payload.valid.json"}
 	for selector, name := range fixtures {
 		value, err := os.ReadFile("../../../contracts/model-surface/v1/fixtures/" + name)
