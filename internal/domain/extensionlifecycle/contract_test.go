@@ -127,8 +127,11 @@ func TestAuthoritySnapshotCannotBeSerialized(t *testing.T) {
 }
 
 func newAdmissionFixture(t *testing.T) admissionFixture {
+	return newAdmissionFixtureForManifest(t, validManifest())
+}
+
+func newAdmissionFixtureForManifest(t *testing.T, manifest Manifest) admissionFixture {
 	t.Helper()
-	manifest := validManifest()
 	manifestBytes, manifestDigest, err := CanonicalManifest(manifest)
 	if err != nil || len(manifestBytes) == 0 {
 		t.Fatalf("CanonicalManifest() err=%v", err)

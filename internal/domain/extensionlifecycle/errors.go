@@ -10,6 +10,7 @@ const (
 	Canceled     ErrorCode = "canceled"
 	Timeout      ErrorCode = "timeout"
 	Unsupported  ErrorCode = "unsupported"
+	Unavailable  ErrorCode = "unavailable"
 )
 
 type Error struct {
