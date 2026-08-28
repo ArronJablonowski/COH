@@ -1,0 +1,4 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/splunk-lifecycle/v1/splunk-lifecycle-denials.schema.json","title":"COH Splunk lifecycle denial corpus","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","cases"],"properties":{"schema_version":{"const":"coh.splunk-lifecycle-denials/v1"},"contract_version":{"const":"1.0.0"},"cases":{"type":"array","minItems":12,"maxItems":64,"items":{"type":"object","additionalProperties":false,"required":["class","reason","covered_by"],"properties":{"class":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,127}$"},"reason":{"type":"string","minLength":3,"maxLength":160},"covered_by":{"type":"string","pattern":"^Test[A-Za-z0-9]{3,127}$"}}}}}
+}

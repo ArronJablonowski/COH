@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/splunk-lifecycle/v1/splunk-cancellation-proof.schema.json","title":"COH Splunk cancellation proof","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","outcome","reason_code","requested_at","confirmed_at","request_digest","response_digest","sid_exposed"],
+  "properties":{"schema_version":{"const":"coh.splunk-cancellation-proof/v1"},"contract_version":{"const":"1.0.0"},"outcome":{"enum":["confirmed","uncertain"]},"reason_code":{"$ref":"#/$defs/name"},"requested_at":{"type":"string","format":"date-time"},"confirmed_at":{"type":["string","null"],"format":"date-time"},"request_digest":{"$ref":"#/$defs/digest"},"response_digest":{"$ref":"#/$defs/digest"},"sid_exposed":{"const":false}},
+  "$defs":{"name":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,127}$"},"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}
+}

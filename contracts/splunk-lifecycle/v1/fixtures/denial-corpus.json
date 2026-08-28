@@ -1,0 +1,19 @@
+{
+  "schema_version": "coh.splunk-lifecycle-denials/v1",
+  "contract_version": "1.0.0",
+  "cases": [
+    {"class": "cancel_uncertain", "reason": "Cancellation cannot be confirmed", "covered_by": "TestLifecycleCancellationUncertain"},
+    {"class": "credential_exposure", "reason": "Credential material is never evidence", "covered_by": "TestLifecycleEvidenceRedaction"},
+    {"class": "deadline_expired", "reason": "Expired jobs cannot dispatch or release rows", "covered_by": "TestLifecycleDeadlineCancellation"},
+    {"class": "hidden_partial", "reason": "Partial vendor output cannot be complete", "covered_by": "TestLifecyclePartialResultDenied"},
+    {"class": "poll_regression", "reason": "Job state cannot regress", "covered_by": "TestLifecycleStateRegression"},
+    {"class": "preview_result", "reason": "Preview rows are never released", "covered_by": "TestLifecyclePreviewDenied"},
+    {"class": "realtime_search", "reason": "Real-time search is unsupported", "covered_by": "TestLifecycleRealtimeDenied"},
+    {"class": "result_oversized", "reason": "Result bounds are cumulative", "covered_by": "TestLifecycleResultBounds"},
+    {"class": "revoked_authority", "reason": "Revoked authority blocks every lifecycle operation", "covered_by": "TestLifecycleRevocation"},
+    {"class": "sid_exposure", "reason": "Vendor SID remains adapter private", "covered_by": "TestLifecycleSIDRedaction"},
+    {"class": "sid_theft", "reason": "Opaque handles cannot address another job", "covered_by": "TestLifecycleHandleMismatch"},
+    {"class": "unknown_state", "reason": "Unknown vendor state fails closed", "covered_by": "TestLifecycleUnknownState"},
+    {"class": "vendor_outage", "reason": "Outage releases no unconfirmed rows", "covered_by": "TestLifecycleOutageRecovery"}
+  ]
+}

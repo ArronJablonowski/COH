@@ -1,0 +1,5 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/splunk-lifecycle/v1/splunk-job-status.schema.json","title":"COH normalized Splunk job status","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","state","done_progress","scan_count","event_count","result_count","duration_millis","done","failed","finalized","real_time","zombie"],
+  "properties":{"schema_version":{"const":"coh.splunk-job-status/v1"},"contract_version":{"const":"1.0.0"},"state":{"enum":["BAD_INPUT_CANCEL","DONE","FAILED","FINALIZING","INTERNAL_CANCEL","PARSING","PAUSE","QUEUED","QUIT","RUNNING","USER_CANCEL"]},"done_progress":{"type":"string","pattern":"^(0(\\.[0-9]{1,5})?|1(\\.0{1,5})?)$"},"scan_count":{"type":"integer","minimum":0},"event_count":{"type":"integer","minimum":0},"result_count":{"type":"integer","minimum":0},"duration_millis":{"type":"integer","minimum":0},"done":{"type":"boolean"},"failed":{"type":"boolean"},"finalized":{"type":"boolean"},"real_time":{"const":false},"zombie":{"const":false}}
+}

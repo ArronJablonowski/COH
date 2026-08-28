@@ -1,0 +1,15 @@
+{
+  "schema_version": "coh.splunk-job-status/v1",
+  "contract_version": "1.0.0",
+  "state": "DONE",
+  "done_progress": "1.00000",
+  "scan_count": 40,
+  "event_count": 20,
+  "result_count": 2,
+  "duration_millis": 125,
+  "done": true,
+  "failed": false,
+  "finalized": true,
+  "real_time": false,
+  "zombie": false
+}

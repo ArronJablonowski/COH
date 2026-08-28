@@ -1,0 +1,11 @@
+{
+  "schema_version": "coh.splunk-cancellation-proof/v1",
+  "contract_version": "1.0.0",
+  "outcome": "confirmed",
+  "reason_code": "deadline_exceeded",
+  "requested_at": "2026-08-28T00:00:00Z",
+  "confirmed_at": "2026-08-28T00:00:01Z",
+  "request_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+  "response_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+  "sid_exposed": false
+}

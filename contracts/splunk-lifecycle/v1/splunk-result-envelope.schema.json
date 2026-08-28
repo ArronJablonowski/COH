@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/splunk-lifecycle/v1/splunk-result-envelope.schema.json","title":"COH bounded Splunk finalized result envelope","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","offset","count","total","fields","results","messages","truncated","result_digest"],
+  "properties":{"schema_version":{"const":"coh.splunk-result-envelope/v1"},"contract_version":{"const":"1.0.0"},"offset":{"type":"integer","minimum":0},"count":{"type":"integer","minimum":1,"maximum":10000},"total":{"type":"integer","minimum":0},"fields":{"type":"array","minItems":1,"maxItems":256,"uniqueItems":true,"items":{"$ref":"#/$defs/name"}},"results":{"type":"array","maxItems":10000,"items":{"type":"object","additionalProperties":{"type":"string","maxLength":65536}}},"messages":{"type":"array","maxItems":16,"items":{"$ref":"#/$defs/name"}},"truncated":{"const":false},"result_digest":{"$ref":"#/$defs/digest"}},
+  "$defs":{"name":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,127}$"},"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}
+}

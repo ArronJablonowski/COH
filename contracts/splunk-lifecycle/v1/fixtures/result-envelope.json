@@ -1,0 +1,15 @@
+{
+  "schema_version": "coh.splunk-result-envelope/v1",
+  "contract_version": "1.0.0",
+  "offset": 0,
+  "count": 1000,
+  "total": 2,
+  "fields": ["event.time", "source.ip"],
+  "results": [
+    {"event.time": "2026-08-27T23:59:00Z", "source.ip": "192.0.2.1"},
+    {"event.time": "2026-08-27T23:59:30Z", "source.ip": "192.0.2.2"}
+  ],
+  "messages": [],
+  "truncated": false,
+  "result_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+}

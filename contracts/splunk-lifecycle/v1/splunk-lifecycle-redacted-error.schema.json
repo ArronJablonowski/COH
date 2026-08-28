@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/splunk-lifecycle/v1/splunk-lifecycle-redacted-error.schema.json","title":"COH Splunk lifecycle redacted error","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","event","reason_code","source_id","request_digest","response_digest","lease_decision_digest","transport_identity_digest","credential_exposed","bearer_exposed","sid_exposed","native_text_exposed","result_row_exposed","vendor_body_exposed"],
+  "properties":{"schema_version":{"const":"coh.splunk-lifecycle-redacted-error/v1"},"contract_version":{"const":"1.0.0"},"event":{"$ref":"#/$defs/name"},"reason_code":{"$ref":"#/$defs/name"},"source_id":{"$ref":"#/$defs/name"},"request_digest":{"$ref":"#/$defs/digest"},"response_digest":{"$ref":"#/$defs/digest"},"lease_decision_digest":{"$ref":"#/$defs/digest"},"transport_identity_digest":{"$ref":"#/$defs/digest"},"credential_exposed":{"const":false},"bearer_exposed":{"const":false},"sid_exposed":{"const":false},"native_text_exposed":{"const":false},"result_row_exposed":{"const":false},"vendor_body_exposed":{"const":false}},
+  "$defs":{"name":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,127}$"},"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}
+}

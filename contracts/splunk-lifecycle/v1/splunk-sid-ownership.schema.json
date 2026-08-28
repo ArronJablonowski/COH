@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://coh.invalid/contracts/splunk-lifecycle/v1/splunk-sid-ownership.schema.json","title":"COH Splunk SID ownership proof","type":"object","additionalProperties":false,
+  "required":["schema_version","contract_version","source_id","query_digest","plan_digest","sid_digest","opaque_handle_digest","expires_at","sid_exposed"],
+  "properties":{"schema_version":{"const":"coh.splunk-sid-ownership/v1"},"contract_version":{"const":"1.0.0"},"source_id":{"$ref":"#/$defs/name"},"query_digest":{"$ref":"#/$defs/digest"},"plan_digest":{"$ref":"#/$defs/digest"},"sid_digest":{"$ref":"#/$defs/digest"},"opaque_handle_digest":{"$ref":"#/$defs/digest"},"expires_at":{"type":"string","format":"date-time"},"sid_exposed":{"const":false}},
+  "$defs":{"name":{"type":"string","pattern":"^[a-z][a-z0-9_.-]{0,127}$"},"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}
+}

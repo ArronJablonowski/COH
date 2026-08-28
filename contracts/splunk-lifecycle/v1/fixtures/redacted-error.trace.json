@@ -1,0 +1,17 @@
+{
+  "schema_version": "coh.splunk-lifecycle-redacted-error/v1",
+  "contract_version": "1.0.0",
+  "event": "search_job_denied",
+  "reason_code": "sid_binding_mismatch",
+  "source_id": "splunk-prod",
+  "request_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+  "response_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+  "lease_decision_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "transport_identity_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "credential_exposed": false,
+  "bearer_exposed": false,
+  "sid_exposed": false,
+  "native_text_exposed": false,
+  "result_row_exposed": false,
+  "vendor_body_exposed": false
+}
