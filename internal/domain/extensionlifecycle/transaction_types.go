@@ -184,6 +184,7 @@ type ActivationStore interface {
 	LoadManifest(context.Context, string) ([]byte, bool, error)
 	PutManifest(context.Context, string, string, []byte) error
 	LoadActive(context.Context, string, string, string) (ActiveExtension, bool, error)
+	LoadInactivePredecessor(context.Context, string, string, string, string, uint64) (Transition, bool, error)
 	LoadTransition(context.Context, string) (Transition, bool, error)
 	LoadReceipt(context.Context, string) (RegistrationReceipt, bool, error)
 	CreateTransition(context.Context, Transition) (Transition, error)

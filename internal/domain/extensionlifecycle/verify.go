@@ -119,9 +119,22 @@ func validateBindings(manifest Manifest, manifestDigest string, intent Activatio
 	if intent.MaximumDrainDurationMS > manifest.MaximumDrainDurationMS {
 		return newError(Denied, "drain_widening")
 	}
-	if intent.Mode == "upgrade" && intent.ExpectedPredecessorManifestDigest != manifest.PredecessorManifestDigest ||
-		intent.Mode == "rollback" && (intent.RollbackAuthorizationDigest == "" || intent.ExpectedPredecessorManifestDigest == "") {
-		return newError(Denied, "lineage_binding")
+	switch intent.Mode {
+	case "upgrade":
+		if manifest.PredecessorManifestDigest == "" || intent.ExpectedPredecessorManifestDigest != manifest.PredecessorManifestDigest ||
+			intent.RollbackAuthorizationDigest != "" || snapshot.RollbackAllowed || snapshot.RollbackAuthorizationDigest != "" {
+			return newError(Denied, "lineage_binding")
+		}
+	case "rollback":
+		if intent.RollbackAuthorizationDigest == "" || intent.ExpectedPredecessorManifestDigest == "" ||
+			!snapshot.RollbackAllowed || snapshot.RollbackAuthorizationDigest != intent.RollbackAuthorizationDigest {
+			return newError(Denied, "lineage_binding")
+		}
+	default:
+		if intent.ExpectedPredecessorManifestDigest != "" || intent.RollbackAuthorizationDigest != "" ||
+			snapshot.RollbackAllowed || snapshot.RollbackAuthorizationDigest != "" {
+			return newError(Denied, "lineage_binding")
+		}
 	}
 	return nil
 }
@@ -134,6 +147,7 @@ func validateAuthoritySnapshot(snapshot AuthoritySnapshot, now time.Time) error 
 		!validDigest(snapshot.ReviewDigest) ||
 		!validDigest(snapshot.PromotionSnapshotDigest) || !validDigest(snapshot.QualificationSnapshotDigest) ||
 		!validDigest(snapshot.PolicyDecisionDigest) || !validDigest(snapshot.AuditAvailabilityDigest) ||
+		!validOptionalDigest(snapshot.RollbackAuthorizationDigest) ||
 		snapshot.ProfileRevision == 0 || snapshot.ProfileRevision > MaximumRevision || !validDigest(snapshot.ProfileBindingDigest) ||
 		!validDigest(snapshot.CompositionDigest) || !validDigest(snapshot.CapabilityGraphDigest) ||
 		snapshot.EStopState != "armed" || snapshot.EStopRevision == 0 || snapshot.EStopRevision > MaximumRevision ||

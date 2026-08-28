@@ -78,7 +78,23 @@ func (controller *ActivationController) validateNoActive(ctx context.Context, in
 	if found {
 		return newError(Denied, "active_requires_deactivation")
 	}
-	if intent.ExpectedLifecycleRevision != 0 {
+	if intent.Mode != "upgrade" && intent.Mode != "rollback" {
+		if intent.ExpectedLifecycleRevision != 0 {
+			return newError(Denied, "lifecycle_lineage")
+		}
+		return nil
+	}
+	if intent.ExpectedLifecycleRevision == 0 || intent.ExpectedPredecessorManifestDigest == "" {
+		return newError(Denied, "lifecycle_lineage")
+	}
+	predecessor, found, err := controller.store.LoadInactivePredecessor(ctx, intent.ExtensionID, intent.OrganizationID,
+		intent.TenantID, intent.ExpectedPredecessorManifestDigest, intent.ExpectedLifecycleRevision)
+	if err != nil {
+		return dependencyError(err, "predecessor_load")
+	}
+	if !found || predecessor.Direction != DeactivateDirection || predecessor.Phase != InactivePhase ||
+		predecessor.ManifestDigest != intent.ExpectedPredecessorManifestDigest ||
+		predecessor.ExpectedLifecycleRevision != intent.ExpectedLifecycleRevision {
 		return newError(Denied, "lifecycle_lineage")
 	}
 	return nil

@@ -17,6 +17,9 @@ type extensionLifecycleStore struct{ *Store }
 func (adapter *extensionLifecycleStore) LoadActive(ctx context.Context, extension, organization, tenant string) (extensionlifecycle.ActiveExtension, bool, error) {
 	return adapter.Store.loadLifecycleActive(ctx, extension, organization, tenant)
 }
+func (adapter *extensionLifecycleStore) LoadInactivePredecessor(ctx context.Context, extension, organization, tenant, manifest string, revision uint64) (extensionlifecycle.Transition, bool, error) {
+	return adapter.Store.loadInactiveLifecyclePredecessor(ctx, extension, organization, tenant, manifest, revision)
+}
 func (adapter *extensionLifecycleStore) LoadTransition(ctx context.Context, id string) (extensionlifecycle.Transition, bool, error) {
 	return adapter.Store.loadLifecycleTransition(ctx, id)
 }

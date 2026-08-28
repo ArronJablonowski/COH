@@ -83,6 +83,45 @@ func (store *Store) loadLifecycleActive(ctx context.Context, extensionID, organi
 	return store.loadActiveExtension(ctx, store.db, extensionID, organizationID, tenantID)
 }
 
+func (store *Store) loadInactiveLifecyclePredecessor(ctx context.Context, extension, organization, tenant, manifest string, revision uint64) (extensionlifecycle.Transition, bool, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if err := store.ready(ctx, "extension_predecessor_load"); err != nil {
+		return extensionlifecycle.Transition{}, false, err
+	}
+	rows, err := store.db.QueryContext(ctx, `SELECT transition_id,direction,phase,sequence,intent_digest,transition_digest,canonical
+FROM coh_extension_lifecycle_transitions WHERE extension_id=? AND organization_id=? AND tenant_id=?
+AND direction='deactivate' AND phase='inactive' ORDER BY transition_id DESC`, extension, organization, tenant)
+	if err != nil {
+		return extensionlifecycle.Transition{}, false, normalizeError("extension_predecessor_load", "query", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, direction, phase, intentDigest, transitionDigest string
+		var sequence int64
+		var canonical []byte
+		if err := rows.Scan(&id, &direction, &phase, &sequence, &intentDigest, &transitionDigest, &canonical); err != nil {
+			return extensionlifecycle.Transition{}, false, normalizeError("extension_predecessor_load", "scan", err)
+		}
+		value, decodeErr := extensionlifecycle.DecodeTransition(ctx, canonical)
+		if decodeErr != nil || sequence <= 0 || value.TransitionID != id || string(value.Direction) != direction ||
+			string(value.Phase) != phase || value.Sequence != uint64(sequence) || value.IntentDigest != intentDigest ||
+			value.TransitionDigest != transitionDigest || value.Direction != extensionlifecycle.DeactivateDirection ||
+			value.Phase != extensionlifecycle.InactivePhase || value.ExtensionID != extension ||
+			value.OrganizationID != organization || value.TenantID != tenant {
+			return extensionlifecycle.Transition{}, false, storageError(workflow.StorageDenied,
+				"extension_predecessor_load", "integrity", "stored predecessor failed verification")
+		}
+		if value.ManifestDigest == manifest && value.ExpectedLifecycleRevision == revision {
+			return value, true, nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return extensionlifecycle.Transition{}, false, normalizeError("extension_predecessor_load", "rows", err)
+	}
+	return extensionlifecycle.Transition{}, false, nil
+}
+
 func (store *Store) createLifecycleTransition(ctx context.Context, value extensionlifecycle.Transition) (extensionlifecycle.Transition, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()

@@ -159,6 +159,7 @@ type AuthoritySnapshot struct {
 	QualificationSnapshotDigest string
 	PolicyDecisionDigest        string
 	AuditAvailabilityDigest     string
+	RollbackAuthorizationDigest string
 	ProfileRevision             uint64
 	ProfileBindingDigest        string
 	CompositionDigest           string
@@ -174,6 +175,7 @@ type AuthoritySnapshot struct {
 	AuditAvailable              bool
 	DependenciesQualified       bool
 	ArtifactRevoked             bool
+	RollbackAllowed             bool
 	Records                     []SigningAuthority
 }
 

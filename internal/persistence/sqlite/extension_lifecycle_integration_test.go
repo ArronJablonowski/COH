@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,14 +33,19 @@ type lifecycleClock struct{ now time.Time }
 func (clock lifecycleClock) Now() time.Time { return clock.now }
 
 type persistentEffects struct {
+	mu      sync.Mutex
 	results map[string]extensionlifecycle.EffectResult
 }
 
 func (effects *persistentEffects) Resolve(_ context.Context, request extensionlifecycle.EffectRequest) (extensionlifecycle.EffectResult, bool, error) {
+	effects.mu.Lock()
+	defer effects.mu.Unlock()
 	value, ok := effects.results[request.EffectKey]
 	return value, ok, nil
 }
 func (effects *persistentEffects) Stage(_ context.Context, request extensionlifecycle.EffectRequest) (extensionlifecycle.EffectResult, error) {
+	effects.mu.Lock()
+	defer effects.mu.Unlock()
 	if value, ok := effects.results[request.EffectKey]; ok {
 		return value, nil
 	}
@@ -50,6 +56,8 @@ func (effects *persistentEffects) Stage(_ context.Context, request extensionlife
 	return value, nil
 }
 func (effects *persistentEffects) Revoke(_ context.Context, request extensionlifecycle.EffectRequest, handle extensionlifecycle.RevocationHandle) (extensionlifecycle.RevocationResult, error) {
+	effects.mu.Lock()
+	defer effects.mu.Unlock()
 	if handle.ExtensionID != request.ExtensionID || handle.RegistrationOrdinal != request.Ordinal {
 		return extensionlifecycle.RevocationResult{}, errors.New("owner mismatch")
 	}
@@ -194,6 +202,11 @@ func TestExtensionDeactivationRecoversCommittedLostResponsesAfterSQLiteRestart(t
 			if _, found, _ := restarted.ExtensionLifecycle().LoadActive(context.Background(), intent.ExtensionID, intent.OrganizationID, intent.TenantID); found {
 				t.Fatal("active remains")
 			}
+			predecessor, found, predecessorErr := restarted.ExtensionLifecycle().LoadInactivePredecessor(context.Background(),
+				intent.ExtensionID, intent.OrganizationID, intent.TenantID, intent.ManifestDigest, intent.ExpectedLifecycleRevision)
+			if predecessorErr != nil || !found || predecessor.Phase != extensionlifecycle.InactivePhase {
+				t.Fatalf("predecessor=%+v found=%v err=%v", predecessor, found, predecessorErr)
+			}
 		})
 	}
 }
@@ -252,6 +265,7 @@ func lifecycleDeactivationFixture(t *testing.T, source lifecycleFixture, active 
 	validated, _ := extensionlifecycle.DecodeIntent(context.Background(), source.intent)
 	intent := validated.Value()
 	intent.RequestID, intent.IdempotencyKey, intent.Operation, intent.ExpectedLifecycleRevision = lifecycleUUID(20), lifecycleUUID(21), "deactivate", active.LifecycleRevision
+	intent.Mode, intent.ExpectedPredecessorManifestDigest, intent.RollbackAuthorizationDigest = "maintenance", "", ""
 	intent, _ = extensionlifecycle.SealIntent(intent)
 	intent.AdministratorSignature = lifecycleSignature("administrator", intent.ActorID, intent.IntentDigest, "COH-SIGNED-EXTENSION-LIFECYCLE-V1\x00", lifecycleKey("administrator"))
 	return lifecycleFixture{envelope: source.envelope, intent: lifecycleCanonical(t, intent), snapshot: source.snapshot}

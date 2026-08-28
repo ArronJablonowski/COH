@@ -26,6 +26,18 @@ func (store *memoryActivationStore) LoadManifest(_ context.Context, digest strin
 	value, ok := store.manifests[digest]
 	return slices.Clone(value), ok, nil
 }
+func (store *memoryActivationStore) LoadInactivePredecessor(_ context.Context, extension, organization, tenant, manifest string, revision uint64) (Transition, bool, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	for _, value := range store.transitions {
+		if value.ExtensionID == extension && value.OrganizationID == organization && value.TenantID == tenant &&
+			value.ManifestDigest == manifest && value.ExpectedLifecycleRevision == revision &&
+			value.Direction == DeactivateDirection && value.Phase == InactivePhase {
+			return value, true, nil
+		}
+	}
+	return Transition{}, false, nil
+}
 func (store *memoryActivationStore) PutManifest(_ context.Context, _ string, digest string, canonical []byte) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()

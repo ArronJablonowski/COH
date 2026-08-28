@@ -98,6 +98,9 @@ func decodeSealed(ctx context.Context, input []byte, target any) error {
 	if err != nil {
 		return newError(InvalidInput, "record_decoding")
 	}
+	if !bytes.Equal(input, canonical) {
+		return newError(InvalidInput, "record_canonical")
+	}
 	decoder := json.NewDecoder(bytes.NewReader(canonical))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {

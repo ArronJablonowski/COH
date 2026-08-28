@@ -112,6 +112,7 @@ func deactivationFixture(t *testing.T, source admissionFixture, active ActiveExt
 	intent.RequestID = "0198d6c4-0020-7000-8000-000000000020"
 	intent.IdempotencyKey = "0198d6c4-0021-7000-8000-000000000021"
 	intent.Operation, intent.Mode, intent.ExpectedLifecycleRevision = "deactivate", "maintenance", active.LifecycleRevision
+	intent.ExpectedPredecessorManifestDigest, intent.RollbackAuthorizationDigest = "", ""
 	intent, err = SealIntent(intent)
 	if err != nil {
 		t.Fatal(err)
