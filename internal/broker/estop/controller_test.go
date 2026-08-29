@@ -49,6 +49,21 @@ type fakeControl struct {
 	calls atomic.Int32
 }
 
+type nonCooperativeControl struct {
+	id      string
+	kind    string
+	release <-chan struct{}
+	calls   atomic.Int32
+}
+
+func (control *nonCooperativeControl) ID() string   { return control.id }
+func (control *nonCooperativeControl) Kind() string { return control.kind }
+func (control *nonCooperativeControl) Apply(context.Context, stopcontract.ControlRequest) (string, error) {
+	control.calls.Add(1)
+	<-control.release
+	return digest("late-" + control.id), nil
+}
+
 func (control *fakeControl) ID() string   { return control.id }
 func (control *fakeControl) Kind() string { return control.kind }
 func (control *fakeControl) Apply(_ context.Context, request stopcontract.ControlRequest) (string, error) {
@@ -166,6 +181,45 @@ func TestControlFailureIsRecordedAndStopRemainsActive(t *testing.T) {
 	if _, checkErr := controller.Check(context.Background(), testOrg, testTenant, testCase); stopcontract.Code(checkErr) != stopcontract.Denied {
 		t.Fatalf("check err=%v", checkErr)
 	}
+}
+
+func TestNonCooperativeControlCannotBlockActivation(t *testing.T) {
+	clock := &fixedClock{now: time.Date(2026, 8, 26, 5, 0, 0, 0, time.UTC)}
+	store, audit := NewMemoryStore(), &fakeAudit{}
+	release := make(chan struct{})
+	stuck := &nonCooperativeControl{id: "credential-stuck", kind: "credential", release: release}
+	controls := []Control{stuck, &fakeControl{id: "runner-egress", kind: "egress"},
+		&fakeControl{id: "remote-jobs", kind: "remote_job"}, &fakeControl{id: "workflow-signal", kind: "workflow"},
+		&fakeControl{id: "cooperative-work", kind: "cooperative"}}
+	controller, err := NewWithDependencies(store, audit, clock, controls...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command, authority := fixture(false)
+	started := time.Now()
+	result, _, err := controller.Activate(context.Background(), command, authority)
+	elapsed := time.Since(started)
+	if stopcontract.Reason(err) != "containment_incomplete" || elapsed < 900*time.Millisecond || elapsed > 1500*time.Millisecond {
+		close(release)
+		t.Fatalf("elapsed=%v result=%+v err=%v", elapsed, result, err)
+	}
+	foundTimeout := false
+	for _, acknowledgement := range result.Acknowledgements {
+		if acknowledgement.ControlID == stuck.ID() {
+			foundTimeout = acknowledgement.Outcome == "timeout" && acknowledgement.ReasonCode == "control_timeout"
+		}
+	}
+	if !foundTimeout || len(result.Acknowledgements) != len(controls) || len(audit.decisions) != len(controls)+1 {
+		close(release)
+		t.Fatalf("result=%+v audit=%d", result, len(audit.decisions))
+	}
+	replayedAt := time.Now()
+	if replayed, _, replayErr := controller.Activate(context.Background(), command, authority); replayErr != nil ||
+		time.Since(replayedAt) > 100*time.Millisecond || replayed.State != result.State || stuck.calls.Load() != 1 {
+		close(release)
+		t.Fatalf("replayed=%+v err=%v calls=%d", replayed, replayErr, stuck.calls.Load())
+	}
+	close(release)
 }
 
 func TestDeniedCanceledAndConcurrentActivation(t *testing.T) {

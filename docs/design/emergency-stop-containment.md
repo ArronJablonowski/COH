@@ -10,6 +10,16 @@ any containment hook, audit delivery, or acknowledgement fails.
 The timing objectives are measured with monotonic elapsed time from each
 control invocation: lease authority in one second, runner egress in two,
 remote jobs and durable workflows in five, and cooperative execution in ten.
+The controller supervises each in-process control invocation independently and
+synthesizes a durable timeout acknowledgement when its wall-clock objective
+expires, even if the control ignores context cancellation. Activation therefore
+returns after the longest objective instead of waiting for control cooperation.
+Because Go cannot forcibly terminate an arbitrary in-process goroutine, control
+implementations still must honor cancellation; exact activation replay never
+spawns another invocation for the same stop epoch, which bounds a defective
+control to one stranded invocation per controller lifetime. Production controls
+that cannot provide cooperative cancellation must run behind a killable process
+or isolated-runner boundary.
 
 ## Activation boundary
 

@@ -155,9 +155,25 @@ func (controller *Controller) applyControl(base context.Context, state stopcontr
 	startedWall := controller.clock.Now().UTC()
 	startedMonotonic := time.Now()
 	controlCtx, cancel := context.WithTimeout(base, objective)
-	evidenceDigest, applyErr := control.Apply(controlCtx, stopcontract.ControlRequest{
-		Scope: state.Scope, Epoch: state.Epoch, ActivatedAt: state.ActivatedAt,
-	})
+	type applyResult struct {
+		evidenceDigest string
+		err            error
+	}
+	completedApply := make(chan applyResult, 1)
+	go func() {
+		evidenceDigest, err := control.Apply(controlCtx, stopcontract.ControlRequest{
+			Scope: state.Scope, Epoch: state.Epoch, ActivatedAt: state.ActivatedAt,
+		})
+		completedApply <- applyResult{evidenceDigest: evidenceDigest, err: err}
+	}()
+	var evidenceDigest string
+	var applyErr error
+	select {
+	case result := <-completedApply:
+		evidenceDigest, applyErr = result.evidenceDigest, result.err
+	case <-controlCtx.Done():
+		applyErr = controlCtx.Err()
+	}
 	cancel()
 	elapsed := time.Since(startedMonotonic)
 	completed := controller.clock.Now().UTC()
