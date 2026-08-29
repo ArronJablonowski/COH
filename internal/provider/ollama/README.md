@@ -39,4 +39,6 @@ local invocation surface for reproducible benchmarks. Its ephemeral signed
 qualification is not a production qualification or a substitute for
 independent security review. The core-text profile disables native reasoning
 so its output budget measures the visible answer instead of a hidden reasoning
-trace; production callers continue to select reasoning policy explicitly.
+trace. Qualified legacy Qwen3 templates retain native separated reasoning
+because disabling it leaks the trace into visible content; production callers
+continue to select reasoning policy explicitly.

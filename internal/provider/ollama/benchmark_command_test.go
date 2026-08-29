@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -27,7 +28,7 @@ import (
 	"github.com/ArronJablonowski/COH/internal/provider/ollama"
 )
 
-const benchmarkVersion = "0.2.0"
+const benchmarkVersion = "0.3.0"
 
 type surfaceStore struct {
 	vocabulary []byte
@@ -186,10 +187,10 @@ func invoke(ctx context.Context, model, prompt string, timeout time.Duration,
 		Qualifications: registry, Schemas: schemaResolver{}, Reasoning: reasoning, Tokens: conservativeTokenCounter{},
 		Route: exactRoute{provider: observation.Provider}, HTTP: httpClient,
 		Clock: func() time.Time { return time.Now().UTC() },
-		// The core-text benchmark grades the visible answer. Disabling native
-		// reasoning prevents capable models from exhausting the output budget
-		// in a reasoning-only response while leaving production policy explicit.
-		DisableReasoning: true})
+		// The core-text benchmark grades the visible answer. Native reasoning is
+		// disabled unless the qualified family cannot suppress it without leaking
+		// the trace into visible content, as current legacy Qwen3 templates do.
+		DisableReasoning: disableBenchmarkReasoning(observation)})
 	if err != nil {
 		return "", provenance{}, err
 	}
@@ -242,6 +243,35 @@ func invoke(ctx context.Context, model, prompt string, timeout time.Duration,
 		Model: observation.Provider.ActualModel, ModelRevision: observation.Provider.ModelRevision,
 		CapabilityDigest: capability.Digest(), BindingDigest: admitted.Binding().BindingDigest,
 		ProvenanceDigest: value.ProvenanceDigest, Usage: value.Usage}, nil
+}
+
+func disableBenchmarkReasoning(observation ollama.LocalIdentityObservation) bool {
+	legacyQwen3 := observation.Provider.TokenizerName == "qwen3" ||
+		observation.Provider.TokenizerName == "qwen3moe"
+	return !slices.Contains(observation.Capabilities, "thinking") || !legacyQwen3
+}
+
+func TestBenchmarkReasoningPolicyKeepsLegacyQwen3TraceSeparated(t *testing.T) {
+	tests := []struct {
+		name         string
+		family       string
+		capabilities []string
+		disable      bool
+	}{
+		{name: "legacy qwen3", family: "qwen3", capabilities: []string{"completion", "thinking", "tools"}},
+		{name: "legacy qwen3 moe", family: "qwen3moe", capabilities: []string{"completion", "thinking", "tools"}},
+		{name: "current qwen family", family: "qwen3_5", capabilities: []string{"completion", "thinking", "tools"}, disable: true},
+		{name: "non-thinking model", family: "llama", capabilities: []string{"completion", "tools"}, disable: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			observation := ollama.LocalIdentityObservation{Provider: providercontract.ProviderIdentity{TokenizerName: test.family},
+				Capabilities: test.capabilities}
+			if got := disableBenchmarkReasoning(observation); got != test.disable {
+				t.Fatalf("disable=%t want=%t", got, test.disable)
+			}
+		})
+	}
 }
 
 func projectedPrompt(ctx context.Context, model, prompt string, now time.Time) (modelsurface.ProjectedSurface, error) {
