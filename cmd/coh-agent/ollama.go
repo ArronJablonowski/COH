@@ -55,13 +55,21 @@ type chatResponse struct {
 	Done       bool   `json:"done"`
 	DoneReason string `json:"done_reason"`
 	Message    struct {
-		Role     string `json:"role"`
-		Content  string `json:"content"`
-		Thinking string `json:"thinking"`
+		Role      string     `json:"role"`
+		Content   string     `json:"content"`
+		Thinking  string     `json:"thinking"`
+		ToolCalls []toolCall `json:"tool_calls"`
 	} `json:"message"`
 	PromptEvalCount uint64 `json:"prompt_eval_count"`
 	EvalCount       uint64 `json:"eval_count"`
 	TotalDuration   uint64 `json:"total_duration"`
+}
+
+type toolCall struct {
+	Function struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	} `json:"function"`
 }
 
 type fileChange struct {
@@ -152,10 +160,10 @@ func (generator *ollamaGenerator) Generate(ctx context.Context,
 		return agentphase.CandidateArtifact{}, "", err
 	}
 	prompt := request.UserPrompt + "\n\n<WORKSPACE_SNAPSHOT_UNTRUSTED>\n" + snapshot + "\n</WORKSPACE_SNAPSHOT_UNTRUSTED>\n"
-	prompt += "Return a change set containing every file to create or replace. Paths must be relative to the workspace. Use deletes only when required."
+	prompt += "Call submit_change_set exactly once with every file to create or replace. Paths must be relative to the workspace. Use deletes only when required. Do not return prose."
 	payload := map[string]any{"model": generator.model, "stream": false, "think": generator.think, "keep_alive": 0,
 		"messages": []map[string]string{{"role": request.Profile.MessageRole, "content": request.Prompt.SystemPrompt}, {"role": "user", "content": prompt}},
-		"format":   changeSetSchema(), "options": map[string]any{"num_ctx": request.Profile.MaximumInputTokens,
+		"tools":    []any{changeSetTool()}, "options": map[string]any{"num_ctx": request.Profile.MaximumInputTokens,
 			"num_predict": request.Profile.MaximumOutputTokens, "temperature": 0, "top_p": 1, "seed": 42}}
 	var response chatResponse
 	if err = postJSON(ctx, generator.client, "/api/chat", payload, &response); err != nil {
@@ -165,11 +173,9 @@ func (generator *ollamaGenerator) Generate(ctx context.Context,
 		(response.DoneReason != "stop" && response.DoneReason != "length") || response.PromptEvalCount == 0 || response.EvalCount == 0 {
 		return agentphase.CandidateArtifact{}, "", errors.New("ollama response identity, completion, or usage is invalid")
 	}
-	var changes changeSet
-	decoder := json.NewDecoder(strings.NewReader(response.Message.Content))
-	decoder.DisallowUnknownFields()
-	if err = decoder.Decode(&changes); err != nil {
-		return agentphase.CandidateArtifact{}, "", fmt.Errorf("decode model change set: %w", err)
+	changes, err := decodeChangeSet(response)
+	if err != nil {
+		return agentphase.CandidateArtifact{}, "", err
 	}
 	if err = applyChangeSet(generator.workspace, changes); err != nil {
 		return agentphase.CandidateArtifact{}, "", err
@@ -186,6 +192,24 @@ func (generator *ollamaGenerator) Generate(ctx context.Context,
 	}{request.Attempt, response.PromptEvalCount, response.EvalCount, response.TotalDuration})
 	return agentphase.CandidateArtifact{ArtifactDigest: artifact, Text: changes.Summary,
 		Workspace: generator.workspace, SideEffect: agentphase.SideEffectNone}, budget, nil
+}
+
+func decodeChangeSet(response chatResponse) (changeSet, error) {
+	if strings.TrimSpace(response.Message.Content) != "" || len(response.Message.ToolCalls) != 1 ||
+		response.Message.ToolCalls[0].Function.Name != "submit_change_set" {
+		return changeSet{}, errors.New("ollama response did not contain exactly one change-set tool call")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(response.Message.ToolCalls[0].Function.Arguments))
+	decoder.DisallowUnknownFields()
+	var changes changeSet
+	if err := decoder.Decode(&changes); err != nil {
+		return changeSet{}, fmt.Errorf("decode model change set: %w", err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return changeSet{}, errors.New("model change set contains trailing or invalid data")
+	}
+	return changes, nil
 }
 
 func loopbackClient(timeout time.Duration) *http.Client {
@@ -264,4 +288,11 @@ func changeSetSchema() map[string]any {
 		"properties": map[string]any{"summary": map[string]any{"type": "string"},
 			"files":   map[string]any{"type": "array", "maxItems": 64, "items": file},
 			"deletes": map[string]any{"type": "array", "maxItems": 64, "items": map[string]any{"type": "string"}}}}
+}
+
+func changeSetTool() map[string]any {
+	return map[string]any{"type": "function", "function": map[string]any{
+		"name": "submit_change_set", "description": "Submit every workspace file change for validation.",
+		"parameters": changeSetSchema(),
+	}}
 }

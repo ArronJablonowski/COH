@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,5 +72,25 @@ func TestQualifyOllamaDigestPreservesExactIdentity(t *testing.T) {
 		if _, err = qualifyOllamaDigest(invalid); err == nil {
 			t.Fatalf("invalid Ollama digest was accepted: %q", invalid)
 		}
+	}
+}
+
+func TestDecodeChangeSetRequiresSingleToolCall(t *testing.T) {
+	response := chatResponse{}
+	response.Message.ToolCalls = []toolCall{{}}
+	response.Message.ToolCalls[0].Function.Name = "submit_change_set"
+	response.Message.ToolCalls[0].Function.Arguments = json.RawMessage(`{"summary":"done","files":[{"path":"submission.json","content":"{}"}],"deletes":[]}`)
+	changes, err := decodeChangeSet(response)
+	if err != nil || len(changes.Files) != 1 || changes.Files[0].Path != "submission.json" {
+		t.Fatalf("valid tool call was rejected: %+v err=%v", changes, err)
+	}
+	response.Message.Content = "duplicate prose"
+	if _, err = decodeChangeSet(response); err == nil {
+		t.Fatal("dual-channel model response was accepted")
+	}
+	response.Message.Content = ""
+	response.Message.ToolCalls = append(response.Message.ToolCalls, toolCall{})
+	if _, err = decodeChangeSet(response); err == nil {
+		t.Fatal("multiple tool calls were accepted")
 	}
 }
