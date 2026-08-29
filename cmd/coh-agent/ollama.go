@@ -97,7 +97,7 @@ func newOllamaGenerator(ctx context.Context, model, expectedDigest, workspace st
 		return nil, agentphase.ModelExecutionProfile{}, fmt.Errorf("observe Ollama model surface: %w", err)
 	}
 	if len(show.Capabilities) == 0 {
-		return nil, agentphase.ModelExecutionProfile{}, errors.New("Ollama model did not advertise capabilities")
+		return nil, agentphase.ModelExecutionProfile{}, errors.New("ollama model did not advertise capabilities")
 	}
 	observed.Capabilities, observed.Details.Family = show.Capabilities, show.Details.Family
 	capabilityDigest := digestJSON(struct {
@@ -145,11 +145,11 @@ func (generator *ollamaGenerator) Generate(ctx context.Context,
 			"num_predict": request.Profile.MaximumOutputTokens, "temperature": 0, "top_p": 1, "seed": 42}}
 	var response chatResponse
 	if err = postJSON(ctx, generator.client, "/api/chat", payload, &response); err != nil {
-		return agentphase.CandidateArtifact{}, "", fmt.Errorf("Ollama agent generation: %w", err)
+		return agentphase.CandidateArtifact{}, "", fmt.Errorf("ollama agent generation: %w", err)
 	}
 	if response.Model != generator.model || !response.Done || response.Message.Role != "assistant" ||
 		(response.DoneReason != "stop" && response.DoneReason != "length") || response.PromptEvalCount == 0 || response.EvalCount == 0 {
-		return agentphase.CandidateArtifact{}, "", errors.New("Ollama response identity, completion, or usage is invalid")
+		return agentphase.CandidateArtifact{}, "", errors.New("ollama response identity, completion, or usage is invalid")
 	}
 	var changes changeSet
 	decoder := json.NewDecoder(strings.NewReader(response.Message.Content))
@@ -212,7 +212,7 @@ func executeJSON(client *http.Client, request *http.Request, output any) error {
 		return err
 	}
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("Ollama HTTP %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
+		return fmt.Errorf("ollama HTTP %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
 	}
 	return json.Unmarshal(body, output)
 }
