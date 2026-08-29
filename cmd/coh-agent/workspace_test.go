@@ -60,3 +60,16 @@ func TestWorkspaceSymlinkFailsClosed(t *testing.T) {
 		t.Fatal("workspace symlink was accepted")
 	}
 }
+
+func TestQualifyOllamaDigestPreservesExactIdentity(t *testing.T) {
+	raw := strings.Repeat("a", 64)
+	qualified, err := qualifyOllamaDigest(raw)
+	if err != nil || qualified != "sha256:"+raw {
+		t.Fatalf("unexpected qualified digest %q: %v", qualified, err)
+	}
+	for _, invalid := range []string{"sha256:" + raw, strings.ToUpper(raw), strings.Repeat("z", 64)} {
+		if _, err = qualifyOllamaDigest(invalid); err == nil {
+			t.Fatalf("invalid Ollama digest was accepted: %q", invalid)
+		}
+	}
+}

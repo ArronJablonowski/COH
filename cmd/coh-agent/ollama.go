@@ -77,9 +77,13 @@ type changeSet struct {
 
 func newOllamaGenerator(ctx context.Context, model, expectedDigest, workspace string,
 	timeout time.Duration) (*ollamaGenerator, agentphase.ModelExecutionProfile, error) {
+	qualifiedModelDigest, err := qualifyOllamaDigest(expectedDigest)
+	if err != nil {
+		return nil, agentphase.ModelExecutionProfile{}, err
+	}
 	client := loopbackClient(timeout)
 	var tags tagResponse
-	if err := getJSON(ctx, client, "/api/tags", &tags); err != nil {
+	if err = getJSON(ctx, client, "/api/tags", &tags); err != nil {
 		return nil, agentphase.ModelExecutionProfile{}, fmt.Errorf("observe Ollama tags: %w", err)
 	}
 	var observed modelRecord
@@ -115,7 +119,7 @@ func newOllamaGenerator(ctx context.Context, model, expectedDigest, workspace st
 	}
 	toolCalls := contains(observed.Capabilities, "tools")
 	profile, err := agentphase.QualifyExecutionProfile("ollama-local", agentphase.QualifiedModelSurface{
-		ModelDigest: expectedDigest, CapabilityDigest: capabilityDigest,
+		ModelDigest: qualifiedModelDigest, CapabilityDigest: capabilityDigest,
 		QualificationDigest: digestBytes([]byte("COH-OLLAMA-AGENT-QUALIFICATION-V1\x00" + expectedDigest + "\x00" + capabilityDigest)),
 		MessageRoles:        []string{"system", "user", "assistant"}, ReasoningModes: reasoningModes,
 		Text: contains(observed.Capabilities, "completion"), Vision: contains(observed.Capabilities, "vision"),
@@ -129,6 +133,16 @@ func newOllamaGenerator(ctx context.Context, model, expectedDigest, workspace st
 	}
 	return &ollamaGenerator{client: client, model: model, digest: expectedDigest,
 		workspace: workspace, timeout: timeout, think: think}, profile, nil
+}
+
+func qualifyOllamaDigest(value string) (string, error) {
+	if len(value) != sha256.Size*2 || strings.ToLower(value) != value {
+		return "", errors.New("ollama model digest must be 64 lowercase hexadecimal characters")
+	}
+	if _, err := hex.DecodeString(value); err != nil {
+		return "", errors.New("ollama model digest must be 64 lowercase hexadecimal characters")
+	}
+	return "sha256:" + value, nil
 }
 
 func (generator *ollamaGenerator) Generate(ctx context.Context,
