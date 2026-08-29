@@ -32,3 +32,36 @@ accepted/revise disposition.
 Only identifiers, digests, bounds, statuses, timestamps, and immutable
 references enter durable state. There is no connector, executor, credential,
 runner, shell, HTTP, policy-engine, or generic callback dependency.
+
+## Accuracy contract and bounded repair
+
+`TaskContract` adds a versioned production contract for the objective, output
+shape, capability requirements, workspace, tool allowlist, safety boundary,
+validator profile, and repair policy. `ModelExecutionProfile` is qualified from
+the exact provider/model digest and advertised capabilities; it selects stable
+prompt fragments, roles, reasoning controls, context/output limits, structured
+output, and tool conventions without benchmark-specific model-name branches.
+
+The compiler turns those records into a concise prompt with explicit completion
+criteria and untrusted-content boundaries. The repair controller then generates
+an artifact, validates it outside the model, accepts it when mandatory checks
+pass, or supplies only stable actionable diagnostics for at most two repairs.
+Every attempt binds the contract, model profile, artifact, budget settlement,
+validator, diagnostics, prior validation, and final provenance digest. A
+confirmed or uncertain external side effect is never repeated. Security-sensitive
+work fails closed after exhaustion; advisory work may be returned only as
+explicitly incomplete.
+
+`ValidationRecordV2` is backward-compatible with existing phase traces because
+it is an additive result record rather than a mutation of the v1 durable phase
+schema. The validator registry is deterministic, allowlisted, workspace-bound,
+and side-effect-free. It currently supplies production gates for workspace,
+JSON, Python, Sigma, SPL, KQL, ES|QL, YARA-L, AppSec, exploit-analysis, and
+prompt-injection artifacts.
+
+The supported `coh-agent` entrypoint runs the same compiler, Ollama provider
+route, validator registry, and bounded repair controller. It requires an exact
+model digest, an absolute workspace, a versioned task-contract file, and a
+deadline, and emits a versioned JSON result envelope. Model output is applied as
+a native JSON-Schema-constrained change set; COH never strips fences or rewrites
+an answer into a passing artifact.
