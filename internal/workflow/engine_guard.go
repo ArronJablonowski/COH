@@ -59,7 +59,8 @@ func (engine *GuardedEngine) Start(ctx context.Context, request WorkflowStart) (
 		return WorkflowHandle{}, err
 	}
 	if handle.Target.Case != request.Operation.Case || handle.Target.WorkflowID != request.Operation.ID ||
-		handle.Definition != OperationWorkflowV1 || handle.Version != "v1" || validateWorkflowTarget("start", handle.Target) != nil {
+		handle.Definition != request.Operation.Version || !registeredWorkflowDefinition(handle.Definition) ||
+		handle.Version != "v1" || validateWorkflowTarget("start", handle.Target) != nil {
 		return WorkflowHandle{}, NewEngineError(EngineDenied, "start", "result", "driver returned an invalid workflow handle", nil)
 	}
 	if err := engine.index.Add(ctx, handle.Target); err != nil {
@@ -107,7 +108,7 @@ func (engine *GuardedEngine) Query(ctx context.Context, request WorkflowQuery) (
 	if err = finishEngineCall(ctx, "query", err); err != nil {
 		return WorkflowSnapshot{}, err
 	}
-	if snapshot.Target != request.Target || snapshot.Definition != OperationWorkflowV1 || snapshot.Version != "v1" ||
+	if snapshot.Target != request.Target || !registeredWorkflowDefinition(snapshot.Definition) || snapshot.Version != "v1" ||
 		!digestPattern.MatchString(snapshot.StartDigest) ||
 		(snapshot.LastSignalDigest != "" && !digestPattern.MatchString(snapshot.LastSignalDigest)) ||
 		(snapshot.State != WorkflowRunning && snapshot.State != WorkflowCompleted && snapshot.State != WorkflowDenied) {
@@ -148,7 +149,7 @@ func (engine *GuardedEngine) Replay(ctx context.Context, request WorkflowReplay)
 	if err = finishEngineCall(ctx, "replay", err); err != nil {
 		return WorkflowReplayResult{}, err
 	}
-	if result.FixtureID != request.FixtureID || result.Definition != OperationWorkflowV1 || result.Version != "v1" ||
+	if result.FixtureID != request.FixtureID || !registeredWorkflowDefinition(result.Definition) || result.Version != "v1" ||
 		!digestPattern.MatchString(result.HistoryDigest) || !result.Replayed {
 		return WorkflowReplayResult{}, NewEngineError(EngineDenied, "replay", "result", "driver returned an invalid replay result", nil)
 	}

@@ -205,6 +205,21 @@ func TestAgentLoopWorkflowUsesVersionedDefinition(t *testing.T) {
 	if err != nil || handle.Definition != core.AgentLoopWorkflowV1 || backend.definition != core.AgentLoopWorkflowV1 {
 		t.Fatalf("handle=%+v definition=%v err=%v", handle, backend.definition, err)
 	}
+	backend.snapshot = core.WorkflowSnapshot{Target: handle.Target, Definition: core.AgentLoopWorkflowV1,
+		Version: workflowVersion, State: core.WorkflowRunning, StartDigest: startDigest}
+	guarded, err := core.GuardEngine(adapter, allowStopGuard{}, core.NewMemoryWorkflowIndex())
+	if err != nil {
+		t.Fatal(err)
+	}
+	guardedHandle, err := guarded.Start(context.Background(), request)
+	if err != nil || guardedHandle.Definition != core.AgentLoopWorkflowV1 {
+		t.Fatalf("guarded handle=%+v err=%v", guardedHandle, err)
+	}
+	snapshot, err := guarded.Query(context.Background(), core.WorkflowQuery{ContractVersion: core.WorkflowContractVersion,
+		Target: guardedHandle.Target, Kind: "snapshot"})
+	if err != nil || snapshot.Definition != core.AgentLoopWorkflowV1 {
+		t.Fatalf("guarded snapshot=%+v err=%v", snapshot, err)
+	}
 	wrongKind := request
 	wrongKind.Operation.Kind = "analysis"
 	if _, err := adapter.Start(context.Background(), wrongKind); core.EngineCode(err) != core.EngineInvalidInput {

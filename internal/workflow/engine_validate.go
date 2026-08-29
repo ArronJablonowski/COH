@@ -27,6 +27,10 @@ func ValidateWorkflowStart(value WorkflowStart) error {
 	return nil
 }
 
+func registeredWorkflowDefinition(value string) bool {
+	return value == OperationWorkflowV1 || value == AgentLoopWorkflowV1
+}
+
 func ValidateWorkflowSignal(value WorkflowSignal) error {
 	if err := validateEngineContextlessContract("signal", value.ContractVersion); err != nil {
 		return err
